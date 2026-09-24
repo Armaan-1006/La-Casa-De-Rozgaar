@@ -1,0 +1,225 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply transition-colors duration-300;
+  }
+
+  body {
+    @apply bg-obsidian text-warm-ivory;
+  }
+
+  /* Dark mode by default */
+  :root {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+}
+
+@layer components {
+  /* Typography */
+  .heading-xl {
+    @apply text-5xl font-heading font-bold tracking-tight;
+  }
+
+  .heading-lg {
+    @apply text-4xl font-heading font-bold tracking-tight;
+  }
+
+  .heading-md {
+    @apply text-3xl font-heading font-bold tracking-tight;
+  }
+
+  .heading-sm {
+    @apply text-2xl font-heading font-bold tracking-tight;
+  }
+
+  .heading-xs {
+    @apply text-xl font-heading font-bold tracking-tight;
+  }
+
+  .text-mono {
+    @apply font-mono text-sm tracking-wide;
+  }
+
+  .text-mono-lg {
+    @apply font-mono text-base tracking-wide;
+  }
+
+  /* Cards & Containers */
+  .card {
+    @apply bg-charcoal border border-burgundy/20 rounded-lg p-6;
+  }
+
+  .card-hover {
+    @apply bg-charcoal border border-burgundy/20 rounded-lg p-6 cursor-pointer transition-all duration-300;
+  }
+
+  .card-hover:hover {
+    @apply border-crimson/40 bg-charcoal-light;
+  }
+
+  .panel {
+    @apply bg-charcoal/50 border border-burgundy/10 rounded-lg p-6 backdrop-blur-sm;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-crimson text-warm-ivory font-semibold rounded-lg transition-all duration-300;
+  }
+
+  .btn-primary:hover {
+    @apply shadow-glow-crimson-lg;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-burgundy/20 text-warm-ivory border border-burgundy/40 font-semibold rounded-lg transition-all duration-300;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-burgundy/30 border-crimson/60;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 text-warm-ivory transition-colors duration-300;
+  }
+
+  .btn-ghost:hover {
+    @apply text-crimson;
+  }
+
+  /* Status indicators */
+  .status-online {
+    @apply relative inline-flex items-center gap-2 text-emerald-400;
+  }
+
+  .status-online::before {
+    content: '●';
+    @apply text-emerald-400 animate-pulse;
+  }
+
+  .status-warning {
+    @apply text-yellow-400;
+  }
+
+  .status-offline {
+    @apply text-gray-500;
+  }
+
+  /* Borders & Dividers */
+  .border-crimson-subtle {
+    @apply border-b border-crimson/20;
+  }
+
+  .divider-h {
+    @apply h-px bg-gradient-to-r from-transparent via-burgundy/30 to-transparent;
+  }
+
+  /* Scan line effect */
+  .scan-line {
+    @apply absolute inset-0 pointer-events-none overflow-hidden;
+  }
+
+  .scan-line::after {
+    content: '';
+    @apply absolute w-full h-1 bg-gradient-to-b from-crimson/40 to-transparent animate-scan-line;
+  }
+}
+
+/* Responsive overrides */
+@media (max-width: 768px) {
+  .heading-xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  .heading-lg {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  .card,
+  .card-hover {
+    padding: 1rem;
+  }
+}
+
+/* Light mode adjustments — all top-level selectors */
+html.light {
+  background-color: #F2E9DC;
+  color: #151518;
+}
+
+html.light .card {
+  background-color: rgba(242, 233, 220, 0.5);
+  border: 1px solid rgba(58, 13, 19, 0.1);
+}
+
+html.light .card-hover:hover {
+  background-color: rgba(242, 233, 220, 0.7);
+  border-color: rgba(58, 13, 19, 0.2);
+}
+
+html.light .panel {
+  background-color: rgba(242, 233, 220, 0.3);
+}
+
+html.light .btn-secondary {
+  background-color: rgba(58, 13, 19, 0.1);
+  border-color: rgba(58, 13, 19, 0.3);
+}
+
+html.light .btn-secondary:hover {
+  background-color: rgba(58, 13, 19, 0.2);
+}
+
+html.light .divider-h {
+  background-image: linear-gradient(to right, transparent, rgba(58, 13, 19, 0.2), transparent);
+}
+
+/* Smooth page transitions */
+.page-enter {
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(179, 19, 43, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(179, 19, 43, 0.5);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgb(179, 19, 43, 0.2);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgb(179, 19, 43, 0.4);
+}
