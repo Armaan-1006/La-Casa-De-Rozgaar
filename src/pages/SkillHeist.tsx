@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { AlertCircle, CheckCircle, AlertTriangle, ArrowRight, BookOpen, Clock, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, CheckCircle, AlertTriangle, ArrowRight, BookOpen, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { mockCandidate } from '../data/mockData'
 import { cn } from '../lib/utils'
 
@@ -139,7 +139,10 @@ export const SkillHeist: React.FC<SkillHeistProps> = ({ onNavigate }) => {
             <div className="space-y-1.5">
               {strengths.map((skill) => (
                 <div key={skill.name} className="flex items-center justify-between text-xs font-mono text-warm-ivory/90">
-                  <span>✓ {skill.name}</span>
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
+                    {skill.name}
+                  </span>
                   <span className="text-emerald-400 font-bold">{skill.score.toFixed(1)} / 10</span>
                 </div>
               ))}
@@ -154,7 +157,10 @@ export const SkillHeist: React.FC<SkillHeistProps> = ({ onNavigate }) => {
             <div className="space-y-1.5">
               {high.map((skill) => (
                 <div key={skill.name} className="flex items-center justify-between text-xs font-mono text-warm-ivory/90">
-                  <span>⚠ {skill.name}</span>
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle size={12} className="text-amber-400 shrink-0" />
+                    {skill.name}
+                  </span>
                   <span className="text-amber-400 font-bold">Gap: {Math.abs(skill.gap).toFixed(1)}</span>
                 </div>
               ))}
@@ -169,7 +175,10 @@ export const SkillHeist: React.FC<SkillHeistProps> = ({ onNavigate }) => {
             <div className="space-y-1.5">
               {critical.map((skill) => (
                 <div key={skill.name} className="flex items-center justify-between text-xs font-mono text-warm-ivory/90">
-                  <span>✕ {skill.name}</span>
+                  <span className="flex items-center gap-1.5">
+                    <XCircle size={12} className="text-crimson shrink-0" />
+                    {skill.name}
+                  </span>
                   <span className="text-crimson font-bold">Gap: {Math.abs(skill.gap).toFixed(1)}</span>
                 </div>
               ))}
@@ -228,7 +237,7 @@ export const SkillHeist: React.FC<SkillHeistProps> = ({ onNavigate }) => {
                               : 'bg-burgundy/20 text-warm-ivory/70 hover:text-warm-ivory border border-burgundy/30'
                           )}
                         >
-                          {isClosed ? 'SPRINT DONE ✓' : 'TEST SPRINT'}
+                          {isClosed ? 'SPRINT VERIFIED' : 'TEST SPRINT'}
                         </button>
                       )}
                     </div>

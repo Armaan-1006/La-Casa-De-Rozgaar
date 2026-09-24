@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Lightbulb } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { mockForecastData } from '../data/mockData'
 import { cn } from '../lib/utils'
@@ -158,8 +158,9 @@ export const FutureForecast: React.FC<FutureForecastProps> = ({ onNavigate }) =>
 
               <div className="space-y-1 text-xs font-mono">
                 <p className="text-warm-ivory/60">Obsolescence Risk: <span className="text-warm-ivory">{item.riskFactor}</span></p>
-                <p className="text-warm-ivory/80 leading-relaxed text-[11px] mt-1 pt-1 border-t border-burgundy/20">
-                  💡 {item.recommendation}
+                <p className="text-warm-ivory/80 leading-relaxed text-[11px] mt-1 pt-1 border-t border-burgundy/20 flex items-start gap-1.5">
+                  <Lightbulb size={13} className="text-muted-gold shrink-0 mt-0.5" />
+                  <span>{item.recommendation}</span>
                 </p>
               </div>
             </div>

@@ -6,25 +6,7 @@ import {
   Moon,
   Sun,
   Search,
-  Zap,
-  TrendingUp,
-  Target,
-  Briefcase,
-  DollarSign,
-  Activity,
-  User,
-  ShieldCheck,
-  Compass,
-  Sparkles,
-  Brain,
-  Users,
-  Layers,
-  AlertTriangle,
-  BookOpen,
-  MessageSquare,
-  FileText,
   Bell,
-  Sliders,
   ChevronDown,
 } from 'lucide-react'
 import { useTheme, useWindowSize } from '../hooks/useTheme'
@@ -40,13 +22,11 @@ interface SidebarProps {
 interface NavSubItem {
   label: string
   href: string
-  icon: React.ReactNode
 }
 
 interface NavGroup {
   label: string
   href?: string
-  icon: React.ReactNode
   description?: string
   submenu?: NavSubItem[]
 }
@@ -55,50 +35,45 @@ const navigationItems: NavGroup[] = [
   {
     label: 'WAR ROOM',
     href: 'war-room',
-    icon: <Zap size={16} className="text-crimson" />,
     description: 'Command Center',
   },
   {
     label: 'INTELLIGENCE',
-    icon: <TrendingUp size={16} className="text-crimson" />,
     submenu: [
-      { label: 'Market Demand', href: 'market-intelligence', icon: <TrendingUp size={14} /> },
-      { label: 'Skill Intelligence', href: 'skill-intelligence', icon: <Target size={14} /> },
-      { label: 'Role Intelligence', href: 'role-intelligence', icon: <Briefcase size={14} /> },
-      { label: 'Compensation Intel', href: 'compensation', icon: <DollarSign size={14} /> },
-      { label: 'Future Forecast', href: 'forecast', icon: <Activity size={14} /> },
+      { label: 'Market Demand', href: 'market-intelligence' },
+      { label: 'Skill Intelligence', href: 'skill-intelligence' },
+      { label: 'Role Intelligence', href: 'role-intelligence' },
+      { label: 'Compensation Intel', href: 'compensation' },
+      { label: 'Future Forecast', href: 'forecast' },
     ],
   },
   {
     label: 'CANDIDATE',
-    icon: <User size={16} className="text-emerald-400" />,
     submenu: [
-      { label: 'Candidate Dossier', href: 'candidate-dossier', icon: <User size={14} /> },
-      { label: 'Secure Assessment', href: 'assessment', icon: <ShieldCheck size={14} /> },
-      { label: 'Skill Heist Roadmap', href: 'skill-heist', icon: <Sliders size={14} /> },
-      { label: 'AI Job Finder', href: 'job-finder', icon: <Search size={14} /> },
-      { label: 'Career Pathways', href: 'career-intelligence', icon: <Compass size={14} /> },
-      { label: 'Simulation Vault', href: 'simulation', icon: <Sparkles size={14} /> },
+      { label: 'Candidate Dossier', href: 'candidate-dossier' },
+      { label: 'Secure Assessment', href: 'assessment' },
+      { label: 'Skill Heist Roadmap', href: 'skill-heist' },
+      { label: 'AI Job Finder', href: 'job-finder' },
+      { label: 'Career Pathways', href: 'career-intelligence' },
+      { label: 'Simulation Vault', href: 'simulation' },
     ],
   },
   {
     label: 'EMPLOYER',
-    icon: <Brain size={16} className="text-muted-gold" />,
     submenu: [
-      { label: 'Mastermind HQ', href: 'employer-dashboard', icon: <Brain size={14} /> },
-      { label: 'Talent Vault', href: 'talent-vault', icon: <Users size={14} /> },
-      { label: 'Workforce Capability', href: 'employer-dashboard', icon: <Layers size={14} /> },
-      { label: 'Capability Gaps', href: 'workforce-gaps', icon: <AlertTriangle size={14} /> },
+      { label: 'Mastermind HQ', href: 'employer-dashboard' },
+      { label: 'Talent Vault', href: 'talent-vault' },
+      { label: 'Workforce Capability', href: 'employer-dashboard' },
+      { label: 'Capability Gaps', href: 'workforce-gaps' },
     ],
   },
   {
     label: 'LEARNING & INTEL',
-    icon: <BookOpen size={16} className="text-amber-400" />,
     submenu: [
-      { label: 'Resistance Learning', href: 'roadmap', icon: <BookOpen size={14} /> },
-      { label: 'Interview Intelligence', href: 'interviews', icon: <MessageSquare size={14} /> },
-      { label: 'Research Papers', href: 'research', icon: <FileText size={14} /> },
-      { label: 'Intelligence Feed', href: 'feed', icon: <Bell size={14} /> },
+      { label: 'Resistance Learning', href: 'roadmap' },
+      { label: 'Interview Intelligence', href: 'interviews' },
+      { label: 'Research Papers', href: 'research' },
+      { label: 'Intelligence Feed', href: 'feed' },
     ],
   },
 ]
@@ -183,16 +158,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
                   <button
                     onClick={() => setExpandedMenu(expandedMenu === item.label ? null : item.label)}
                     className={cn(
-                      'w-full text-left px-3 py-2 text-xs font-mono rounded-lg transition-all flex items-center justify-between',
+                      'w-full text-left px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center justify-between',
                       isSubActive
                         ? 'text-crimson bg-burgundy/20 border border-crimson/30 font-bold'
-                        : 'text-warm-ivory/80 hover:text-crimson hover:bg-burgundy/10'
+                        : 'text-warm-ivory/80 hover:text-crimson hover:bg-burgundy/10 font-semibold'
                     )}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className="shrink-0">{item.icon}</span>
-                      <span className="tracking-wider">{item.label}</span>
-                    </div>
+                    <span className="tracking-wider uppercase">{item.label}</span>
                     <ChevronDown
                       size={14}
                       className={cn(
@@ -205,27 +177,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
                   <button
                     onClick={() => handleNavClick(item.href!)}
                     className={cn(
-                      'w-full text-left px-3 py-2 text-xs font-mono rounded-lg transition-all flex items-center justify-between',
+                      'w-full text-left px-3.5 py-2 text-xs font-mono rounded-lg transition-all flex items-center justify-between',
                       isDirectActive
                         ? 'text-warm-ivory bg-gradient-crimson shadow-glow-crimson font-bold border border-crimson/50'
-                        : 'text-warm-ivory/80 hover:text-crimson hover:bg-burgundy/10'
+                        : 'text-warm-ivory/80 hover:text-crimson hover:bg-burgundy/10 font-semibold'
                     )}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className="shrink-0">{item.icon}</span>
-                      <div>
-                        <span className="tracking-wider">{item.label}</span>
-                        {item.description && (
-                          <p
-                            className={cn(
-                              'text-[9px] tracking-normal font-sans',
-                              isDirectActive ? 'text-warm-ivory/80' : 'text-warm-ivory/40'
-                            )}
-                          >
-                            {item.description}
-                          </p>
-                        )}
-                      </div>
+                    <div>
+                      <span className="tracking-wider uppercase">{item.label}</span>
+                      {item.description && (
+                        <p
+                          className={cn(
+                            'text-[9px] tracking-normal font-sans',
+                            isDirectActive ? 'text-warm-ivory/80' : 'text-warm-ivory/50'
+                          )}
+                        >
+                          {item.description}
+                        </p>
+                      )}
                     </div>
                     {isDirectActive && <span className="w-1.5 h-1.5 rounded-full bg-warm-ivory animate-pulse" />}
                   </button>
@@ -233,7 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
 
                 {/* Submenu Children */}
                 {item.submenu && isExpanded && (
-                  <div className="ml-3 pl-2.5 border-l border-burgundy/30 space-y-0.5 py-1">
+                  <div className="ml-2 pl-3 border-l border-burgundy/30 space-y-0.5 py-1">
                     {item.submenu.map((subitem) => {
                       const isChildActive = subitem.href === currentPage
                       return (
@@ -247,11 +216,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
                               : 'text-warm-ivory/70 hover:text-warm-ivory hover:bg-burgundy/10'
                           )}
                         >
-                          <span className="flex items-center gap-2 truncate">
-                            <span className="shrink-0 opacity-70">{subitem.icon}</span>
-                            <span className="truncate">{subitem.label}</span>
-                          </span>
-                          {isChildActive && <span className="text-[10px] text-crimson">●</span>}
+                          <span className="truncate">{subitem.label}</span>
+                          {isChildActive && <span className="text-[10px] text-crimson font-bold">●</span>}
                         </button>
                       )
                     })}
@@ -262,27 +228,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="p-3.5 border-t border-burgundy/20 space-y-2.5 bg-charcoal/30">
-          <div className="flex items-center justify-between px-3 py-1.5 bg-burgundy/10 rounded border border-burgundy/20">
+        {/* Status Console Panel */}
+        <div className="p-3 border-t border-burgundy/25 space-y-2 bg-charcoal/40 sidebar-status-console">
+          <div className="flex items-center justify-between px-3 py-1.5 rounded border border-burgundy/25 bg-burgundy/15 status-network-row">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-[10px] font-mono text-emerald-400 font-semibold tracking-wider">
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0" />
+              <span className="text-[10px] font-mono font-semibold tracking-wider text-emerald-400">
                 NETWORK // LIVE
               </span>
             </div>
-            <span className="text-[9px] font-mono text-warm-ivory/40">LC-2026.4</span>
+            <span className="text-[9px] font-mono text-warm-ivory/50 status-meta-tag">LC-2026.4</span>
           </div>
 
           <button
             onClick={toggleTheme}
-            className="w-full px-3 py-2 flex items-center justify-between text-xs text-warm-ivory/80 hover:text-crimson hover:bg-burgundy/10 rounded-lg transition-all border border-burgundy/20 font-mono"
+            className="w-full px-3 py-2 flex items-center justify-between text-xs text-warm-ivory/80 hover:text-crimson hover:bg-burgundy/10 rounded-lg transition-all border border-burgundy/20 font-mono status-theme-btn"
           >
-            <span className="flex items-center gap-2">
-              {isDark ? <Moon size={14} className="text-crimson" /> : <Sun size={14} className="text-amber-400" />}
+            <span className="flex items-center gap-2 status-theme-label">
+              {isDark ? <Moon size={14} className="text-crimson shrink-0" /> : <Sun size={14} className="text-amber-400 shrink-0" />}
               <span>THEME PROTOCOL</span>
             </span>
-            <span className="text-[9px] px-1.5 py-0.5 rounded bg-burgundy/20 font-bold">
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-burgundy/20 font-bold status-theme-badge">
               {isDark ? 'OBSIDIAN' : 'IVORY'}
             </span>
           </button>
@@ -360,13 +326,15 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex-1 max-w-sm mx-4 hidden md:block">
           <button
             onClick={onOpenCommandPalette}
-            className="w-full flex items-center justify-between px-3.5 py-2 bg-burgundy/10 rounded-lg border border-burgundy/25 hover:border-crimson/50 text-warm-ivory/60 hover:text-warm-ivory text-xs font-mono transition-all"
+            className="w-full flex items-center justify-between px-3.5 py-2 bg-[#17171B] rounded-lg border border-[#2C2C34] hover:border-crimson/70 text-white text-xs font-mono transition-all shadow-sm group"
           >
-            <div className="flex items-center gap-2">
-              <Search size={14} className="text-crimson" />
-              <span>Search intelligence, candidates, jobs...</span>
+            <div className="flex items-center gap-2.5">
+              <Search size={14} className="text-crimson shrink-0" />
+              <span className="text-[#E0E0EA] group-hover:text-white transition-colors truncate">
+                Search intelligence, candidates, jobs...
+              </span>
             </div>
-            <kbd className="px-1.5 py-0.5 text-[9px] font-mono bg-charcoal text-warm-ivory/50 rounded border border-burgundy/30">
+            <kbd className="px-1.5 py-0.5 text-[9px] font-mono bg-[#25252D] text-[#D0D0DC] rounded border border-[#3C3C48] font-bold shrink-0">
               Ctrl+K
             </kbd>
           </button>
@@ -377,9 +345,11 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Mobile search trigger */}
           <button
             onClick={onOpenCommandPalette}
-            className="md:hidden p-2 text-warm-ivory/70 hover:text-crimson rounded-lg hover:bg-burgundy/20"
+            className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-[#17171B] border border-[#2C2C34] rounded-lg text-white hover:text-crimson transition-colors"
+            aria-label="Open search palette"
           >
-            <Search size={18} />
+            <Search size={15} className="text-crimson" />
+            <span className="text-[10px] font-mono text-[#D0D0DC] font-semibold">SEARCH</span>
           </button>
 
           {/* Notifications Trigger */}

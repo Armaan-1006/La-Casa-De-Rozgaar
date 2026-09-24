@@ -80,7 +80,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
               onClick={handleExport}
               className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3"
             >
-              <Download size={14} /> {exportNotice ? 'EXPORTED ✓' : 'EXPORT DOSSIER'}
+              <Download size={14} /> {exportNotice ? 'EXPORT COMPLETED' : 'EXPORT DOSSIER'}
             </button>
             <button
               onClick={handleShare}

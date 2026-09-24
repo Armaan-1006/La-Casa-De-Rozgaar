@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Search, MapPin, DollarSign, BookmarkPlus, BookmarkCheck, CheckCircle, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react'
+import { Search, MapPin, DollarSign, BookmarkPlus, BookmarkCheck, CheckCircle, ArrowRight, ShieldCheck, Sparkles, Zap } from 'lucide-react'
 import { mockJobs, JobListing } from '../data/mockData'
 import { cn } from '../lib/utils'
 
@@ -131,7 +131,13 @@ export const JobFinder: React.FC<JobFinderProps> = ({ onNavigate }) => {
                 : 'bg-burgundy/10 border-burgundy/25 text-warm-ivory/70 hover:bg-burgundy/20'
             )}
           >
-            {filterRemote ? '✓ REMOTE ONLY' : 'REMOTE / HYBRID'}
+            {filterRemote ? (
+              <span className="flex items-center gap-1.5">
+                <CheckCircle size={12} className="text-emerald-400" /> REMOTE ONLY
+              </span>
+            ) : (
+              'REMOTE / HYBRID'
+            )}
           </button>
         </div>
       </section>
@@ -320,7 +326,7 @@ export const JobFinder: React.FC<JobFinderProps> = ({ onNavigate }) => {
                   <div className="space-y-1.5">
                     {selectedJob.preferredSkills.map((skill: string) => (
                       <div key={skill} className="flex items-center gap-2 text-xs font-mono text-warm-ivory bg-amber-400/10 p-2 rounded border border-amber-400/20">
-                        <span className="text-amber-400 font-bold shrink-0">⚡</span>
+                        <Zap size={13} className="text-amber-400 shrink-0" />
                         <span>{skill}</span>
                       </div>
                     ))}

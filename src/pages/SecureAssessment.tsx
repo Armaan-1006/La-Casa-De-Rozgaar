@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ShieldCheck, Clock, ArrowRight, ArrowLeft, RefreshCw, Eye, Lock } from 'lucide-react'
+import { ShieldCheck, Clock, ArrowRight, ArrowLeft, RefreshCw, Eye, Lock, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react'
 import { mockAssessmentQuestions, AssessmentQuestion } from '../data/mockData'
 import { cn } from '../lib/utils'
 
@@ -107,13 +107,13 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
             </h3>
             <div className="space-y-2 text-warm-ivory/70">
               <p className="flex items-center gap-2">
-                <span className="text-emerald-400">✓</span> 5 Technical Questions covering JavaScript/Node.js, TypeScript ASTs, System Design, React 18, and Docker.
+                <CheckCircle2 size={13} className="text-emerald-400 shrink-0" /> 5 Technical Questions covering JavaScript/Node.js, TypeScript ASTs, System Design, React 18, and Docker.
               </p>
               <p className="flex items-center gap-2">
-                <span className="text-emerald-400">✓</span> 5:00 minutes total time limit. Unanswered questions count as zero.
+                <CheckCircle2 size={13} className="text-emerald-400 shrink-0" /> 5:00 minutes total time limit. Unanswered questions count as zero.
               </p>
               <p className="flex items-center gap-2">
-                <span className="text-amber-400">⚠</span> Tab switching and window blurring events are logged as integrity telemetry.
+                <AlertTriangle size={13} className="text-amber-400 shrink-0" /> Tab switching and window blurring events are logged as integrity telemetry.
               </p>
             </div>
           </div>
@@ -244,9 +244,9 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
               ) : (
                 <button
                   onClick={() => setPhase('SUBMITTED')}
-                  className="btn-primary text-xs font-mono py-2 px-6 bg-emerald-600 hover:bg-emerald-500"
+                  className="btn-primary text-xs font-mono py-2 px-6 bg-emerald-600 hover:bg-emerald-500 flex items-center gap-1.5"
                 >
-                  FINALIZE & SUBMIT EXAM ✓
+                  <CheckCircle2 size={13} /> FINALIZE & SUBMIT EXAM
                 </button>
               )}
             </div>
@@ -302,8 +302,18 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                   <div key={q.id} className="p-4 bg-burgundy/10 rounded-lg border border-burgundy/20 text-xs font-mono space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-warm-ivory">Question {qIdx + 1}: {q.skill}</span>
-                      <span className={cn('font-bold', isCorrect ? 'text-emerald-400' : 'text-crimson')}>
-                        {isCorrect ? '✓ CORRECT' : '✕ INCORRECT'}
+                      <span className={cn('font-bold flex items-center gap-1', isCorrect ? 'text-emerald-400' : 'text-crimson')}>
+                        {isCorrect ? (
+                          <>
+                            <CheckCircle2 size={13} />
+                            <span>CORRECT</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle size={13} />
+                            <span>INCORRECT</span>
+                          </>
+                        )}
                       </span>
                     </div>
                     <p className="text-warm-ivory/80">{q.question}</p>

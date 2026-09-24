@@ -215,28 +215,196 @@ html.light .panel {
   border: 1px solid rgba(58, 13, 19, 0.12);
 }
 
+/* Primary text — Very dark / near-black */
 html.light .heading-xl,
 html.light .heading-lg,
 html.light .heading-md,
 html.light .heading-sm,
 html.light .heading-xs {
-  color: #151518;
+  color: #111113 !important;
 }
 
 html.light .text-warm-ivory {
-  color: #1A1A1E !important;
+  color: #151518 !important;
 }
 
-html.light .text-warm-ivory\/90,
-html.light .text-warm-ivory\/80,
+/* Secondary text — Dark readable charcoal slate */
+html.light .text-warm-ivory\/90 {
+  color: #1E1E24 !important;
+}
+
+html.light .text-warm-ivory\/80 {
+  color: #26262E !important;
+}
+
 html.light .text-warm-ivory\/70 {
-  color: #35353D !important;
+  color: #32323C !important;
 }
 
-html.light .text-warm-ivory\/60,
-html.light .text-warm-ivory\/50,
+/* Tertiary metadata — Deep dark slate grey, crisp & highly readable */
+html.light .text-warm-ivory\/60 {
+  color: #3E3E4A !important;
+}
+
+html.light .text-warm-ivory\/50 {
+  color: #4B4B58 !important;
+}
+
+/* Muted / Placeholders / Helpers */
 html.light .text-warm-ivory\/40 {
-  color: #63636E !important;
+  color: #5A5A6A !important;
+}
+
+html.light .text-warm-ivory\/30 {
+  color: #6A6A7C !important;
+}
+
+html.light .text-steel {
+  color: #32323C !important;
+}
+
+html.light .text-steel-light {
+  color: #42424E !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder,
+html.light .placeholder-warm-ivory\/40::placeholder {
+  color: #5A5A6A !important;
+}
+
+/* Ensure opacity utility classes don't wash out text contrast in light theme */
+html.light .opacity-70,
+html.light .opacity-60 {
+  opacity: 0.88 !important;
+}
+
+html.light .opacity-50 {
+  opacity: 0.80 !important;
+}
+
+/* Header styling in light theme */
+html.light header {
+  background-color: rgba(244, 239, 230, 0.94) !important;
+  border-bottom: 1px solid rgba(58, 13, 19, 0.18) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+html.light header h2 {
+  color: #111113 !important;
+}
+
+/* Sidebar bottom-left status console in light theme */
+html.light .sidebar-status-console {
+  background-color: #16161A !important;
+  border-top: 1px solid rgba(179, 19, 43, 0.3) !important;
+}
+
+html.light .sidebar-status-console .status-network-row {
+  background-color: #1F1F24 !important;
+  border-color: #2E2E38 !important;
+}
+
+html.light .sidebar-status-console .status-network-row span:first-of-type {
+  color: #34D399 !important;
+}
+
+html.light .sidebar-status-console .status-meta-tag {
+  color: #B0B0BC !important;
+}
+
+html.light .sidebar-status-console .status-theme-btn {
+  background-color: #1F1F24 !important;
+  border-color: #2E2E38 !important;
+  color: #FFFFFF !important;
+}
+
+html.light .sidebar-status-console .status-theme-btn:hover {
+  background-color: #27272E !important;
+  border-color: rgba(179, 19, 43, 0.6) !important;
+}
+
+html.light .sidebar-status-console .status-theme-label {
+  color: #FFFFFF !important;
+  font-weight: 600;
+}
+
+html.light .sidebar-status-console .status-theme-badge {
+  background-color: #2D2D36 !important;
+  color: #D4D4DE !important;
+  border: 1px solid #3C3C48 !important;
+}
+
+/* Inputs, Textareas & Selects */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #FFFFFF !important;
+  color: #151518 !important;
+  border-color: rgba(58, 13, 19, 0.22) !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus {
+  border-color: #B3132B !important;
+}
+
+/* Code Snippets & Preformatted Blocks */
+html.light pre {
+  background-color: #ECE5D8 !important;
+  color: #151518 !important;
+  border-color: rgba(58, 13, 19, 0.25) !important;
+}
+
+html.light code {
+  color: #151518 !important;
+}
+
+/* Redacted Dossier Text in Light Theme */
+html.light .redacted {
+  background-color: rgba(23, 23, 28, 0.18);
+  color: transparent;
+}
+
+html.light .redacted:hover {
+  background-color: transparent;
+  color: #151518;
+}
+
+/* Subtle Borders */
+html.light [class*="border-warm-ivory"] {
+  border-color: rgba(58, 13, 19, 0.22) !important;
+}
+
+/* Recharts Chart Axes, Labels, Legends & Tooltips */
+html.light .recharts-cartesian-axis-tick text,
+html.light .recharts-polar-angle-axis-tick text,
+html.light .recharts-text,
+html.light .recharts-label {
+  fill: #32323C !important;
+  font-weight: 600;
+}
+
+html.light .recharts-legend-item-text {
+  color: #26262E !important;
+}
+
+html.light .recharts-cartesian-axis-line,
+html.light .recharts-cartesian-axis-tick-line {
+  stroke: rgba(58, 13, 19, 0.28) !important;
+}
+
+html.light .recharts-cartesian-grid line {
+  stroke: rgba(58, 13, 19, 0.14) !important;
+}
+
+html.light .recharts-default-tooltip {
+  background-color: #FFFFFF !important;
+  border: 1px solid rgba(179, 19, 43, 0.4) !important;
+  border-radius: 8px !important;
+  color: #111113 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
 }
 
 html.light .bg-charcoal,
@@ -260,7 +428,7 @@ html.light .btn-secondary:hover {
 }
 
 html.light .btn-ghost {
-  color: #35353D;
+  color: #2C2C34;
 }
 
 html.light .btn-ghost:hover {

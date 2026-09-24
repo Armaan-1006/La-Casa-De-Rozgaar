@@ -199,9 +199,9 @@ export const CommandPalette: FC<CommandPaletteProps> = ({ isOpen, onClose, onNav
         {/* Footer */}
         <div className="p-2.5 bg-obsidian/80 border-t border-burgundy/30 flex items-center justify-between text-[11px] font-mono text-warm-ivory/40">
           <div className="flex items-center gap-3">
-            <span>↑↓ Navigate</span>
-            <span>↵ Select</span>
-            <span>ESC Close</span>
+            <span><kbd className="px-1 py-0.5 rounded bg-burgundy/20 border border-burgundy/30 text-[9px]">ARROWS</kbd> Navigate</span>
+            <span><kbd className="px-1 py-0.5 rounded bg-burgundy/20 border border-burgundy/30 text-[9px]">ENTER</kbd> Select</span>
+            <span><kbd className="px-1 py-0.5 rounded bg-burgundy/20 border border-burgundy/30 text-[9px]">ESC</kbd> Close</span>
           </div>
           <span className="text-crimson font-bold">COMMAND PALETTE // ACTIVE</span>
         </div>

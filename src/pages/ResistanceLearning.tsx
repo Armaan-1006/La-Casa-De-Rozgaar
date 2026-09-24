@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { CheckCircle2, Clock, ArrowRight, ExternalLink } from 'lucide-react'
+import { CheckCircle2, Clock, ArrowRight, ExternalLink, Check } from 'lucide-react'
 import { mockLearningRoadmap, mockLearningResources, LearningModule } from '../data/mockData'
 import { cn } from '../lib/utils'
 
@@ -136,7 +136,7 @@ export const ResistanceLearning: React.FC<ResistanceLearningProps> = ({ onNaviga
                             'w-4 h-4 rounded border flex items-center justify-center text-[10px]',
                             isItemDone ? 'border-emerald-400 text-emerald-400' : 'border-warm-ivory/40'
                           )}>
-                            {isItemDone ? '✓' : ''}
+                            {isItemDone ? <Check size={11} className="text-emerald-400 stroke-[3]" /> : null}
                           </span>
                           <span className={cn(isItemDone && 'line-through text-warm-ivory/50')}>{item}</span>
                         </div>
