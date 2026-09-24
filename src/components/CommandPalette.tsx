@@ -58,6 +58,7 @@ export const CommandPalette: FC<CommandPaletteProps> = ({ isOpen, onClose, onNav
     ]
 
     const pages: PaletteItem[] = [
+      { id: 'p-0', title: isHeist ? 'Identity & Access // Operative Clearance' : 'Authentication & Login Gateway', subtitle: 'Sign in, request clearance, or switch operative personas', category: 'NAVIGATION', pageTarget: 'login', icon: <Shield size={14} className="text-crimson" /> },
       { id: 'p-1', title: isHeist ? 'War Room Command' : 'Executive Overview', subtitle: 'Macro Overview & Intelligence Pulse', category: 'NAVIGATION', pageTarget: 'war-room', icon: <Zap size={14} className="text-crimson" /> },
       { id: 'p-2', title: isHeist ? 'Market Intelligence Radar' : 'Market Demand Dynamics', subtitle: 'Hiring Volume, Velocity & Geo Analysis', category: 'NAVIGATION', pageTarget: 'market-intelligence', icon: <Zap size={14} className="text-crimson" /> },
       { id: 'p-3', title: isHeist ? 'Skill Intelligence Radar' : 'Skill Analytics & Adoption', subtitle: 'Tech Adoption Curves & Pairings', category: 'NAVIGATION', pageTarget: 'skill-intelligence', icon: <Zap size={14} className="text-crimson" /> },

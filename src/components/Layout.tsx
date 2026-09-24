@@ -8,8 +8,13 @@ import {
   ChevronDown,
   Building2,
   Check,
+  User,
+  LogOut,
+  Shield,
+  KeyRound,
 } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
+import { useAuth } from '../hooks/useAuth'
 import { useWindowSize } from '../hooks/useWindowSize'
 import { ThemeModeSwitch } from './ThemeModeSwitch'
 import { cn } from '../lib/utils'
@@ -143,6 +148,7 @@ const enterpriseNavSections: EnterpriseNavSection[] = [
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, currentPage }) => {
   const { isHeist } = useTheme()
+  const { user, isAuthenticated, logout } = useAuth()
   const { width } = useWindowSize()
   const isDesktop = width >= 768
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null)
@@ -236,12 +242,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
 
           {/* Enterprise Status & Switcher Footer */}
           <div className="p-3 border-t border-slate-200 bg-slate-50 space-y-2.5">
-            <div className="flex items-center justify-between px-2.5 py-1.5 rounded bg-white border border-slate-200 text-[11px] text-slate-600">
-              <span className="font-medium text-slate-700">Acme Technologies</span>
-              <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Live Feed
-              </span>
-            </div>
+            {isAuthenticated && user ? (
+              <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  <div className="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                    {user.avatarInitials || 'OP'}
+                  </div>
+                  <div className="truncate">
+                    <div className="font-semibold text-slate-800 text-xs truncate">{user.name}</div>
+                    <div className="text-[10px] text-slate-500 truncate">{user.role}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={logout}
+                  title="Sign out"
+                  className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <LogOut size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => handleNavClick('login')}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+              >
+                <User size={13} />
+                <span>Sign In / Register</span>
+              </button>
+            )}
             <ThemeModeSwitch variant="sidebar" />
           </div>
         </aside>
@@ -389,17 +417,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
 
         {/* Status Console Panel */}
         <div className="p-3 border-t border-burgundy/25 space-y-2.5 bg-charcoal/40 sidebar-status-console">
-          <div className="flex items-center justify-between px-3 py-1.5 rounded border border-burgundy/25 bg-burgundy/15 status-network-row">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0" />
-              <span className="text-[10px] font-mono font-semibold tracking-wider text-emerald-400">
-                NETWORK // LIVE
-              </span>
+          {isAuthenticated && user ? (
+            <div className="flex items-center justify-between p-2 rounded-lg bg-obsidian/80 border border-burgundy/40 text-xs font-mono">
+              <div className="flex items-center gap-2 truncate">
+                <div className="w-6 h-6 rounded-full bg-crimson text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-glow-crimson">
+                  {user.avatarInitials || 'OP'}
+                </div>
+                <div className="truncate">
+                  <div className="font-bold text-warm-ivory text-xs truncate flex items-center gap-1">
+                    <span>{user.name}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
+                  <div className="text-[9px] text-crimson truncate tracking-wider font-bold">[{user.role}]</div>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                title="Terminate clearance session"
+                className="p-1 text-warm-ivory/40 hover:text-crimson rounded hover:bg-burgundy/20 transition-colors cursor-pointer"
+              >
+                <LogOut size={13} />
+              </button>
             </div>
-            <span className="text-[9px] font-mono text-warm-ivory/50 status-meta-tag">
-              LC-2026.4
-            </span>
-          </div>
+          ) : (
+            <button
+              onClick={() => handleNavClick('login')}
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-gradient-to-r from-crimson to-blood-red hover:brightness-110 text-white text-xs font-mono font-bold shadow-glow-crimson transition-all cursor-pointer"
+            >
+              <Shield size={13} />
+              <span>AUTHORIZE CLEARANCE</span>
+            </button>
+          )}
 
           {/* Dual Visual Mode Switcher */}
           <ThemeModeSwitch variant="sidebar" />
@@ -427,7 +475,9 @@ export const Header: React.FC<HeaderProps> = ({
   currentPage,
 }) => {
   const { isHeist } = useTheme()
+  const { user, isAuthenticated, logout } = useAuth()
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [selectedWorkspace, setSelectedWorkspace] = useState('Global Operations')
 
   const heistPageTitles: Record<string, string> = {
@@ -560,23 +610,82 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Notifications Trigger */}
             <button
               onClick={onOpenNotifications}
-              className="relative p-2 text-slate-500 hover:text-slate-800 rounded hover:bg-slate-100 transition-colors"
+              className="relative p-2 text-slate-500 hover:text-slate-800 rounded hover:bg-slate-100 transition-colors cursor-pointer"
               title="Notifications"
             >
               <Bell size={17} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-600" />
             </button>
 
-            {/* User Profile Pill */}
-            <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200">
-              <div className="w-7 h-7 rounded-full bg-slate-800 text-white flex items-center justify-center font-semibold text-xs">
-                EV
+            {/* User Profile / Login Button */}
+            {isAuthenticated && user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 pl-2 border-l border-slate-200 text-left hover:opacity-85 transition-opacity cursor-pointer"
+                >
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-xs shadow-2xs">
+                    {user.avatarInitials || 'OP'}
+                  </div>
+                  <div className="text-left text-xs leading-none hidden xl:block">
+                    <div className="font-semibold text-slate-800">{user.name}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">{user.role}</div>
+                  </div>
+                  <ChevronDown size={13} className="text-slate-400 hidden xl:block" />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-xl py-2 z-50 text-xs">
+                    <div className="px-3 py-1.5 border-b border-slate-100">
+                      <div className="font-semibold text-slate-900">{user.name}</div>
+                      <div className="text-[11px] text-slate-500 truncate">{user.email}</div>
+                      <div className="text-[10px] mt-1 inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded font-semibold font-mono">
+                        {user.role}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false)
+                        onNavigate(user.role === 'CANDIDATE' ? 'candidate-dossier' : 'employer-dashboard')
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
+                    >
+                      <User size={13} />
+                      <span>{user.role === 'CANDIDATE' ? 'My Candidate Dossier' : 'My Workspace'}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false)
+                        onNavigate('login')
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
+                    >
+                      <KeyRound size={13} />
+                      <span>Switch Operative Clearance</span>
+                    </button>
+                    <div className="border-t border-slate-100 my-1" />
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false)
+                        logout()
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
+                    >
+                      <LogOut size={13} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
               </div>
-              <div className="text-left text-xs leading-none hidden xl:block">
-                <div className="font-semibold text-slate-800">Elena Vance</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">VP Talent Intelligence</div>
-              </div>
-            </div>
+            ) : (
+              <button
+                onClick={() => onNavigate('login')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-2xs transition-colors cursor-pointer"
+              >
+                <User size={13} />
+                <span>Sign In</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -647,23 +756,85 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Notifications Trigger */}
           <button
             onClick={onOpenNotifications}
-            className="relative p-2 text-warm-ivory/70 hover:text-crimson rounded-lg hover:bg-burgundy/20 transition-colors header-bell-btn"
+            className="relative p-2 text-warm-ivory/70 hover:text-crimson rounded-lg hover:bg-burgundy/20 transition-colors header-bell-btn cursor-pointer"
             title="Intelligence Alerts"
           >
             <Bell size={18} />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-crimson animate-pulse" />
           </button>
 
-          {/* Status Indicator */}
-          <div className="hidden lg:block text-right text-xs font-mono pl-2 border-l border-burgundy/20 header-status-box">
-            <p className="text-crimson font-bold flex items-center justify-end gap-1.5 text-[11px] header-status-title">
-              <span className="w-1.5 h-1.5 rounded-full bg-crimson animate-ping" />
-              SECURE SESSION
-            </p>
-            <p className="text-warm-ivory/40 text-[9px] header-status-sub">
-              ENCRYPTED TELEMETRY
-            </p>
-          </div>
+          {/* User Profile / Login Button in Heist Mode */}
+          {isAuthenticated && user ? (
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 pl-2 border-l border-burgundy/30 text-left hover:opacity-90 transition-opacity cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-crimson to-blood-red text-white flex items-center justify-center font-bold text-xs shadow-glow-crimson border border-crimson/60">
+                  {user.avatarInitials || 'OP'}
+                </div>
+                <div className="text-left text-xs leading-none hidden xl:block font-mono">
+                  <div className="font-bold text-warm-ivory flex items-center gap-1">
+                    <span>{user.name}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
+                  <div className="text-[9px] text-crimson font-bold mt-0.5">[{user.role}]</div>
+                </div>
+                <ChevronDown size={13} className="text-warm-ivory/40 hidden xl:block" />
+              </button>
+
+              {userMenuOpen && (
+                <div className="absolute right-0 mt-2 w-60 bg-charcoal/95 border border-burgundy/60 rounded-xl shadow-glow-crimson py-2 z-50 text-xs font-mono backdrop-blur-md">
+                  <div className="px-3.5 py-2 border-b border-burgundy/30">
+                    <div className="font-bold text-warm-ivory">{user.name}</div>
+                    <div className="text-[10px] text-warm-ivory/50 truncate">{user.email}</div>
+                    <div className="text-[9px] mt-1 inline-block px-1.5 py-0.5 bg-crimson/20 text-crimson border border-crimson/40 rounded font-bold">
+                      CLEARANCE: {user.role}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      onNavigate(user.role === 'CANDIDATE' ? 'candidate-dossier' : 'employer-dashboard')
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-burgundy/20 text-warm-ivory flex items-center gap-2 cursor-pointer"
+                  >
+                    <User size={13} className="text-crimson" />
+                    <span>{user.role === 'CANDIDATE' ? 'Candidate Dossier' : 'Mastermind Console'}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      onNavigate('login')
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-burgundy/20 text-warm-ivory flex items-center gap-2 cursor-pointer"
+                  >
+                    <KeyRound size={13} className="text-crimson" />
+                    <span>Switch Operative Clearance</span>
+                  </button>
+                  <div className="border-t border-burgundy/30 my-1" />
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false)
+                      logout()
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-crimson/20 text-crimson font-bold flex items-center gap-2 cursor-pointer"
+                  >
+                    <LogOut size={13} />
+                    <span>TERMINATE SESSION</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => onNavigate('login')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-crimson to-blood-red text-white text-xs font-mono font-bold shadow-glow-crimson hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+            >
+              <Shield size={13} />
+              <span>AUTHORIZE // LOGIN</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

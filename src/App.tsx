@@ -26,8 +26,11 @@ import { InterviewIntelligence } from './pages/InterviewIntelligence'
 import { ResearchIntelligence } from './pages/ResearchIntelligence'
 import { IntelligenceFeed } from './pages/IntelligenceFeed'
 import { FloatingDossierField } from './components/FloatingDossierField'
+import { LoginPage } from './pages/LoginPage'
+import { AuthProvider } from './hooks/useAuth'
 
 export type PageType =
+  | 'login'
   | 'war-room'
   | 'market-intelligence'
   | 'skill-intelligence'
@@ -65,6 +68,7 @@ function AppContent() {
 
   const isValidPage = (page: string): boolean => {
     const validPages: PageType[] = [
+      'login',
       'war-room',
       'market-intelligence',
       'skill-intelligence',
@@ -161,10 +165,30 @@ function AppContent() {
         return <ResearchIntelligence onNavigate={handleNavigation} />
       case 'feed':
         return <IntelligenceFeed onNavigate={handleNavigation} />
+      case 'login':
+        return <LoginPage onNavigate={handleNavigation} />
       case 'war-room':
       default:
         return <WarRoom onNavigate={handleNavigation} />
     }
+  }
+
+  // Full-screen presentation for Authentication Gateway
+  if (currentPage === 'login') {
+    return (
+      <div
+        className={cn(
+          'min-h-screen overflow-y-auto relative transition-colors duration-300',
+          isHeist
+            ? 'bg-obsidian text-warm-ivory classified-grid'
+            : 'bg-[#F8F9FA] text-[#0F172A]'
+        )}
+      >
+        <ThemeTransitionOverlay />
+        {isHeist && <FloatingDossierField />}
+        <LoginPage onNavigate={handleNavigation} />
+      </div>
+    )
   }
 
   return (
@@ -235,9 +259,12 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ThemeProvider>
   )
 }
 
 export default App
+
