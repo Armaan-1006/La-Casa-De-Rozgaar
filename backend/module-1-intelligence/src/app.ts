@@ -156,7 +156,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         },
       },
     },
-    handler: async (request, reply) => {
+    handler: async (_request, reply) => {
       const dbStatus = (await testConnection()) ? 'up' : 'down';
       // TODO: Add Redis and ML service health checks
 
@@ -182,7 +182,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       tags: ['health'],
       description: 'Readiness check endpoint',
     },
-    handler: async (request, reply) => {
+    handler: async (_request, reply) => {
       const dbReady = await testConnection();
 
       if (!dbReady) {
@@ -205,7 +205,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       tags: ['health'],
       description: 'Basic metrics endpoint',
     },
-    handler: async (request, reply) => {
+    handler: async (_request, reply) => {
       // TODO: Implement proper metrics collection
       reply.send({
         uptime: process.uptime(),
@@ -216,11 +216,23 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   // Register module routes
-  // TODO: Register routes from modules
+  const { jobRoutes } = await import('./routes/jobs.js');
+  const { skillRoutes } = await import('./routes/skills.js');
+  const { roleRoutes } = await import('./routes/roles.js');
+  const { marketRoutes } = await import('./routes/market.js');
+  const { compensationRoutes } = await import('./routes/compensation.js');
+  const { forecastRoutes } = await import('./routes/forecasts.js');
+
+  await jobRoutes(app);
+  await skillRoutes(app);
+  await roleRoutes(app);
+  await marketRoutes(app);
+  await compensationRoutes(app);
+  await forecastRoutes(app);
 
   // Root endpoint
   app.get('/', {
-    handler: async (request, reply) => {
+    handler: async (_request, reply) => {
       reply.send({
         name: 'La Casa De Rozgaar - Intelligence Platform',
         version: '1.0.0',

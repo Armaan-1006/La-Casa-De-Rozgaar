@@ -1,5 +1,5 @@
-import { query, transaction } from '../db/index.js';
-import type { Skill, SkillAlias, SkillDemand, SkillRelationship } from '../types/index.js';
+import { query } from '../db/index.js';
+import type { Skill, SkillAlias, SkillDemand } from '../types/index.js';
 
 export class SkillRepository {
   // Create or get skill by canonical name

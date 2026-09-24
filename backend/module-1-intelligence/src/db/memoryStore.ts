@@ -1,4 +1,3 @@
-import { query, pool } from '../db/index.js';
 import type {
   Job,
   Skill,
