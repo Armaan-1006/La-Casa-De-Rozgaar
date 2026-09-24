@@ -1,15 +1,251 @@
 import React, { useState } from 'react'
-import { AlertCircle, CheckCircle, AlertTriangle, ArrowRight, BookOpen, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, AlertTriangle, ArrowRight, BookOpen, Clock, CheckCircle2, XCircle, Check } from 'lucide-react'
 import { mockCandidate } from '../data/mockData'
+import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 
 interface SkillHeistProps {
   onNavigate?: (page: string) => void
 }
 
-export const SkillHeist: React.FC<SkillHeistProps> = ({ onNavigate }) => {
+// ============================================================================
+// ENTERPRISE SKILL DEVELOPMENT & UPSKILLING ROADMAP
+// ============================================================================
+const EnterpriseSkillDevelopment: React.FC<SkillHeistProps> = ({ onNavigate }) => {
   const [selectedRole, setSelectedRole] = useState('Full Stack Developer')
   const [closedSkills, setClosedSkills] = useState<Record<string, boolean>>({})
+
+  const roles = ['Full Stack Developer', 'Cloud Solutions Architect', 'Data Scientist', 'DevOps Specialist']
+
+  const roleAdjustments: Record<string, Record<string, number>> = {
+    'Full Stack Developer': { TypeScript: 8.2, Docker: 7.0, AWS: 7.5, React: 8.5 },
+    'Cloud Solutions Architect': { TypeScript: 7.5, Docker: 8.8, AWS: 9.5, React: 7.0 },
+    'Data Scientist': { TypeScript: 6.5, Docker: 7.5, AWS: 8.0, SQL: 8.8 },
+    'DevOps Specialist': { TypeScript: 7.0, Docker: 9.2, AWS: 9.0, Git: 9.0 },
+  }
+
+  const currentBench = roleAdjustments[selectedRole] || roleAdjustments['Full Stack Developer']
+
+  const evaluatedSkills = mockCandidate.skills.map((s) => {
+    const marketTarget = currentBench[s.name] || s.market
+    const effectiveScore = closedSkills[s.name] ? marketTarget : s.score
+    const gap = effectiveScore - marketTarget
+    return {
+      ...s,
+      market: marketTarget,
+      score: effectiveScore,
+      gap,
+    }
+  })
+
+  const critical = evaluatedSkills.filter((s) => s.gap < -1.5)
+  const high = evaluatedSkills.filter((s) => s.gap >= -1.5 && s.gap < -0.2)
+  const strengths = evaluatedSkills.filter((s) => s.gap >= -0.2)
+
+  const readinessScore = Math.round(
+    (evaluatedSkills.reduce((acc, s) => acc + (s.score / s.market), 0) / evaluatedSkills.length) * 100
+  )
+
+  const toggleCloseSkill = (skillName: string) => {
+    setClosedSkills((prev) => ({ ...prev, [skillName]: !prev[skillName] }))
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 1. Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+            Skill Development & Upskilling Roadmap
+          </h1>
+          <p className="text-xs md:text-sm text-slate-500 mt-0.5">
+            Identify technical competency deficits and simulate readiness progression through targeted curriculum modules.
+          </p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => onNavigate?.('roadmap')}
+            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] rounded transition-colors flex items-center gap-1.5"
+          >
+            Learning Curriculum <ArrowRight size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Target Role Selector & Readiness Banner */}
+      <div className="bg-white p-5 rounded-lg border border-slate-200 shadow-2xs space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
+              Benchmark Target Role
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {roles.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setSelectedRole(r)}
+                  className={cn(
+                    'px-3 py-1.5 text-xs rounded transition-colors font-medium border',
+                    selectedRole === r
+                      ? 'bg-blue-50 text-blue-700 border-blue-300 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border-slate-200'
+                  )}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-center min-w-[200px] space-y-1">
+            <span className="text-[11px] text-slate-500 font-medium">Simulated Readiness</span>
+            <div className="text-3xl font-bold text-[#1E3A8A]">{readinessScore}%</div>
+            <p className="text-[11px] text-slate-500">
+              {Object.keys(closedSkills).length > 0 ? (
+                <span className="text-emerald-700 font-semibold">+{Object.keys(closedSkills).length * 8}% Simulated Gain</span>
+              ) : (
+                'Select skills to simulate gain'
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Skill Categorization & Remediation */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Critical Deficits */}
+        <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-5 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">
+              Critical Deficits
+            </span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-800">
+              {critical.length} Areas
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {critical.map((s) => {
+              const isClosed = !!closedSkills[s.name]
+              return (
+                <div key={s.name} className="p-3 bg-slate-50 rounded border border-slate-200 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-900">{s.name}</span>
+                    <span className="font-mono text-amber-700 font-semibold">
+                      Gap: {s.gap.toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Current: <strong>{s.score}</strong> / Target: <strong>{s.market}</strong>
+                  </div>
+                  <button
+                    onClick={() => toggleCloseSkill(s.name)}
+                    className={cn(
+                      'w-full py-1.5 text-xs font-medium rounded transition-colors flex items-center justify-center gap-1',
+                      isClosed
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-white hover:bg-slate-100 border border-slate-200 text-slate-700'
+                    )}
+                  >
+                    {isClosed ? <Check size={12} /> : null}
+                    {isClosed ? 'Remediated (Simulated)' : 'Simulate Upskilling'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* High Priority */}
+        <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-5 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              High Priority Gaps
+            </span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+              {high.length} Areas
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {high.map((s) => {
+              const isClosed = !!closedSkills[s.name]
+              return (
+                <div key={s.name} className="p-3 bg-slate-50 rounded border border-slate-200 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-900">{s.name}</span>
+                    <span className="font-mono text-slate-600 font-semibold">
+                      Gap: {s.gap.toFixed(1)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Current: <strong>{s.score}</strong> / Target: <strong>{s.market}</strong>
+                  </div>
+                  <button
+                    onClick={() => toggleCloseSkill(s.name)}
+                    className={cn(
+                      'w-full py-1.5 text-xs font-medium rounded transition-colors flex items-center justify-center gap-1',
+                      isClosed
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-white hover:bg-slate-100 border border-slate-200 text-slate-700'
+                    )}
+                  >
+                    {isClosed ? <Check size={12} /> : null}
+                    {isClosed ? 'Remediated (Simulated)' : 'Simulate Upskilling'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Validated Strengths */}
+        <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-5 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+              Validated Competencies
+            </span>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">
+              {strengths.length} Areas
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {strengths.map((s) => (
+              <div key={s.name} className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-900">{s.name}</span>
+                  <span className="text-emerald-700 font-semibold font-mono text-[11px]">
+                    Verified
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Current: <strong>{s.score}</strong> / Target: <strong>{s.market}</strong>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden mt-1">
+                  <div
+                    style={{ width: `${Math.min((s.score / s.market) * 100, 100)}%` }}
+                    className="bg-emerald-600 h-full rounded-full"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// MAIN SKILL HEIST EXPORT (Dual Mode)
+// ============================================================================
+export const SkillHeist: React.FC<SkillHeistProps> = ({ onNavigate }) => {
+  const { isHeist } = useTheme()
+  const [selectedRole, setSelectedRole] = useState('Full Stack Developer')
+  const [closedSkills, setClosedSkills] = useState<Record<string, boolean>>({})
+
+  // In Enterprise Mode: render the enterprise skill development & roadmap
+  if (!isHeist) {
+    return <EnterpriseSkillDevelopment onNavigate={onNavigate} />
+  }
 
   const roles = ['Full Stack Developer', 'Cloud Solutions Architect', 'Data Scientist', 'DevOps Specialist']
 

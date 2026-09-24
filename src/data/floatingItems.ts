@@ -1,7 +1,7 @@
 // Generate floating dossier items (offer letters and currency notes) based on candidate profile
 
-import { mockCandidate, mockMarketData } from './mockData'
-import { offerLetterTemplate, currencyNoteAssets } from './floatingAssets'
+import { mockCandidate } from './mockData'
+import { currencyNoteAssets } from './floatingAssets'
 
 // Helper to get a "handsome salary" from skill score (same as before but kept here)
 const scoreSalaryMap: Record<number, string> = {

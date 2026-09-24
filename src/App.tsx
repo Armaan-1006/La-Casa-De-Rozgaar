@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { Sidebar, Header } from './components/Layout'
 import { CommandPalette } from './components/CommandPalette'
 import { NotificationCenter } from './components/NotificationCenter'
+import { ThemeProvider, useTheme } from './hooks/useTheme'
+import { ThemeTransitionOverlay } from './components/ThemeTransitionOverlay'
+import { cn } from './lib/utils'
 
 import { WarRoom } from './pages/WarRoom'
 import { MarketIntelligence } from './pages/MarketIntelligence'
@@ -45,7 +48,8 @@ export type PageType =
   | 'research'
   | 'feed'
 
-function App() {
+function AppContent() {
+  const { isHeist } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -164,9 +168,19 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-obsidian text-warm-ivory overflow-hidden relative classified-grid">
-      {/* Global Floating Dossier Field */} 
-      <FloatingDossierField />
+    <div
+      className={cn(
+        'flex h-screen overflow-hidden relative transition-colors duration-300',
+        isHeist
+          ? 'bg-obsidian text-warm-ivory classified-grid'
+          : 'bg-[#F8F9FA] text-[#0F172A]'
+      )}
+    >
+      {/* Global Cinematic Theme Transition Overlay */}
+      <ThemeTransitionOverlay />
+
+      {/* Global Floating Dossier Field (Heist Mode signature) */}
+      {isHeist && <FloatingDossierField />}
 
       {/* Sidebar with navigation */}
       <Sidebar
@@ -178,7 +192,7 @@ function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header with Search & Notifications */}
+        {/* Header with Search, Mode Switcher & Notifications */}
         <Header
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           sidebarOpen={sidebarOpen}
@@ -191,7 +205,10 @@ function App() {
         {/* Dynamic Page Container */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
-            <div key={currentPage} className="page-enter">
+            <div
+              key={`${currentPage}-${isHeist ? 'heist' : 'pro'}`}
+              className={isHeist ? 'page-enter-heist' : 'page-enter-professional'}
+            >
               {renderPage()}
             </div>
           </div>
@@ -212,6 +229,14 @@ function App() {
         onNavigate={handleNavigation}
       />
     </div>
+  )
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   )
 }
 
