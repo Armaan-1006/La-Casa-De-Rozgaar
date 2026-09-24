@@ -1,7 +1,8 @@
-import { useState, type FC } from 'react'
+import { useState, useEffect, type FC } from 'react'
 import { X, Bell, Zap, TrendingUp, Briefcase, BookOpen, Check, Trash2 } from 'lucide-react'
 import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface NotificationItem {
   id: string
@@ -60,10 +61,35 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({ isOpen, onClos
     },
   ])
 
+  useEffect(() => {
+    if (!isOpen) return
+    let mounted = true
+    api.notifications.list().then((list) => {
+      if (mounted && list && list.length > 0) {
+        const mapped: NotificationItem[] = list.map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          detail: n.message,
+          timestamp: n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+          category: (n.type?.toUpperCase() as any) || 'SKILL',
+          unread: !n.read_at,
+          targetPage: n.metadata?.targetPage || 'feed',
+        }))
+        setNotifications((prev) => {
+          // Merge avoiding duplicates
+          const ids = new Set(mapped.map((m) => m.id))
+          return [...mapped, ...prev.filter((p) => !ids.has(p.id))]
+        })
+      }
+    }).catch(() => {})
+    return () => { mounted = false }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
+    api.notifications.markAllRead().catch(() => {})
   }
 
   const clearAll = () => {
@@ -74,6 +100,7 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({ isOpen, onClos
     setNotifications((prev) =>
       prev.map((n) => (n.id === item.id ? { ...n, unread: false } : n))
     )
+    api.notifications.markRead(item.id).catch(() => {})
     onNavigate(item.targetPage)
     onClose()
   }

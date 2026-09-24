@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { CheckCircle2, Clock, ArrowRight, ExternalLink, Check } from 'lucide-react'
 import { mockLearningRoadmap, mockLearningResources, LearningModule } from '../data/mockData'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface ResistanceLearningProps {
   onNavigate?: (page: string) => void
@@ -12,6 +13,10 @@ export const ResistanceLearning: React.FC<ResistanceLearningProps> = ({ onNaviga
   const [completedItems, setCompletedItems] = useState<Record<string, boolean>>({
     'TypeScript Advanced Metaprogramming & ASTs-0': true,
   })
+
+  useEffect(() => {
+    api.learning.getRecommended().catch(() => {})
+  }, [])
 
   const toggleItem = (key: string) => {
     setCompletedItems((prev) => ({ ...prev, [key]: !prev[key] }))

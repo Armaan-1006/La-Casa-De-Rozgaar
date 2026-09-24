@@ -1,9 +1,10 @@
-import { useState, type FC } from 'react'
+import { useState, useEffect, type FC } from 'react'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Edit, Download, Share2, CheckCircle, ArrowRight, ShieldCheck, Award, Briefcase, GraduationCap, X, Check } from 'lucide-react'
 import { mockCandidate } from '../data/mockData'
 import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface CandidateDossierProps {
   onNavigate?: (page: string) => void
@@ -19,12 +20,26 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
 
+  // Fetch live candidate profile
+  useEffect(() => {
+    let mounted = true
+    api.candidate.getProfile().then((data) => {
+      if (mounted && data) {
+        setCandidate(data)
+        setEditName(data.name)
+        setEditRole(data.targetRole)
+        setEditLoc(data.location)
+      }
+    })
+    return () => { mounted = false }
+  }, [])
+
   // Edit form state
   const [editName, setEditName] = useState(candidate.name)
   const [editRole, setEditRole] = useState(candidate.targetRole)
   const [editLoc, setEditLoc] = useState(candidate.location)
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     setCandidate((prev) => ({
       ...prev,
       name: editName,
@@ -32,6 +47,16 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
       location: editLoc,
     }))
     setIsEditModalOpen(false)
+
+    try {
+      await api.candidate.updateProfile({
+        name: editName,
+        targetRoles: [editRole],
+        location: editLoc,
+      })
+    } catch (err) {
+      console.error('Failed to sync profile with backend:', err)
+    }
   }
 
   const handleShare = () => {
@@ -439,6 +464,20 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
 
+  // Fetch live candidate profile
+  useEffect(() => {
+    let mounted = true
+    api.candidate.getProfile().then((data) => {
+      if (mounted && data) {
+        setCandidate(data)
+        setEditName(data.name)
+        setEditRole(data.targetRole)
+        setEditLoc(data.location)
+      }
+    })
+    return () => { mounted = false }
+  }, [])
+
   // In Enterprise Mode: render the enterprise candidate profile
   if (!isHeist) {
     return <EnterpriseCandidateProfile onNavigate={onNavigate} />
@@ -449,7 +488,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const [editRole, setEditRole] = useState(candidate.targetRole)
   const [editLoc, setEditLoc] = useState(candidate.location)
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     setCandidate((prev) => ({
       ...prev,
       name: editName,
@@ -457,6 +496,16 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
       location: editLoc,
     }))
     setIsEditModalOpen(false)
+
+    try {
+      await api.candidate.updateProfile({
+        name: editName,
+        targetRoles: [editRole],
+        location: editLoc,
+      })
+    } catch (err) {
+      console.error('Failed to sync profile with backend:', err)
+    }
   }
 
   const handleShare = () => {

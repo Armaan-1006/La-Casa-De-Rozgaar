@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Plus, Trash2, CheckCircle2, Play, RefreshCw } from 'lucide-react'
 import { mockCandidate } from '../data/mockData'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface Scenario {
   id: string
@@ -51,6 +52,16 @@ export const SimulationVault: React.FC = () => {
   const runSimulationSequence = () => {
     setIsSimulating(true)
     setSimulationStage(0)
+
+    if (selectedScenario) {
+      const skillChanges = Object.entries(selectedScenario.skills).map(([name, score]) => ({
+        skillId: `skill_${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+        targetScore: score,
+      }))
+      api.simulation.run('role_fullstack', skillChanges).catch((err) => {
+        console.warn('Backend simulation:', err)
+      })
+    }
 
     const interval = setInterval(() => {
       setSimulationStage((prev) => {

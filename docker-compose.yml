@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # POSTGRESQL (Module 1 Intelligence Database)
+  # ============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: lcdr-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: lacasa
+      POSTGRES_PASSWORD: lacasa_dev_password
+      POSTGRES_DB: lacasa_intelligence
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lacasa -d lacasa_intelligence"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # MODULE 1 (Intelligence & Data Platform API)
+  # ============================================================================
+  module1:
+    build:
+      context: ./backend/module-1-intelligence
+      dockerfile: Dockerfile
+    container_name: lcdr-module1-intelligence
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://lacasa:lacasa_dev_password@postgres:5432/lacasa_intelligence
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=lacasa_intelligence
+      - DB_USER=lacasa
+      - DB_PASSWORD=lacasa_dev_password
+      - API_KEY_INGESTION=lacasa-intelligence-default-dev-api-key-32chars
+      - JWT_SECRET=lacasa-jwt-secret-intelligence-platform-key-32chars
+      - CORS_ORIGIN=http://localhost:5173
+      - LOG_LEVEL=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================================
+  # MODULE 2 (User, Talent & Career Intelligence API)
+  # ============================================================================
+  module2:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lcdr-module2-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/app/data/module2.db
+      - JWT_SECRET=production-secret-replace-in-env-file-la-casa-de-rozgaar
+      - INTELLIGENCE_PROVIDER=remote
+      - MODULE1_API_URL=http://module1:3000/api/v1
+      - CORS_ORIGIN=http://localhost:5173
+    volumes:
+      - module2-data:/app/data
+    depends_on:
+      module1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres-data:
+    name: lcdr-postgres-data
+  module2-data:
+    name: lcdr-module2-sqlite-data

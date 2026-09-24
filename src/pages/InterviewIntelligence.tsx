@@ -1,20 +1,32 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ShieldAlert, CheckCircle2, ChevronDown, ChevronUp, Search, Building2, Flame, ArrowRight } from 'lucide-react'
 import { mockInterviewQuestions } from '../data/mockData'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface InterviewIntelligenceProps {
   onNavigate?: (page: string) => void
 }
 
 export const InterviewIntelligence: React.FC<InterviewIntelligenceProps> = ({ onNavigate }) => {
+  const [questionsList, setQuestionsList] = useState(mockInterviewQuestions)
   const [selectedTopic, setSelectedTopic] = useState<string>('ALL')
   const [expandedId, setExpandedId] = useState<string | null>('IQ-001')
   const [searchQuery, setSearchQuery] = useState('')
 
+  useEffect(() => {
+    let mounted = true
+    api.interviews.getQuestions().then((questions) => {
+      if (mounted && questions && questions.length > 0) {
+        setQuestionsList(questions)
+      }
+    })
+    return () => { mounted = false }
+  }, [])
+
   const topics = ['ALL', 'System Design', 'Live Coding', 'Behavioral & Leadership', 'Architecture']
 
-  const filtered = mockInterviewQuestions.filter((q) => {
+  const filtered = questionsList.filter((q) => {
     if (selectedTopic !== 'ALL' && q.topic !== selectedTopic) return false
     if (searchQuery.trim()) {
       const match =

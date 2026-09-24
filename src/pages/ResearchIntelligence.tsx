@@ -1,20 +1,32 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ExternalLink, Search, ArrowRight } from 'lucide-react'
 import { mockResearchPapers } from '../data/mockData'
+import { api } from '../services/api'
 
 interface ResearchIntelligenceProps {
   onNavigate?: (page: string) => void
 }
 
 export const ResearchIntelligence: React.FC<ResearchIntelligenceProps> = ({ onNavigate }) => {
+  const [papersList, setPapersList] = useState(mockResearchPapers)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filtered = mockResearchPapers.filter((p) => {
+  useEffect(() => {
+    let mounted = true
+    api.research.getItems().then((items) => {
+      if (mounted && items && items.length > 0) {
+        setPapersList(items)
+      }
+    })
+    return () => { mounted = false }
+  }, [])
+
+  const filtered = papersList.filter((p) => {
     if (!searchQuery.trim()) return true
     return (
       p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.authors.toLowerCase().includes(searchQuery.toLowerCase())
+      (p.topic && p.topic.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.authors && p.authors.toLowerCase().includes(searchQuery.toLowerCase()))
     )
   })
 

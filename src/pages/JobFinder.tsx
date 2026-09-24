@@ -1,19 +1,33 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Search, MapPin, DollarSign, BookmarkPlus, BookmarkCheck, CheckCircle, ArrowRight, ShieldCheck, Sparkles, Zap } from 'lucide-react'
 import { mockJobs, JobListing } from '../data/mockData'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface JobFinderProps {
   onNavigate?: (page: string) => void
 }
 
 export const JobFinder: React.FC<JobFinderProps> = ({ onNavigate }) => {
+  const [jobsList, setJobsList] = useState<JobListing[]>(mockJobs)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryTab, setCategoryTab] = useState<'ALL' | 'Immediate-Fit' | 'Growth-Fit'>('ALL')
   const [filterRemote, setFilterRemote] = useState(false)
   const [selectedJob, setSelectedJob] = useState<JobListing>(mockJobs[0])
   const [bookmarkedJobs, setBookmarkedJobs] = useState<Record<string, boolean>>({ 'JOB-LC-001': true })
   const [appliedJobs, setAppliedJobs] = useState<Record<string, boolean>>({})
+
+  // Fetch recommended jobs from backend
+  useEffect(() => {
+    let mounted = true
+    api.matching.getRecommendedJobs().then((jobs) => {
+      if (mounted && jobs && jobs.length > 0) {
+        setJobsList(jobs)
+        setSelectedJob(jobs[0])
+      }
+    })
+    return () => { mounted = false }
+  }, [])
 
   const toggleBookmark = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -25,7 +39,7 @@ export const JobFinder: React.FC<JobFinderProps> = ({ onNavigate }) => {
   }
 
   const filteredJobs = useMemo(() => {
-    return mockJobs.filter((job) => {
+    return jobsList.filter((job) => {
       const matchesSearch =
         job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -37,7 +51,7 @@ export const JobFinder: React.FC<JobFinderProps> = ({ onNavigate }) => {
       if (filterRemote && !job.remote.toLowerCase().includes('remote')) return false
       return true
     })
-  }, [searchQuery, categoryTab, filterRemote])
+  }, [jobsList, searchQuery, categoryTab, filterRemote])
 
   const getMatchColor = (score: number) => {
     if (score >= 85) return 'text-emerald-400'
@@ -94,7 +108,7 @@ export const JobFinder: React.FC<JobFinderProps> = ({ onNavigate }) => {
                   : 'bg-burgundy/10 border-burgundy/25 text-warm-ivory/70 hover:bg-burgundy/20'
               )}
             >
-              ALL TARGETS ({mockJobs.length})
+              ALL TARGETS ({jobsList.length})
             </button>
             <button
               onClick={() => setCategoryTab('Immediate-Fit')}

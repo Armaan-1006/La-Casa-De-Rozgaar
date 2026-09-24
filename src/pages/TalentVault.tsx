@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Search, Users, CheckCircle2, BookmarkPlus, BookmarkCheck, ArrowRight, X, Mail, Check } from 'lucide-react'
 import { mockTalentVaultCandidates, TalentCandidate } from '../data/mockData'
 import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface TalentVaultProps {
   onNavigate?: (page: string) => void
@@ -12,6 +13,7 @@ interface TalentVaultProps {
 // ENTERPRISE TALENT DIRECTORY COMPONENT
 // ============================================================================
 const EnterpriseTalentDirectory: React.FC<TalentVaultProps> = ({ onNavigate }) => {
+  const [candidatesList, setCandidatesList] = useState<TalentCandidate[]>(mockTalentVaultCandidates)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('ALL')
   const [minScore, setMinScore] = useState<number>(0)
@@ -19,10 +21,20 @@ const EnterpriseTalentDirectory: React.FC<TalentVaultProps> = ({ onNavigate }) =
   const [shortlisted, setShortlisted] = useState<Record<string, boolean>>({ 'TAL-001': true })
   const [contacted, setContacted] = useState<Record<string, boolean>>({})
 
+  useEffect(() => {
+    let mounted = true
+    api.talent.search({}).then((candidates) => {
+      if (mounted && candidates && candidates.length > 0) {
+        setCandidatesList(candidates)
+      }
+    })
+    return () => { mounted = false }
+  }, [])
+
   const roles = ['ALL', 'Full Stack Developer', 'Cloud Solutions Architect', 'AI & Data Systems Engineer', 'Senior Frontend Engineer']
 
   const filteredCandidates = useMemo(() => {
-    return mockTalentVaultCandidates.filter((c) => {
+    return candidatesList.filter((c) => {
       const matchesSearch =
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.targetRole.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -33,7 +45,7 @@ const EnterpriseTalentDirectory: React.FC<TalentVaultProps> = ({ onNavigate }) =
       if (c.readinessScore < minScore) return false
       return true
     })
-  }, [searchQuery, selectedRoleFilter, minScore])
+  }, [candidatesList, searchQuery, selectedRoleFilter, minScore])
 
   const toggleShortlist = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
