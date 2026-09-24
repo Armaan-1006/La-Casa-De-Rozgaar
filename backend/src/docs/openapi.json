@@ -1,0 +1,885 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "La Casa De Rozgaar — Module 2 API",
+    "description": "User, Talent & Career Intelligence Backend Module for La Casa De Rozgaar platform. Handles candidate profiles, assessment engine with anti-cheat integrity signals, skill gap analysis, job matching, career simulation, learning recommendations, interview intelligence, research intelligence, employer talent discovery, and workforce intelligence.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "La Casa De Rozgaar Engineering"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/api/v1",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Enter your JWT token obtained from POST /auth/login or POST /auth/register"
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "UNAUTHORIZED"
+              },
+              "message": {
+                "type": "string",
+                "example": "Invalid token"
+              },
+              "requestId": {
+                "type": "string",
+                "example": "550e8400-e29b-41d4-a716-446655440000"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ]
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "candidate",
+              "recruiter",
+              "employer",
+              "admin",
+              "workforce_planner"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CandidateProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "limited",
+              "private"
+            ]
+          },
+          "targetRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "totalExperienceYears": {
+            "type": "number"
+          }
+        }
+      },
+      "SkillGap": {
+        "type": "object",
+        "properties": {
+          "skillId": {
+            "type": "string"
+          },
+          "skillName": {
+            "type": "string"
+          },
+          "currentScore": {
+            "type": "number"
+          },
+          "requiredScore": {
+            "type": "number"
+          },
+          "gap": {
+            "type": "number"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ]
+          },
+          "marketDemand": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "JobMatch": {
+        "type": "object",
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "overallMatch": {
+            "type": "number"
+          },
+          "skillMatch": {
+            "type": "number"
+          },
+          "experienceMatch": {
+            "type": "number"
+          },
+          "roleMatch": {
+            "type": "number"
+          },
+          "locationMatch": {
+            "type": "number"
+          },
+          "matchedSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missingSkills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          }
+        }
+      },
+      "SimulationResult": {
+        "type": "object",
+        "properties": {
+          "roleReadiness": {
+            "type": "number"
+          },
+          "skillCoverage": {
+            "type": "number"
+          },
+          "remainingGaps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillGap"
+            }
+          },
+          "compatibleJobsEstimate": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "number"
+              },
+              "improvement": {
+                "type": "number"
+              }
+            }
+          },
+          "learningRequirements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skillId": {
+                  "type": "string"
+                },
+                "skillName": {
+                  "type": "string"
+                },
+                "currentScore": {
+                  "type": "number"
+                },
+                "targetScore": {
+                  "type": "number"
+                },
+                "estimatedHours": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "tags": [
+          "System"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register new user",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password",
+                  "name"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "candidate",
+                      "recruiter",
+                      "employer",
+                      "admin",
+                      "workforce_planner"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful"
+          },
+          "409": {
+            "description": "Email already registered"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate user",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful, returns tokens"
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Get current user profile",
+        "tags": [
+          "Authentication"
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user data"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/candidates/profile": {
+      "get": {
+        "summary": "Get candidate profile with skills, experience, education",
+        "tags": [
+          "Candidates"
+        ],
+        "responses": {
+          "200": {
+            "description": "Full candidate profile"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update candidate profile",
+        "tags": [
+          "Candidates"
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile updated"
+          }
+        }
+      }
+    },
+    "/candidates/skills": {
+      "get": {
+        "summary": "Get candidate skills",
+        "tags": [
+          "Candidates"
+        ],
+        "responses": {
+          "200": {
+            "description": "Skills list"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add or update candidate skill",
+        "tags": [
+          "Candidates"
+        ],
+        "responses": {
+          "201": {
+            "description": "Skill saved"
+          }
+        }
+      }
+    },
+    "/assessments": {
+      "get": {
+        "summary": "List available assessments",
+        "tags": [
+          "Assessments"
+        ],
+        "parameters": [
+          {
+            "name": "roleId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skillId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assessments list"
+          }
+        }
+      }
+    },
+    "/assessments/{id}/attempt": {
+      "post": {
+        "summary": "Start an assessment attempt",
+        "tags": [
+          "Assessments"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Attempt started with questions"
+          }
+        }
+      }
+    },
+    "/assessments/attempts/{attemptId}/answers": {
+      "post": {
+        "summary": "Submit an answer during assessment",
+        "tags": [
+          "Assessments"
+        ],
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Answer recorded"
+          }
+        }
+      }
+    },
+    "/assessments/attempts/{attemptId}/integrity": {
+      "post": {
+        "summary": "Report anti-cheat integrity event (tab switch, copy/paste, etc.)",
+        "tags": [
+          "Assessments"
+        ],
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Integrity event logged"
+          }
+        }
+      }
+    },
+    "/assessments/attempts/{attemptId}/submit": {
+      "post": {
+        "summary": "Submit completed assessment for grading and skill profile update",
+        "tags": [
+          "Assessments"
+        ],
+        "parameters": [
+          {
+            "name": "attemptId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assessment graded, skill profile updated"
+          }
+        }
+      }
+    },
+    "/skill-gaps/calculate": {
+      "post": {
+        "summary": "Calculate skill gaps for target role against intelligence benchmark",
+        "tags": [
+          "Skill Gaps"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "targetRoleId"
+                ],
+                "properties": {
+                  "targetRoleId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Calculated gaps with priority scoring"
+          }
+        }
+      }
+    },
+    "/matching/jobs/{jobId}": {
+      "post": {
+        "summary": "Calculate explainable match for specific job",
+        "tags": [
+          "Job Matching"
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Match score with breakdown and explanation"
+          }
+        }
+      }
+    },
+    "/matching/jobs/recommended": {
+      "get": {
+        "summary": "Get recommended jobs sorted by match score",
+        "tags": [
+          "Job Matching"
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked list of job matches"
+          }
+        }
+      }
+    },
+    "/simulation": {
+      "post": {
+        "summary": "Run career what-if simulation with hypothetical skill improvements",
+        "tags": [
+          "Simulation Engine"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "targetRoleId",
+                  "skillChanges"
+                ],
+                "properties": {
+                  "targetRoleId": {
+                    "type": "string"
+                  },
+                  "skillChanges": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "skillId",
+                        "targetScore"
+                      ],
+                      "properties": {
+                        "skillId": {
+                          "type": "string"
+                        },
+                        "targetScore": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Simulation result with readiness delta and learning estimates"
+          }
+        }
+      }
+    },
+    "/learning/recommended": {
+      "get": {
+        "summary": "Get personalized learning recommendations based on skill gaps",
+        "tags": [
+          "Learning"
+        ],
+        "responses": {
+          "200": {
+            "description": "Scored and prioritized learning resources"
+          }
+        }
+      }
+    },
+    "/interviews/preparation": {
+      "get": {
+        "summary": "Generate personalized interview preparation set",
+        "tags": [
+          "Interview Intelligence"
+        ],
+        "parameters": [
+          {
+            "name": "roleId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "company",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Questions and focus areas"
+          }
+        }
+      }
+    },
+    "/research": {
+      "get": {
+        "summary": "List research items and industry intelligence",
+        "tags": [
+          "Research Intelligence"
+        ],
+        "responses": {
+          "200": {
+            "description": "Research items"
+          }
+        }
+      }
+    },
+    "/recommendations/dashboard": {
+      "get": {
+        "summary": "Candidate career intelligence dashboard overview",
+        "tags": [
+          "Career Intelligence"
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated career overview metrics"
+          }
+        }
+      }
+    },
+    "/talent/search": {
+      "post": {
+        "summary": "Search talent pool by skills, role, experience (Employer/Recruiter)",
+        "tags": [
+          "Talent Discovery"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "roleId": {
+                    "type": "string"
+                  },
+                  "minExperience": {
+                    "type": "number"
+                  },
+                  "maxExperience": {
+                    "type": "number"
+                  },
+                  "location": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching candidates with role match scoring"
+          }
+        }
+      }
+    },
+    "/workforce/gaps/analyze": {
+      "post": {
+        "summary": "Run organizational workforce skill gap analysis",
+        "tags": [
+          "Workforce Intelligence"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "profileId"
+                ],
+                "properties": {
+                  "profileId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Organizational skill gaps with employee impact counts"
+          }
+        }
+      }
+    },
+    "/workforce/gaps/recommendation": {
+      "post": {
+        "summary": "Get Hire vs Upskill recommendations for organizational gaps",
+        "tags": [
+          "Workforce Intelligence"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "profileId"
+                ],
+                "properties": {
+                  "profileId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hire vs Upskill vs Hybrid actions per skill"
+          }
+        }
+      }
+    },
+    "/compensation": {
+      "get": {
+        "summary": "Get compensation benchmarks (via Intelligence Provider)",
+        "tags": [
+          "Compensation Intelligence"
+        ],
+        "parameters": [
+          {
+            "name": "roleId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Salary percentiles and trends"
+          }
+        }
+      }
+    }
+  }
+}
