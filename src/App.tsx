@@ -22,6 +22,7 @@ import { ResistanceLearning } from './pages/ResistanceLearning'
 import { InterviewIntelligence } from './pages/InterviewIntelligence'
 import { ResearchIntelligence } from './pages/ResearchIntelligence'
 import { IntelligenceFeed } from './pages/IntelligenceFeed'
+import { FloatingDossierField } from './components/FloatingDossierField'
 
 export type PageType =
   | 'war-room'
@@ -164,6 +165,9 @@ function App() {
 
   return (
     <div className="flex h-screen bg-obsidian text-warm-ivory overflow-hidden relative classified-grid">
+      {/* Global Floating Dossier Field */} 
+      <FloatingDossierField />
+
       {/* Sidebar with navigation */}
       <Sidebar
         isOpen={sidebarOpen}
