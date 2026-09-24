@@ -1,93 +1,146 @@
-import React from 'react'
-import { BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Edit, Download, Share2, CheckCircle, ArrowRight, ShieldCheck } from 'lucide-react'
+import { useState, type FC } from 'react'
+import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { Edit, Download, Share2, CheckCircle, ArrowRight, ShieldCheck, Award, Briefcase, GraduationCap, X, Check } from 'lucide-react'
 import { mockCandidate } from '../data/mockData'
-import { cn } from '../lib/utils'
 
-export const CandidateDossier: React.FC<{ onNavigate?: (page: string) => void }> = ({ onNavigate }) => {
-  const radarData = mockCandidate.skills.map((skill) => ({
+interface CandidateDossierProps {
+  onNavigate?: (page: string) => void
+}
+
+export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
+  const [candidate, setCandidate] = useState(mockCandidate)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [shareCopied, setShareCopied] = useState(false)
+  const [exportNotice, setExportNotice] = useState(false)
+
+  // Edit form state
+  const [editName, setEditName] = useState(candidate.name)
+  const [editRole, setEditRole] = useState(candidate.targetRole)
+  const [editLoc, setEditLoc] = useState(candidate.location)
+
+  const handleSaveProfile = () => {
+    setCandidate((prev) => ({
+      ...prev,
+      name: editName,
+      targetRole: editRole,
+      location: editLoc,
+    }))
+    setIsEditModalOpen(false)
+  }
+
+  const handleShare = () => {
+    navigator.clipboard?.writeText?.(window.location.href)
+    setShareCopied(true)
+    setTimeout(() => setShareCopied(false), 2500)
+  }
+
+  const handleExport = () => {
+    setExportNotice(true)
+    setTimeout(() => setExportNotice(false), 3000)
+  }
+
+  const radarData = candidate.skills.map((skill) => ({
     skill: skill.name,
     current: skill.score,
     market: skill.market,
   }))
 
-  const gapData = mockCandidate.skills.map((skill) => ({
-    skill: skill.name.substring(0, 10),
-    gap: Math.max(0, skill.market - skill.score),
-  }))
-
   return (
     <div className="space-y-8">
       {/* Header */}
-      <section>
+      <section className="relative overflow-hidden rounded-xl border border-burgundy/30 bg-gradient-obsidian p-6 md:p-8 shadow-glow-crimson">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-lg bg-gradient-crimson flex items-center justify-center text-warm-ivory font-bold shadow-glow-crimson font-mono text-lg">
+              <div className="w-12 h-12 rounded-lg bg-gradient-crimson flex items-center justify-center text-warm-ivory font-bold shadow-glow-crimson font-mono text-lg shrink-0">
                 AR
               </div>
               <div>
-                <h1 className="heading-lg text-warm-ivory">{mockCandidate.name}</h1>
-                <p className="text-xs text-warm-ivory/60 font-mono">CASE ID // {mockCandidate.id} • STATUS // RECRUIT READY</p>
+                <div className="flex items-center gap-2">
+                  <span className="stamp-classified">CASE FILE // {candidate.codeName}</span>
+                  <span className="stamp-verified">VERIFIED OPERATIVE</span>
+                </div>
+                <h1 className="heading-lg text-warm-ivory mt-1">{candidate.name}</h1>
+                <p className="text-xs text-warm-ivory/60 font-mono">
+                  CLEARANCE // {candidate.clearanceLevel} • ID: {candidate.id}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="status-online text-xs font-mono">PROFILE VERIFIED & CERTIFIED</span>
-            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button className="btn-secondary flex items-center gap-2 text-xs font-mono py-2 px-3">
-              <Edit size={14} /> EDIT
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3"
+            >
+              <Edit size={14} /> EDIT PROFILE
             </button>
-            <button className="btn-secondary flex items-center gap-2 text-xs font-mono py-2 px-3">
-              <Download size={14} /> EXPORT
+            <button
+              onClick={handleExport}
+              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3"
+            >
+              <Download size={14} /> {exportNotice ? 'EXPORTED ✓' : 'EXPORT DOSSIER'}
             </button>
-            <button className="btn-secondary flex items-center gap-2 text-xs font-mono py-2 px-3">
-              <Share2 size={14} /> SHARE
+            <button
+              onClick={handleShare}
+              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3"
+            >
+              {shareCopied ? (
+                <>
+                  <Check size={14} className="text-emerald-400" /> COPIED LINK
+                </>
+              ) : (
+                <>
+                  <Share2 size={14} /> SHARE INTEL
+                </>
+              )}
             </button>
           </div>
         </div>
       </section>
 
-      {/* Profile Summary */}
+      {/* Profile Summary KPIs */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
           <p className="text-xs text-warm-ivory/60 font-mono mb-1">TARGET ROLE</p>
-          <p className="heading-sm text-warm-ivory">{mockCandidate.targetRole}</p>
-          <p className="text-[11px] text-warm-ivory/40 font-mono mt-1">Tier 1 Target</p>
+          <p className="heading-sm text-warm-ivory">{candidate.targetRole}</p>
+          <p className="text-[11px] text-warm-ivory/40 font-mono mt-1">Secondary: {candidate.secondaryRole}</p>
         </div>
 
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-1">EXPERIENCE</p>
-          <p className="heading-sm text-warm-ivory">{mockCandidate.experience}</p>
-          <p className="text-[11px] text-warm-ivory/40 font-mono mt-1">Full-stack production</p>
+          <p className="text-xs text-warm-ivory/60 font-mono mb-1">EXPERIENCE BENCHMARK</p>
+          <p className="heading-sm text-warm-ivory">{candidate.experience}</p>
+          <p className="text-[11px] text-warm-ivory/40 font-mono mt-1">Full-stack production systems</p>
         </div>
 
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-1">LOCATION</p>
-          <p className="heading-sm text-warm-ivory">{mockCandidate.location}</p>
+          <p className="text-xs text-warm-ivory/60 font-mono mb-1">STATION & MOBILITY</p>
+          <p className="heading-sm text-warm-ivory truncate">{candidate.location}</p>
           <p className="text-[11px] text-emerald-400 font-mono mt-1">Open to Remote / Hybrid</p>
         </div>
 
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-1">ROLE READINESS</p>
-          <p className="heading-sm text-crimson font-mono">{mockCandidate.roleReadiness}%</p>
+          <p className="text-xs text-warm-ivory/60 font-mono mb-1">OVERALL ROLE READINESS</p>
+          <p className="heading-sm text-crimson font-mono">{candidate.roleReadiness}%</p>
           <div className="w-full bg-burgundy/20 rounded-full h-1.5 mt-2 overflow-hidden">
             <div
-              style={{ width: `${mockCandidate.roleReadiness}%` }}
+              style={{ width: `${candidate.roleReadiness}%` }}
               className="h-full bg-gradient-crimson rounded-full"
             />
           </div>
         </div>
       </section>
 
-      {/* Main Grid */}
+      {/* Main Grid: Skills Matrix & Verified Assessment */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Skill Profile */}
+        {/* Skill Profile Breakdown */}
         <div className="lg:col-span-2 card">
-          <h3 className="heading-sm text-warm-ivory mb-6 font-mono text-sm">SKILL PROFILE & BENCHMARK</h3>
-          <div className="space-y-4">
-            {mockCandidate.skills.map((skill) => {
+          <h3 className="heading-sm text-warm-ivory mb-6 font-mono text-sm uppercase tracking-wider">
+            CERTIFIED SKILL PROFILE & MARKET EXPECTATIONS
+          </h3>
+          <div className="space-y-3.5">
+            {candidate.skills.map((skill) => {
               const gap = skill.gap
               const isStrength = gap >= 0
               return (
@@ -110,12 +163,12 @@ export const CandidateDossier: React.FC<{ onNavigate?: (page: string) => void }>
                       />
                     </div>
                     {isStrength ? (
-                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-mono shrink-0">
+                      <span className="flex items-center gap-1 text-xs text-emerald-400 font-mono shrink-0 font-bold">
                         <CheckCircle size={14} /> Ready
                       </span>
                     ) : (
-                      <span className="text-xs text-orange-400 font-mono shrink-0">
-                        Gap: {Math.abs(gap).toFixed(1)}
+                      <span className="text-xs text-crimson font-mono shrink-0 font-bold">
+                        Deficit: {Math.abs(gap).toFixed(1)}
                       </span>
                     )}
                   </div>
@@ -125,53 +178,58 @@ export const CandidateDossier: React.FC<{ onNavigate?: (page: string) => void }>
           </div>
         </div>
 
-        {/* Assessment Info */}
+        {/* Assessment Verified Info */}
         <div className="card flex flex-col justify-between">
-          <div>
-            <h3 className="heading-sm text-warm-ivory mb-4 font-mono text-sm">BENCHMARK ASSESSMENT</h3>
-            <div className="p-4 bg-burgundy/15 rounded-lg border border-burgundy/30 mb-6">
-              <div className="flex items-center gap-3 mb-4">
+          <div className="space-y-4">
+            <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">VERIFIED BENCHMARK</h3>
+            <div className="p-4 bg-burgundy/15 rounded-lg border border-burgundy/30 space-y-4">
+              <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-lg bg-gradient-crimson flex items-center justify-center shadow-glow-crimson shrink-0">
-                  <span className="text-2xl font-bold text-warm-ivory font-mono">{mockCandidate.assessment.score}</span>
+                  <span className="text-2xl font-bold text-warm-ivory font-mono">{candidate.assessment.score}</span>
                 </div>
                 <div>
-                  <p className="text-[11px] text-warm-ivory/60 font-mono">ASSESSMENT TIER</p>
-                  <p className="heading-sm text-warm-ivory">{mockCandidate.assessment.category}</p>
+                  <p className="text-[10px] text-warm-ivory/60 font-mono">BENCHMARK EVALUATION</p>
+                  <p className="heading-sm text-warm-ivory">{candidate.assessment.category}</p>
+                  <p className="text-[11px] text-emerald-400 font-mono">{candidate.assessment.percentile}</p>
                 </div>
               </div>
+
               <div className="space-y-2 text-xs font-mono border-t border-burgundy/20 pt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-warm-ivory/60">Verified Date</span>
-                  <span className="text-warm-ivory">{mockCandidate.assessment.completedAt}</span>
+                  <span className="text-warm-ivory">{candidate.assessment.completedAt}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-warm-ivory/60">Integrity Check</span>
+                  <span className="text-warm-ivory/60">Integrity Protocol</span>
                   <span className="text-emerald-400 flex items-center gap-1">
-                    <ShieldCheck size={14} />
-                    {mockCandidate.assessment.integrity}
+                    <ShieldCheck size={14} /> {candidate.assessment.integrity}
                   </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-warm-ivory/60">Focus Telemetry</span>
+                  <span className="text-emerald-400 font-bold">{candidate.assessment.proctorSignals.focusRate}</span>
                 </div>
               </div>
             </div>
           </div>
 
           <button
-            onClick={() => onNavigate?.('skill-heist')}
-            className="w-full btn-primary text-xs font-mono py-3 flex items-center justify-center gap-2"
+            onClick={() => onNavigate?.('assessment')}
+            className="w-full btn-primary text-xs font-mono py-3 flex items-center justify-center gap-2 mt-4"
           >
-            START HEIST REASSESSMENT <ArrowRight size={14} />
+            TAKE NEW SKILL ASSESSMENT <ArrowRight size={14} />
           </button>
         </div>
       </section>
 
       {/* Radar Chart */}
       <section className="card">
-        <h3 className="heading-sm text-warm-ivory mb-4 font-mono text-sm">CAPABILITY PROFILE RADAR</h3>
-        <p className="text-xs text-warm-ivory/50 font-mono mb-6">COMPARE CURRENT SKILLS VS TOP-TIER MARKET BENCHMARK</p>
+        <h3 className="heading-sm text-warm-ivory mb-2 font-mono text-sm uppercase">CAPABILITY PROFILE RADAR</h3>
+        <p className="text-xs text-warm-ivory/50 font-mono mb-6">COMPARING OPERATIVE BENCHMARK VS MARKET MANDATE</p>
         <div className="w-full h-80">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData}>
-              <PolarGrid stroke="rgba(179,19,43,0.15)" />
+              <PolarGrid stroke="rgba(179,19,43,0.18)" />
               <PolarAngleAxis dataKey="skill" stroke="rgba(242,233,220,0.6)" tick={{ fill: 'rgba(242,233,220,0.7)', fontSize: 11 }} />
               <PolarRadiusAxis stroke="rgba(179,19,43,0.3)" domain={[0, 10]} />
               <Radar name="Your Score" dataKey="current" stroke="#B3132B" fill="#B3132B" fillOpacity={0.6} />
@@ -190,56 +248,123 @@ export const CandidateDossier: React.FC<{ onNavigate?: (page: string) => void }>
         </div>
       </section>
 
-      {/* Skill Gaps */}
-      <section className="card">
-        <h3 className="heading-sm text-warm-ivory mb-4 font-mono text-sm">SKILL GAPS (POINTS BELOW MARKET)</h3>
-        <div className="w-full h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={gapData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.1)" />
-              <XAxis dataKey="skill" stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
-              <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{
-                  background: 'rgba(21,21,24,0.95)',
-                  border: '1px solid rgba(179,19,43,0.4)',
-                  borderRadius: '8px',
-                  color: '#F2E9DC',
-                  fontFamily: 'monospace',
-                }}
-              />
-              <Bar dataKey="gap" fill="#B3132B" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Projects & Certifications Sections */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Audited Projects */}
+        <div className="card space-y-4">
+          <div className="flex items-center gap-2">
+            <Briefcase size={18} className="text-crimson" />
+            <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">VERIFIED FIELD PROJECTS</h3>
+          </div>
+          <div className="space-y-3">
+            {candidate.projects.map((proj) => (
+              <div key={proj.title} className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 space-y-1 text-xs font-mono">
+                <h4 className="font-bold text-warm-ivory">{proj.title}</h4>
+                <div className="flex flex-wrap gap-1 my-1">
+                  {proj.tech.map((t) => (
+                    <span key={t} className="px-1.5 py-0.5 bg-burgundy/20 rounded text-[10px] text-warm-ivory/80">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-emerald-400 font-bold text-[11px]">{proj.metric}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Certifications & Education */}
+        <div className="card space-y-4">
+          <div className="flex items-center gap-2">
+            <Award size={18} className="text-muted-gold" />
+            <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">AUTHENTICATED CREDENTIALS</h3>
+          </div>
+          <div className="space-y-3">
+            {candidate.certifications.map((cert) => (
+              <div key={cert.name} className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 flex items-center justify-between text-xs font-mono">
+                <div>
+                  <h4 className="font-bold text-warm-ivory">{cert.name}</h4>
+                  <p className="text-warm-ivory/50 text-[11px]">{cert.issuer} • {cert.date}</p>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-400 border border-emerald-400/30">
+                  {cert.status}
+                </span>
+              </div>
+            ))}
+
+            <div className="pt-2 border-t border-burgundy/20 space-y-1 text-xs font-mono">
+              <div className="flex items-center gap-2 text-warm-ivory/60">
+                <GraduationCap size={16} className="text-crimson" />
+                <span className="font-bold text-warm-ivory">{candidate.education[0].degree}</span>
+              </div>
+              <p className="text-[11px] text-warm-ivory/50 pl-6">
+                {candidate.education[0].school} • Class of {candidate.education[0].year} (GPA: {candidate.education[0].gpa})
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* CTA Navigation */}
-      <section className="card bg-gradient-obsidian border-crimson/30">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <button
-            onClick={() => onNavigate?.('skill-heist')}
-            className="text-left group card-hover p-4 border border-burgundy/30 rounded-lg hover:border-crimson/60"
-          >
-            <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">SKILL HEIST ROADMAP →</h4>
-            <p className="text-warm-ivory/70 text-xs font-mono">Target your highest-priority skill gaps and start targeted learning.</p>
-          </button>
-          <button
-            onClick={() => onNavigate?.('job-finder')}
-            className="text-left group card-hover p-4 border border-burgundy/30 rounded-lg hover:border-crimson/60"
-          >
-            <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">AI JOB MATCHING →</h4>
-            <p className="text-warm-ivory/70 text-xs font-mono">Find active job postings matched directly against your capability profile.</p>
-          </button>
-          <button
-            onClick={() => onNavigate?.('simulation')}
-            className="text-left group card-hover p-4 border border-burgundy/30 rounded-lg hover:border-crimson/60"
-          >
-            <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">SIMULATION VAULT →</h4>
-            <p className="text-warm-ivory/70 text-xs font-mono">Model skill gains and forecast your new career readiness scores.</p>
-          </button>
+      {/* Edit Profile Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="card max-w-md w-full p-6 space-y-4 bg-charcoal border-crimson/50 shadow-glow-crimson">
+            <div className="flex items-center justify-between border-b border-burgundy/20 pb-3">
+              <h3 className="heading-xs text-warm-ivory">EDIT OPERATIVE PROFILE</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="text-warm-ivory/50 hover:text-crimson">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs font-mono">
+              <div>
+                <label className="text-warm-ivory/60 block mb-1">OPERATIVE FULL NAME</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson"
+                />
+              </div>
+
+              <div>
+                <label className="text-warm-ivory/60 block mb-1">PRIMARY TARGET ROLE</label>
+                <input
+                  type="text"
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson"
+                />
+              </div>
+
+              <div>
+                <label className="text-warm-ivory/60 block mb-1">LOCATION & MOBILITY</label>
+                <input
+                  type="text"
+                  value={editLoc}
+                  onChange={(e) => setEditLoc(e.target.value)}
+                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={handleSaveProfile}
+                className="flex-1 btn-primary text-xs font-mono py-2.5"
+              >
+                SAVE UPDATES
+              </button>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="btn-secondary text-xs font-mono py-2.5 px-4"
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
         </div>
-      </section>
+      )}
     </div>
   )
 }

@@ -1,55 +1,84 @@
 import React from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { AlertTriangle, TrendingUp, Target } from 'lucide-react'
+import { AlertTriangle, TrendingUp, Target, ArrowRight } from 'lucide-react'
 import { mockEmployer, mockMarketData } from '../data/mockData'
 import { cn } from '../lib/utils'
 
-export const EmployerDashboard: React.FC<{ onNavigate?: (page: string) => void }> = ({ onNavigate }) => {
+interface EmployerDashboardProps {
+  onNavigate?: (page: string) => void
+}
+
+export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onNavigate }) => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <section>
-        <h1 className="heading-lg text-warm-ivory mb-2">EMPLOYER MASTERMIND</h1>
-        <p className="text-warm-ivory/60 font-mono text-sm">
-          OPERATION // WORKFORCE INTELLIGENCE & TALENT PLANNING
-        </p>
+      <section className="relative overflow-hidden rounded-xl border border-burgundy/30 bg-gradient-obsidian p-6 md:p-8 shadow-glow-crimson">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="stamp-live">ORGANIZATIONAL COMMAND</span>
+              <span className="text-xs font-mono text-warm-ivory/60">OPERATION // RECRUITER-MASTERMIND-HQ</span>
+            </div>
+            <h1 className="heading-lg text-warm-ivory mb-1">EMPLOYER MASTERMIND // TALENT STRATEGY</h1>
+            <p className="text-xs md:text-sm text-warm-ivory/70 font-mono">
+              WORKFORCE CAPABILITY BENCHMARKS, RECRUITMENT PRESSURE RADAR & TALENT SOURCING PIPELINES
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onNavigate?.('talent-vault')}
+              className="btn-primary text-xs font-mono py-2.5 px-4 flex items-center gap-2"
+            >
+              TALENT VAULT DISCOVERY <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Organization Overview */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-2">ORGANIZATION</p>
+          <p className="text-xs text-warm-ivory/60 font-mono mb-1">ORGANIZATION</p>
           <p className="heading-sm text-warm-ivory">{mockEmployer.name}</p>
-          <p className="text-xs text-warm-ivory/50 mt-2 font-mono">{mockEmployer.size} organization</p>
+          <p className="text-[11px] text-warm-ivory/50 mt-1 font-mono">{mockEmployer.size}</p>
         </div>
 
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-2">TOTAL EMPLOYEES</p>
+          <p className="text-xs text-warm-ivory/60 font-mono mb-1">ACTIVE WORKFORCE</p>
           <p className="heading-sm text-crimson font-mono">{mockEmployer.totalEmployees}</p>
-          <p className="text-xs text-emerald-400 mt-2 font-mono">98% Verified</p>
+          <p className="text-[11px] text-emerald-400 mt-1 font-mono">98% Verified Capability Index</p>
         </div>
 
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-2">HIRING TARGETS</p>
+          <p className="text-xs text-warm-ivory/60 font-mono mb-1">Q4 HIRING REQUISITIONS</p>
           <p className="heading-sm text-warm-ivory font-mono">{mockEmployer.hiringPlans}</p>
-          <p className="text-xs text-warm-ivory/50 mt-2 font-mono">Q3 Pipeline Active</p>
+          <p className="text-[11px] text-warm-ivory/50 mt-1 font-mono">Sourcing Pipeline Open</p>
         </div>
 
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-2">MARKET STATUS</p>
-          <div className="status-online text-xs font-mono">ENGAGED & ACTIVE</div>
-          <p className="text-xs text-warm-ivory/50 mt-2 font-mono">Live Ingestion</p>
+          <p className="text-xs text-warm-ivory/60 font-mono mb-1">HIRING DIFFICULTY INDEX</p>
+          <p className="heading-sm text-amber-400 font-mono">{mockEmployer.hiringDifficultyIndex}</p>
+          <p className="text-[11px] text-warm-ivory/50 mt-1 font-mono">Avg Time to Hire: {mockEmployer.averageTimeToHire}</p>
         </div>
       </section>
 
-      {/* Main Grid */}
+      {/* Main Grid: Internal Benchmarks & Market Demand Pulse */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Current vs Future Capability */}
-        <div className="card">
-          <h3 className="heading-sm text-warm-ivory mb-6 font-mono text-sm">INTERNAL CAPABILITY BENCHMARK</h3>
-          <div className="space-y-4">
+        <div className="card space-y-4">
+          <div className="flex items-center justify-between border-b border-burgundy/20 pb-3">
+            <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">INTERNAL CAPABILITY BENCHMARK</h3>
+            <button
+              onClick={() => onNavigate?.('workforce-gaps')}
+              className="text-xs font-mono text-crimson hover:underline"
+            >
+              Full Gap Audit →
+            </button>
+          </div>
+
+          <div className="space-y-3.5">
             {mockEmployer.currentWorkforce.map((skill) => {
-              const future = mockEmployer.futureRequirement.find((f) => f.skill === skill.skill)!
+              const future = mockEmployer.futureRequirement.find((f) => f.skill === skill.skill)
               const gap = future ? future.requirement - skill.availability : 0
 
               return (
@@ -58,31 +87,24 @@ export const EmployerDashboard: React.FC<{ onNavigate?: (page: string) => void }
                     <p className="font-semibold text-warm-ivory text-sm">{skill.skill}</p>
                     <span className={cn(
                       'text-xs font-mono font-bold',
-                      gap > 10 ? 'text-crimson' : gap > 0 ? 'text-amber-400' : 'text-emerald-400'
+                      gap > 20 ? 'text-crimson' : gap > 0 ? 'text-amber-400' : 'text-emerald-400'
                     )}>
-                      {gap > 0 ? `Gap: -${gap}%` : 'Sufficient'}
+                      {gap > 0 ? `Deficit: -${gap}%` : 'Benchmark Met'}
                     </span>
                   </div>
-                  <div className="flex gap-4">
-                    {/* Current */}
+
+                  <div className="flex gap-4 text-xs font-mono">
                     <div className="flex-1">
-                      <div className="text-[11px] text-warm-ivory/60 font-mono mb-1">Current Availability ({skill.availability}%)</div>
-                      <div className="w-full bg-burgundy/30 rounded-full h-2 overflow-hidden">
-                        <div
-                          style={{ width: `${skill.availability}%` }}
-                          className="h-full bg-gradient-crimson rounded-full"
-                        />
+                      <div className="text-[10px] text-warm-ivory/60 mb-1">Current Availability ({skill.availability}%)</div>
+                      <div className="w-full bg-burgundy/30 rounded-full h-1.5 overflow-hidden">
+                        <div style={{ width: `${skill.availability}%` }} className="h-full bg-gradient-crimson rounded-full" />
                       </div>
                     </div>
 
-                    {/* Future */}
                     <div className="flex-1">
-                      <div className="text-[11px] text-warm-ivory/60 font-mono mb-1">Target Requirement ({future ? future.requirement : 0}%)</div>
-                      <div className="w-full bg-burgundy/30 rounded-full h-2 overflow-hidden">
-                        <div
-                          style={{ width: `${future ? future.requirement : 0}%` }}
-                          className="h-full bg-amber-500 rounded-full"
-                        />
+                      <div className="text-[10px] text-warm-ivory/60 mb-1">Target Mandate ({future ? future.requirement : 0}%)</div>
+                      <div className="w-full bg-burgundy/30 rounded-full h-1.5 overflow-hidden">
+                        <div style={{ width: `${future ? future.requirement : 0}%` }} className="h-full bg-muted-gold rounded-full" />
                       </div>
                     </div>
                   </div>
@@ -92,13 +114,17 @@ export const EmployerDashboard: React.FC<{ onNavigate?: (page: string) => void }
           </div>
         </div>
 
-        {/* Market Trends */}
-        <div className="card">
-          <h3 className="heading-sm text-warm-ivory mb-6 font-mono text-sm">MARKET DEMAND PULSE</h3>
+        {/* Macro Tech Demand Pulse */}
+        <div className="card space-y-4">
+          <div className="flex items-center justify-between border-b border-burgundy/20 pb-3">
+            <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">EXTERNAL RECRUITMENT VOLUME</h3>
+            <span className="stamp-verified">MARKET INTEL</span>
+          </div>
+
           <div className="w-full h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={mockMarketData.topSkills.slice(0, 6)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.1)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.12)" />
                 <XAxis dataKey="name" stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
                 <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
                 <Tooltip
@@ -117,85 +143,75 @@ export const EmployerDashboard: React.FC<{ onNavigate?: (page: string) => void }
         </div>
       </section>
 
-      {/* Skills Summary */}
+      {/* Strategic Summary Directives */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-burgundy/20 border-crimson/40">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="card bg-burgundy/20 border-crimson/40 space-y-2">
+          <div className="flex items-center gap-2">
             <AlertTriangle size={18} className="text-crimson" />
-            <span className="font-semibold text-crimson font-mono text-sm">CRITICAL DEFICITS</span>
+            <span className="font-semibold text-crimson font-mono text-xs uppercase">CRITICAL DEFICITS</span>
           </div>
-          <p className="text-3xl font-bold text-warm-ivory font-mono mb-2">2</p>
-          <div className="text-xs text-warm-ivory/70 space-y-1 font-mono">
-            <p className="text-red-400">• Kubernetes (-18% capability gap)</p>
-            <p className="text-red-400">• AI/ML Engineering (-32% capability gap)</p>
+          <p className="text-2xl font-bold text-warm-ivory font-mono">2 SECTORS</p>
+          <div className="text-xs text-warm-ivory/70 space-y-1 font-mono pt-1">
+            <p className="text-red-400">• Kubernetes (-42% capability gap)</p>
+            <p className="text-red-400">• AI/ML Systems (-40% capability gap)</p>
           </div>
         </div>
 
-        <div className="card bg-amber-400/10 border-amber-400/30">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="card bg-amber-400/10 border-amber-400/30 space-y-2">
+          <div className="flex items-center gap-2">
             <TrendingUp size={18} className="text-amber-400" />
-            <span className="font-semibold text-amber-400 font-mono text-sm">EXPANDING DEMAND</span>
+            <span className="font-semibold text-amber-400 font-mono text-xs uppercase">ACCELERATING TALENT DEMAND</span>
           </div>
-          <p className="text-3xl font-bold text-warm-ivory font-mono mb-2">5</p>
-          <div className="text-xs text-warm-ivory/70 space-y-1 font-mono">
-            <p>• Fast-growing skills in peer ecosystems</p>
+          <p className="text-2xl font-bold text-warm-ivory font-mono">5 DOMAINS</p>
+          <div className="text-xs text-warm-ivory/70 space-y-1 font-mono pt-1">
+            <p>• Fast-growing skills in peer enterprise ecosystems</p>
             <p>• Recommend workforce upskilling tracks</p>
           </div>
         </div>
 
-        <div className="card bg-emerald-400/10 border-emerald-400/30">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="card bg-emerald-400/10 border-emerald-400/30 space-y-2">
+          <div className="flex items-center gap-2">
             <Target size={18} className="text-emerald-400" />
-            <span className="font-semibold text-emerald-400 font-mono text-sm">STRATEGIC ADVANTAGE</span>
+            <span className="font-semibold text-emerald-400 font-mono text-xs uppercase">STRATEGIC ADVANTAGE</span>
           </div>
-          <p className="text-3xl font-bold text-warm-ivory font-mono mb-2">3</p>
-          <div className="text-xs text-warm-ivory/70 space-y-1 font-mono">
-            <p>• Internal full-stack mastery at 90%+</p>
+          <p className="text-2xl font-bold text-warm-ivory font-mono">3 STACKS</p>
+          <div className="text-xs text-warm-ivory/70 space-y-1 font-mono pt-1">
+            <p>• Internal full-stack JavaScript & SQL at 82%+</p>
             <p>• Ready for enterprise scale delivery</p>
           </div>
         </div>
       </section>
 
-      {/* Strategic Recommendations */}
-      <section className="card bg-gradient-obsidian border-crimson/30">
-        <h3 className="heading-sm text-crimson mb-4 font-mono text-sm">STRATEGIC DIRECTIVES</h3>
-        <div className="space-y-3">
-          <div className="p-3 bg-burgundy/10 border border-burgundy/20 rounded-lg">
-            <p className="text-sm font-semibold text-warm-ivory mb-1">Acquisition Priority: Cloud Native & Kubernetes</p>
-            <p className="text-xs text-warm-ivory/60 font-mono">Market demand spiked +42% YoY. Target talent vault candidates with AWS/Docker specialization.</p>
-          </div>
-
-          <div className="p-3 bg-burgundy/10 border border-burgundy/20 rounded-lg">
-            <p className="text-sm font-semibold text-warm-ivory mb-1">Upskill Sprint: LLM & Generative AI</p>
-            <p className="text-xs text-warm-ivory/60 font-mono">Launch a 4-week internal heist cohort to elevate core engineering team readiness.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
+      {/* Gateway Cards */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <button
-          onClick={() => onNavigate?.('candidate-dossier')}
-          className="card-hover p-4 text-left border border-burgundy/30 rounded-lg group"
+          onClick={() => onNavigate?.('talent-vault')}
+          className="card-hover p-5 text-left border border-burgundy/30 rounded-lg group"
         >
           <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">TALENT VAULT →</h4>
-          <p className="text-warm-ivory/70 text-xs font-mono mb-2">Review recruit dossiers and verified benchmarks.</p>
+          <p className="text-warm-ivory/70 text-xs font-mono">
+            Access verified candidate dossiers, benchmark scores, and initiate direct transmissions.
+          </p>
         </button>
 
         <button
-          onClick={() => onNavigate?.('skill-intelligence')}
-          className="card-hover p-4 text-left border border-burgundy/30 rounded-lg group"
+          onClick={() => onNavigate?.('workforce-gaps')}
+          className="card-hover p-5 text-left border border-burgundy/30 rounded-lg group"
         >
-          <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">SKILL INTELLIGENCE →</h4>
-          <p className="text-warm-ivory/70 text-xs font-mono mb-2">Explore macro skills and compensation bands.</p>
+          <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">WORKFORCE GAPS MATRIX →</h4>
+          <p className="text-warm-ivory/70 text-xs font-mono">
+            Execute current vs strategic capability gap diagnostics and allocate training cohorts.
+          </p>
         </button>
 
         <button
-          onClick={() => onNavigate?.('market-intelligence')}
-          className="card-hover p-4 text-left border border-burgundy/30 rounded-lg group"
+          onClick={() => onNavigate?.('compensation')}
+          className="card-hover p-5 text-left border border-burgundy/30 rounded-lg group"
         >
-          <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">MARKET RADAR →</h4>
-          <p className="text-warm-ivory/70 text-xs font-mono mb-2">Track real-time market shifts and hiring spikes.</p>
+          <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">COMPENSATION ENGINE →</h4>
+          <p className="text-warm-ivory/70 text-xs font-mono">
+            Benchmark total cash and equity packages against regional percentile curves.
+          </p>
         </button>
       </section>
     </div>

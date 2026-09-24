@@ -1,51 +1,128 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { TrendingUp, Zap, Users, Target, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Zap, Target, ArrowRight, Eye, User, Brain } from 'lucide-react'
 import { mockMarketData } from '../data/mockData'
-import { formatNumber, getTrendColor, getTrendIcon } from '../lib/utils'
+import { formatNumber, getTrendColor } from '../lib/utils'
 import { cn } from '../lib/utils'
 
-export const WarRoom: React.FC<{ onNavigate?: (page: string) => void }> = ({ onNavigate }) => {
+interface WarRoomProps {
+  onNavigate?: (page: string) => void
+}
+
+export const WarRoom: React.FC<WarRoomProps> = ({ onNavigate }) => {
+  const [perspective, setPerspective] = useState<'CANDIDATE' | 'EMPLOYER'>('CANDIDATE')
+  const [selectedRoleIdx, setSelectedRoleIdx] = useState(0)
+
+  const activeRole = mockMarketData.topRoles[selectedRoleIdx] || mockMarketData.topRoles[0]
+
   return (
     <div className="space-y-8">
+      {/* Perspective Toggle & Demo Data Notice */}
+      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 bg-burgundy/15 rounded-lg border border-burgundy/30">
+        <div className="flex items-center gap-2">
+          <span className="stamp-classified">SIMULATED INTELLIGENCE</span>
+          <span className="text-[11px] font-mono text-warm-ivory/60">
+            DEMO STREAM // CONTINUOUS INGESTION FROM GLOBAL PORTALS
+          </span>
+        </div>
+
+        {/* Perspective Switch */}
+        <div className="flex items-center gap-2 bg-charcoal p-1 rounded-lg border border-burgundy/25 self-start sm:self-auto">
+          <button
+            onClick={() => setPerspective('CANDIDATE')}
+            className={cn(
+              'px-3 py-1 text-xs font-mono rounded flex items-center gap-1.5 transition-all',
+              perspective === 'CANDIDATE'
+                ? 'bg-gradient-crimson text-warm-ivory font-bold shadow-glow-crimson'
+                : 'text-warm-ivory/60 hover:text-warm-ivory'
+            )}
+          >
+            <User size={12} />
+            <span>CANDIDATE VIEW</span>
+          </button>
+          <button
+            onClick={() => setPerspective('EMPLOYER')}
+            className={cn(
+              'px-3 py-1 text-xs font-mono rounded flex items-center gap-1.5 transition-all',
+              perspective === 'EMPLOYER'
+                ? 'bg-gradient-crimson text-warm-ivory font-bold shadow-glow-crimson'
+                : 'text-warm-ivory/60 hover:text-warm-ivory'
+            )}
+          >
+            <Brain size={12} />
+            <span>EMPLOYER VIEW</span>
+          </button>
+        </div>
+      </section>
+
       {/* Hero Command Section */}
       <section className="relative overflow-hidden rounded-xl border border-crimson/30 bg-gradient-obsidian p-6 md:p-8 shadow-glow-crimson">
-        <div className="max-w-3xl">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-            <span className="text-xs font-mono text-emerald-400 font-bold tracking-wider">LIVE INTELLIGENCE // NETWORK ACTIVE</span>
+        <div className="max-w-3xl space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+            <span className="stamp-live">COMMAND HQ ONLINE</span>
+            <span className="text-xs font-mono text-warm-ivory/60">OPERATION // STRATEGIC-OVERVIEW</span>
           </div>
 
-          <h1 className="heading-xl text-warm-ivory mb-1">
-            LA CASA DE ROZGAAR
-          </h1>
-          <h2 className="heading-sm text-crimson mb-4">
-            AI WORKFORCE INTELLIGENCE & TALENT COMMAND
-          </h2>
+          <div>
+            <h1 className="heading-xl text-warm-ivory">LA CASA DE ROZGAAR</h1>
+            <h2 className="heading-sm text-crimson mt-0.5">
+              {perspective === 'CANDIDATE'
+                ? 'INTELLIGENT TALENT COMMAND // CANDIDATE RADAR'
+                : 'ENTERPRISE WORKFORCE INTELLIGENCE // MASTERMIND'}
+            </h2>
+          </div>
 
-          <p className="text-warm-ivory/80 text-sm md:text-base mb-6 leading-relaxed">
-            Ingest live market signals, calculate candidate capability matrices, eliminate skill deficits, and simulate next-generation career trajectories.
+          <p className="text-warm-ivory/80 text-xs md:text-sm font-mono leading-relaxed">
+            {perspective === 'CANDIDATE'
+              ? 'Understand real market demand. Benchmark personal skill scores against verified baselines. Eliminate competency deficits through targeted resistance sprints.'
+              : 'Analyze organizational workforce capability, forecast macro talent shortages, detect capability deficits, and orchestrate precision talent acquisition.'}
           </p>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => onNavigate?.('market-intelligence')}
-              className="btn-primary flex items-center gap-2 text-xs font-mono py-3 px-5"
-            >
-              EXPLORE INTELLIGENCE <ArrowRight size={14} />
-            </button>
-            <button
-              onClick={() => onNavigate?.('candidate-dossier')}
-              className="btn-secondary text-xs font-mono py-3 px-5"
-            >
-              VIEW CANDIDATE DOSSIER
-            </button>
-            <button
-              onClick={() => onNavigate?.('simulation')}
-              className="btn-secondary text-xs font-mono py-3 px-5"
-            >
-              CAREER SIMULATION
-            </button>
+          <div className="flex flex-wrap gap-3 pt-2">
+            {perspective === 'CANDIDATE' ? (
+              <>
+                <button
+                  onClick={() => onNavigate?.('assessment')}
+                  className="btn-primary flex items-center gap-2 text-xs font-mono py-2.5 px-4"
+                >
+                  START SECURE ASSESSMENT <ArrowRight size={14} />
+                </button>
+                <button
+                  onClick={() => onNavigate?.('skill-heist')}
+                  className="btn-secondary text-xs font-mono py-2.5 px-4"
+                >
+                  VIEW SKILL HEIST GAPS
+                </button>
+                <button
+                  onClick={() => onNavigate?.('simulation')}
+                  className="btn-secondary text-xs font-mono py-2.5 px-4"
+                >
+                  CAREER SIMULATION
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => onNavigate?.('talent-vault')}
+                  className="btn-primary flex items-center gap-2 text-xs font-mono py-2.5 px-4"
+                >
+                  DISCOVER VERIFIED TALENT <ArrowRight size={14} />
+                </button>
+                <button
+                  onClick={() => onNavigate?.('workforce-gaps')}
+                  className="btn-secondary text-xs font-mono py-2.5 px-4"
+                >
+                  DIAGNOSE WORKFORCE GAPS
+                </button>
+                <button
+                  onClick={() => onNavigate?.('forecast')}
+                  className="btn-secondary text-xs font-mono py-2.5 px-4"
+                >
+                  VIEW 3-YR FORECAST
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -54,70 +131,108 @@ export const WarRoom: React.FC<{ onNavigate?: (page: string) => void }> = ({ onN
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-warm-ivory/60 font-mono">JOBS ANALYZED</p>
+            <span className="text-[11px] text-warm-ivory/60 font-mono">JOBS INGESTED & ANALYZED</span>
             <Zap size={16} className="text-crimson" />
           </div>
-          <p className="heading-sm text-warm-ivory font-mono">{formatNumber(mockMarketData.totalJobsAnalyzed)}</p>
-          <p className="text-[11px] text-emerald-400 font-mono mt-1">+24.3% YoY Ingestion</p>
+          <p className="heading-md text-warm-ivory font-mono">{formatNumber(mockMarketData.totalJobsAnalyzed)}</p>
+          <p className="text-[11px] text-emerald-400 font-mono mt-1">+24.3% YoY Ingestion Volume</p>
         </div>
 
         <div className="card">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-warm-ivory/60 font-mono">SKILLS TRACKED</p>
+            <span className="text-[11px] text-warm-ivory/60 font-mono">COMPETENCY STACKS TRACKED</span>
             <Target size={16} className="text-crimson" />
           </div>
-          <p className="heading-sm text-warm-ivory font-mono">{formatNumber(mockMarketData.totalSkillsTracked)}</p>
-          <p className="text-[11px] text-emerald-400 font-mono mt-1">+12.1% Active Stacks</p>
+          <p className="heading-md text-warm-ivory font-mono">{formatNumber(mockMarketData.totalSkillsTracked)}</p>
+          <p className="text-[11px] text-emerald-400 font-mono mt-1">+12.1% Active Tech Vectors</p>
         </div>
 
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-2">ROLES COVERED</p>
-          <p className="heading-sm text-warm-ivory font-mono">{formatNumber(mockMarketData.totalRolesTracked)}</p>
-          <p className="text-[11px] text-emerald-400 font-mono mt-1">+8.7% Expansion</p>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] text-warm-ivory/60 font-mono">STANDARDIZED ROLES</span>
+            <Eye size={16} className="text-crimson" />
+          </div>
+          <p className="heading-md text-warm-ivory font-mono">{formatNumber(mockMarketData.totalRolesTracked)}</p>
+          <p className="text-[11px] text-emerald-400 font-mono mt-1">+8.7% Taxonomy Coverage</p>
         </div>
 
         <div className="card">
-          <p className="text-xs text-warm-ivory/60 font-mono mb-2">INTELLIGENCE INTEGRITY</p>
-          <p className="heading-sm text-emerald-400 font-mono">{mockMarketData.dataQuality}</p>
-          <p className="text-[11px] text-warm-ivory/50 font-mono mt-1">Cross-Verified Data</p>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] text-warm-ivory/60 font-mono">INTELLIGENCE ACCURACY</span>
+            <span className="stamp-verified">VERIFIED</span>
+          </div>
+          <p className="heading-md text-emerald-400 font-mono">99.4%</p>
+          <p className="text-[11px] text-warm-ivory/50 font-mono mt-1">Cross-Referenced Ground Truth</p>
         </div>
       </section>
 
-      {/* Main Grid: Top Roles & Velocity Chart */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Top Roles */}
-        <div className="lg:col-span-1 space-y-3">
-          <h3 className="heading-sm text-warm-ivory font-mono text-sm">TOP TARGET ROLES</h3>
-          <div className="space-y-2.5">
-            {mockMarketData.topRoles.slice(0, 4).map((role, idx) => (
-              <div
-                key={role.name}
-                onClick={() => onNavigate?.('market-intelligence')}
-                className="p-3.5 card-hover border border-burgundy/20 rounded-lg cursor-pointer flex items-center justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-crimson font-bold">#{idx + 1}</span>
-                    <h4 className="font-semibold text-warm-ivory text-sm">{role.name}</h4>
+      {/* Main Grid: Interactive Role Selector & Hiring Velocity */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Top Roles Ranking */}
+        <div className="lg:col-span-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="heading-sm text-warm-ivory font-mono text-xs uppercase tracking-wider">
+              HIGH-DEMAND ROLES PULSE
+            </h3>
+            <span className="text-[10px] font-mono text-warm-ivory/50">CLICK TO INSPECT</span>
+          </div>
+
+          <div className="space-y-2">
+            {mockMarketData.topRoles.map((role, idx) => {
+              const isSelected = selectedRoleIdx === idx
+              return (
+                <div
+                  key={role.name}
+                  onClick={() => setSelectedRoleIdx(idx)}
+                  className={cn(
+                    'p-3.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between',
+                    isSelected
+                      ? 'bg-gradient-crimson border-crimson text-warm-ivory shadow-glow-crimson font-bold'
+                      : 'card-hover border-burgundy/25 text-warm-ivory/80'
+                  )}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono opacity-70">#{idx + 1}</span>
+                      <h4 className="text-sm font-semibold">{role.name}</h4>
+                    </div>
+                    <p className="text-[11px] font-mono opacity-70 mt-0.5">
+                      {formatNumber(role.demand)} active vacancies • {role.salary}
+                    </p>
                   </div>
-                  <p className="text-[11px] font-mono text-warm-ivory/50 mt-0.5">{formatNumber(role.demand)} active listings</p>
+                  <span className={cn('text-xs font-mono font-bold', getTrendColor(role.trend))}>
+                    {role.trend}
+                  </span>
                 </div>
-                <span className={cn('text-xs font-mono font-bold', getTrendColor(role.trend))}>
-                  {role.trend}
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
-        {/* Skill Velocity Chart */}
-        <div className="lg:col-span-2 card">
-          <h3 className="heading-sm text-warm-ivory mb-2 font-mono text-sm">HIRING VOLUME & VELOCITY</h3>
-          <p className="text-xs text-warm-ivory/50 font-mono mb-6">CROSS-SECTOR TALENT RECRUITMENT PRESSURE OVER 6 MONTHS</p>
-          <div className="w-full h-64">
+        {/* Right Column: Dynamic Role Chart & High-Velocity Stacks */}
+        <div className="lg:col-span-7 card space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-burgundy/20 pb-3">
+            <div>
+              <span className="text-[10px] font-mono text-crimson uppercase tracking-wider font-bold">
+                TRAJECTORY ANALYSIS // {activeRole.name}
+              </span>
+              <h3 className="heading-sm text-warm-ivory font-mono text-sm mt-0.5">
+                6-MONTH RECRUITMENT VOLUME INDEX
+              </h3>
+            </div>
+            <button
+              onClick={() => onNavigate?.('role-intelligence')}
+              className="text-xs font-mono text-crimson hover:underline flex items-center gap-1 self-start sm:self-auto"
+            >
+              Open Role Dossier <ArrowRight size={12} />
+            </button>
+          </div>
+
+          {/* Chart */}
+          <div className="w-full h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mockMarketData.skillTrends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.1)" />
+              <LineChart data={activeRole.trajectory}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.12)" />
                 <XAxis dataKey="month" stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
                 <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
                 <Tooltip
@@ -140,33 +255,61 @@ export const WarRoom: React.FC<{ onNavigate?: (page: string) => void }> = ({ onN
               </LineChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Key Tech Stacks for this role */}
+          <div className="pt-2 border-t border-burgundy/20">
+            <span className="text-[10px] font-mono text-warm-ivory/60 uppercase block mb-2 font-bold">
+              CRITICAL DEMAND STACKS FOR {activeRole.name.toUpperCase()}:
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {activeRole.keySkills.map((s) => (
+                <div key={s.name} className="p-2 bg-burgundy/10 rounded border border-burgundy/20 text-xs font-mono">
+                  <div className="flex justify-between items-center text-warm-ivory">
+                    <span className="font-semibold">{s.name}</span>
+                    <span className="text-emerald-400 font-bold">{s.trend}</span>
+                  </div>
+                  <div className="w-full bg-burgundy/30 rounded-full h-1 mt-1.5 overflow-hidden">
+                    <div style={{ width: `${s.demand}%` }} className="h-full bg-crimson rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Top Skills Grid */}
-      <section className="card">
-        <h3 className="heading-sm text-warm-ivory mb-4 font-mono text-sm">HIGH-VELOCITY TECH STACKS</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* High-Velocity Tech Stacks Grid */}
+      <section className="card space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase tracking-wider">
+            HIGH-MOMENTUM TECH STACKS // MARKET SHARE
+          </h3>
+          <button
+            onClick={() => onNavigate?.('skill-intelligence')}
+            className="text-xs font-mono text-crimson hover:underline flex items-center gap-1"
+          >
+            Explore All Tracked Tech <ArrowRight size={12} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {mockMarketData.topSkills.map((skill, idx) => (
             <div
               key={skill.name}
               onClick={() => onNavigate?.('skill-intelligence')}
-              className="p-3.5 bg-burgundy/10 border border-burgundy/20 rounded-lg hover:border-crimson/50 hover:bg-burgundy/15 transition-all cursor-pointer"
+              className="p-3 bg-burgundy/10 border border-burgundy/20 rounded-lg hover:border-crimson/50 hover:bg-burgundy/15 transition-all cursor-pointer"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-mono text-crimson font-bold">#{idx + 1}</span>
                 <span className={cn('text-xs font-mono font-bold', getTrendColor(skill.trend))}>
                   {skill.trend}
                 </span>
               </div>
-              <h4 className="font-semibold text-warm-ivory text-sm mb-2">{skill.name}</h4>
+              <h4 className="font-semibold text-warm-ivory text-sm mb-1.5">{skill.name}</h4>
               <div className="w-full bg-burgundy/30 rounded-full h-1.5 overflow-hidden">
-                <div
-                  style={{ width: `${skill.demand}%` }}
-                  className="h-full bg-gradient-crimson rounded-full"
-                />
+                <div style={{ width: `${skill.demand}%` }} className="h-full bg-gradient-crimson rounded-full" />
               </div>
-              <p className="text-[11px] text-warm-ivory/50 font-mono mt-2">{skill.demand}% market share</p>
+              <p className="text-[10px] text-warm-ivory/50 font-mono mt-1.5">{skill.demand}% Adoption Index</p>
             </div>
           ))}
         </div>
@@ -179,16 +322,16 @@ export const WarRoom: React.FC<{ onNavigate?: (page: string) => void }> = ({ onN
             onClick={() => onNavigate?.('candidate-dossier')}
             className="p-4 border border-burgundy/30 rounded-lg card-hover cursor-pointer group"
           >
-            <h4 className="heading-xs text-crimson mb-2 group-hover:text-crimson-light">CANDIDATE DOSSIER →</h4>
+            <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">CANDIDATE DOSSIER →</h4>
             <p className="text-warm-ivory/70 text-xs font-mono">
-              Review personal benchmark scores, skill radar comparisons, and certification records.
+              Review personal benchmark scores, skill radar comparisons, and verified certifications.
             </p>
           </div>
           <div
             onClick={() => onNavigate?.('employer-dashboard')}
             className="p-4 border border-burgundy/30 rounded-lg card-hover cursor-pointer group"
           >
-            <h4 className="heading-xs text-crimson mb-2 group-hover:text-crimson-light">EMPLOYER MASTERMIND →</h4>
+            <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">EMPLOYER MASTERMIND →</h4>
             <p className="text-warm-ivory/70 text-xs font-mono">
               Plan workforce capacity, detect organizational capability gaps, and execute talent pipelines.
             </p>
@@ -197,7 +340,7 @@ export const WarRoom: React.FC<{ onNavigate?: (page: string) => void }> = ({ onN
             onClick={() => onNavigate?.('simulation')}
             className="p-4 border border-burgundy/30 rounded-lg card-hover cursor-pointer group"
           >
-            <h4 className="heading-xs text-crimson mb-2 group-hover:text-crimson-light">SIMULATION VAULT →</h4>
+            <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">SIMULATION VAULT →</h4>
             <p className="text-warm-ivory/70 text-xs font-mono">
               Interactive career scenario planning: drag mastery sliders and observe readiness gains.
             </p>

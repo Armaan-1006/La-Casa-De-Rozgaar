@@ -1,42 +1,44 @@
 import React, { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Search, TrendingUp, ArrowRight, Zap, Target } from 'lucide-react'
-import { mockMarketData } from '../data/mockData'
+import { Search, ArrowRight, Zap, CheckCircle2 } from 'lucide-react'
+import { mockMarketData, TrackedSkill } from '../data/mockData'
 import { getTrendColor, getTrendIcon } from '../lib/utils'
 import { cn } from '../lib/utils'
 
-export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }> = ({ onNavigate }) => {
+interface SkillIntelligenceProps {
+  onNavigate?: (page: string) => void
+}
+
+export const SkillIntelligence: React.FC<SkillIntelligenceProps> = ({ onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedSkill, setSelectedSkill] = useState<any>(mockMarketData.topSkills[0])
+  const [selectedSkillName, setSelectedSkillName] = useState(mockMarketData.topSkills[0].name)
 
   const filteredSkills = mockMarketData.topSkills.filter((skill) =>
-    skill.name.toLowerCase().includes(searchQuery.toLowerCase())
+    skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    skill.category.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const skillDetail = {
-    name: selectedSkill.name,
-    demand: selectedSkill.demand,
-    trend: selectedSkill.trend,
-    roles: ['Full Stack Developer', 'Frontend Engineer', 'Cloud Engineer'],
-    pairedSkills: ['TypeScript', 'Docker', 'PostgreSQL', 'GraphQL'],
-    marketShare: selectedSkill.demand,
-    yoyGrowth: '+28.4%',
-  }
+  const selectedSkill: TrackedSkill =
+    mockMarketData.topSkills.find((s) => s.name === selectedSkillName) || mockMarketData.topSkills[0]
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <section>
+      <section className="relative overflow-hidden rounded-xl border border-burgundy/30 bg-gradient-obsidian p-6 md:p-8 shadow-glow-crimson">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="stamp-live">SKILL RADAR</span>
+              <span className="text-xs font-mono text-warm-ivory/60">OPERATION // SKILL-VELOCITY-TELEMETRY</span>
+            </div>
             <h1 className="heading-lg text-warm-ivory mb-1">SKILL INTELLIGENCE & VELOCITY</h1>
-            <p className="text-warm-ivory/60 font-mono text-xs">
-              OPERATION // TECH STACK ADOPTION CURVES, MOMENTUM & ECOSYSTEM PAIRINGS
+            <p className="text-xs md:text-sm text-warm-ivory/70 font-mono">
+              TECH STACK ADOPTION CURVES, ECOSYSTEM PAIRINGS & EMERGING MOMENTUM SIGNALS
             </p>
           </div>
           <button
             onClick={() => onNavigate?.('skill-heist')}
-            className="btn-primary flex items-center gap-2 text-xs font-mono py-2 px-3.5"
+            className="btn-primary flex items-center gap-2 text-xs font-mono py-2.5 px-4"
           >
             START SKILL HEIST <ArrowRight size={14} />
           </button>
@@ -49,18 +51,18 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-warm-ivory/40" size={18} />
           <input
             type="text"
-            placeholder="Search tracked skills, frameworks, cloud technologies..."
+            placeholder="Search tracked skills, frameworks, cloud technologies, or categories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-burgundy/10 border border-burgundy/30 rounded-lg text-warm-ivory placeholder-warm-ivory/40 font-mono text-xs outline-none focus:border-crimson focus:ring-1 focus:ring-crimson/50 transition-all"
+            className="w-full pl-11 pr-4 py-3 bg-charcoal border border-burgundy/30 rounded-lg text-warm-ivory placeholder-warm-ivory/40 font-mono text-xs outline-none focus:border-crimson focus:ring-1 focus:ring-crimson/50 transition-all"
           />
         </div>
       </section>
 
       {/* Main Grid: Skills Selector & Live Detail */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Skills List */}
-        <div className="lg:col-span-1 space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Skills List */}
+        <div className="lg:col-span-4 space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
           <p className="text-xs font-mono text-warm-ivory/60 mb-2">TRACKED TECHNOLOGIES ({filteredSkills.length})</p>
           {filteredSkills.map((skill, idx) => {
             const isSelected = selectedSkill.name === skill.name
@@ -68,11 +70,11 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
             return (
               <div
                 key={skill.name}
-                onClick={() => setSelectedSkill(skill)}
+                onClick={() => setSelectedSkillName(skill.name)}
                 className={cn(
                   'w-full text-left p-3 rounded-lg transition-all duration-200 cursor-pointer border flex items-center justify-between',
                   isSelected
-                    ? 'bg-gradient-crimson border-crimson text-warm-ivory shadow-glow-crimson'
+                    ? 'bg-gradient-crimson border-crimson text-warm-ivory shadow-glow-crimson font-bold'
                     : 'bg-burgundy/10 border-burgundy/20 text-warm-ivory/80 hover:border-crimson/50 hover:bg-burgundy/15'
                 )}
               >
@@ -81,7 +83,7 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
                     <span className="text-xs font-mono opacity-60">#{idx + 1}</span>
                     <p className="text-sm font-semibold">{skill.name}</p>
                   </div>
-                  <p className="text-[11px] font-mono opacity-70 mt-0.5">{skill.demand}% Adoption Index</p>
+                  <p className="text-[11px] font-mono opacity-70 mt-0.5">{skill.category} • {skill.demand}% Index</p>
                 </div>
                 <div className="text-right">
                   <span className={cn('text-xs font-mono font-bold', getTrendColor(skill.trend))}>
@@ -93,32 +95,38 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
           })}
         </div>
 
-        {/* Selected Skill In-Depth Breakdown */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Right Column: Selected Skill Dynamic Dossier */}
+        <div className="lg:col-span-8 space-y-6">
           {/* Detail Header */}
           <div className="card">
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
               <div>
-                <span className="text-[10px] font-mono text-crimson uppercase tracking-widest">SKILL DOSSIER</span>
-                <h2 className="heading-md text-warm-ivory mt-0.5 mb-2">{skillDetail.name}</h2>
-                <div className="flex flex-wrap items-center gap-6">
+                <span className="stamp-classified">SKILL DOSSIER</span>
+                <h2 className="heading-md text-warm-ivory mt-1 mb-1">{selectedSkill.name}</h2>
+                <p className="text-xs font-mono text-warm-ivory/60">Category: {selectedSkill.category}</p>
+                <div className="flex flex-wrap items-center gap-6 mt-4">
                   <div>
-                    <p className="text-[10px] text-warm-ivory/60 font-mono">MARKET DEMAND</p>
-                    <p className="text-2xl font-bold text-crimson font-mono">{skillDetail.marketShare}%</p>
+                    <p className="text-[10px] text-warm-ivory/60 font-mono">ADOPTION INDEX</p>
+                    <p className="text-2xl font-bold text-crimson font-mono">{selectedSkill.demand}%</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-warm-ivory/60 font-mono">YOY GROWTH</p>
-                    <p className="text-2xl font-bold text-emerald-400 font-mono">{skillDetail.yoyGrowth}</p>
+                    <p className="text-[10px] text-warm-ivory/60 font-mono">MOMENTUM RATE</p>
+                    <p className="text-2xl font-bold text-emerald-400 font-mono">{selectedSkill.trend}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-warm-ivory/60 font-mono">HIRING URGENCY</p>
-                    <p className="text-sm font-bold text-amber-400 font-mono mt-1">HIGH PRIORITY</p>
+                    <p className="text-[10px] text-warm-ivory/60 font-mono">URGENCY TIER</p>
+                    <p className={cn(
+                      'text-xs font-bold font-mono px-2 py-0.5 rounded mt-1.5 uppercase',
+                      selectedSkill.urgency === 'CRITICAL' ? 'bg-crimson/20 text-crimson' : 'bg-amber-400/20 text-amber-400'
+                    )}>
+                      {selectedSkill.urgency}
+                    </p>
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <span className={cn('text-sm font-mono font-bold px-2.5 py-1 rounded bg-burgundy/20 border border-burgundy/30', getTrendColor(skillDetail.trend))}>
-                  {getTrendIcon(skillDetail.trend)} {skillDetail.trend}
+                <span className={cn('text-sm font-mono font-bold px-2.5 py-1 rounded bg-burgundy/20 border border-burgundy/30', getTrendColor(selectedSkill.trend))}>
+                  {getTrendIcon(selectedSkill.trend)} {selectedSkill.trend}
                 </span>
               </div>
             </div>
@@ -126,10 +134,11 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
             <div className="divider-h my-4" />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20">
-                <p className="text-xs text-warm-ivory/60 font-mono mb-2 uppercase">PRIMARY ROLES DEMANDING THIS</p>
+              {/* Primary Roles */}
+              <div className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 space-y-2">
+                <p className="text-xs text-warm-ivory/60 font-mono uppercase">PRIMARY ROLES DEMANDING THIS</p>
                 <div className="space-y-1.5">
-                  {skillDetail.roles.map((role) => (
+                  {selectedSkill.roles.map((role) => (
                     <div key={role} className="text-xs text-warm-ivory/90 font-mono flex items-center gap-2">
                       <span className="w-1.5 h-1.5 bg-crimson rounded-full" />
                       {role}
@@ -138,12 +147,17 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
                 </div>
               </div>
 
-              <div className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20">
-                <p className="text-xs text-warm-ivory/60 font-mono mb-2 uppercase">FREQUENTLY PAIRED TECH</p>
+              {/* Frequently Paired Tech */}
+              <div className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 space-y-2">
+                <p className="text-xs text-warm-ivory/60 font-mono uppercase">FREQUENTLY PAIRED TECH</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {skillDetail.pairedSkills.map((skill) => (
-                    <span key={skill} className="px-2 py-1 bg-burgundy/20 text-xs font-mono text-warm-ivory/80 rounded border border-burgundy/30">
-                      {skill}
+                  {selectedSkill.pairedSkills.map((pair) => (
+                    <span
+                      key={pair}
+                      className="px-2 py-1 bg-burgundy/20 text-xs font-mono text-warm-ivory/80 rounded border border-burgundy/30 flex items-center gap-1"
+                    >
+                      <CheckCircle2 size={10} className="text-emerald-400" />
+                      {pair}
                     </span>
                   ))}
                 </div>
@@ -151,15 +165,20 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
             </div>
           </div>
 
-          {/* Demand Trend Chart */}
+          {/* Dynamic Velocity Curve Chart */}
           <div className="card">
-            <h3 className="heading-sm text-warm-ivory mb-2 font-mono text-sm">6-MONTH VELOCITY CURVE</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">
+                6-MONTH ADOPTION VELOCITY // {selectedSkill.name.toUpperCase()}
+              </h3>
+              <span className="stamp-verified">VERIFIED DATA</span>
+            </div>
             <div className="w-full h-48">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={mockMarketData.skillTrends}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.1)" />
+                <LineChart data={selectedSkill.history}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.12)" />
                   <XAxis dataKey="month" stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
-                  <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
+                  <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} domain={['dataMin - 10', 'dataMax + 10']} />
                   <Tooltip
                     contentStyle={{
                       background: 'rgba(21,21,24,0.95)',
@@ -181,9 +200,11 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
       <section className="card bg-gradient-obsidian border-emerald-400/30">
         <div className="flex items-center gap-2 mb-4">
           <Zap size={18} className="text-emerald-400" />
-          <h3 className="heading-sm text-emerald-400 font-mono text-sm">EMERGING BREAKTHROUGH SKILLS // 6-MONTH HORIZON</h3>
+          <h3 className="heading-sm text-emerald-400 font-mono text-sm">
+            EMERGING BREAKTHROUGH SKILLS // 6-MONTH HORIZON
+          </h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {mockMarketData.emergingSkills.map((skill) => (
             <div
               key={skill.name}
@@ -191,11 +212,14 @@ export const SkillIntelligence: React.FC<{ onNavigate?: (page: string) => void }
               className="p-4 bg-burgundy/10 border border-emerald-400/20 rounded-lg hover:border-emerald-400/50 transition-all cursor-pointer group"
             >
               <div className="flex items-center justify-between mb-1">
-                <p className="font-semibold text-warm-ivory text-sm group-hover:text-emerald-400 transition-colors">{skill.name}</p>
+                <p className="font-semibold text-warm-ivory text-sm group-hover:text-emerald-400 transition-colors">
+                  {skill.name}
+                </p>
                 <span className="text-emerald-400 font-mono text-xs font-bold">{skill.trend}</span>
               </div>
-              <p className="text-[11px] text-warm-ivory/50 font-mono">{skill.category}</p>
-              <p className="text-[10px] text-crimson font-mono mt-2 group-hover:underline">Simulate Impact →</p>
+              <p className="text-[11px] text-warm-ivory/50 font-mono">{skill.category} • Horizon: {skill.horizon}</p>
+              <p className="text-[10px] text-warm-ivory/70 font-mono mt-1">{skill.impact}</p>
+              <p className="text-[10px] text-crimson font-mono mt-2 group-hover:underline">Simulate Impact in Vault →</p>
             </div>
           ))}
         </div>

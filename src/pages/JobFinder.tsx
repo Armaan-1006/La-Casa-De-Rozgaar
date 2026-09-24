@@ -1,13 +1,18 @@
 import React, { useState, useMemo } from 'react'
-import { Search, MapPin, DollarSign, TrendingUp, BookmarkPlus, BookmarkCheck, CheckCircle, ArrowRight, ShieldCheck, Briefcase } from 'lucide-react'
-import { mockJobs } from '../data/mockData'
+import { Search, MapPin, DollarSign, BookmarkPlus, BookmarkCheck, CheckCircle, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react'
+import { mockJobs, JobListing } from '../data/mockData'
 import { cn } from '../lib/utils'
 
-export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ onNavigate }) => {
+interface JobFinderProps {
+  onNavigate?: (page: string) => void
+}
+
+export const JobFinder: React.FC<JobFinderProps> = ({ onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'remote' | 'high-match'>('all')
-  const [selectedJob, setSelectedJob] = useState<any>(mockJobs[0])
-  const [bookmarkedJobs, setBookmarkedJobs] = useState<Record<string, boolean>>({ '1': true })
+  const [categoryTab, setCategoryTab] = useState<'ALL' | 'Immediate-Fit' | 'Growth-Fit'>('ALL')
+  const [filterRemote, setFilterRemote] = useState(false)
+  const [selectedJob, setSelectedJob] = useState<JobListing>(mockJobs[0])
+  const [bookmarkedJobs, setBookmarkedJobs] = useState<Record<string, boolean>>({ 'JOB-LC-001': true })
   const [appliedJobs, setAppliedJobs] = useState<Record<string, boolean>>({})
 
   const toggleBookmark = (e: React.MouseEvent, id: string) => {
@@ -28,16 +33,11 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
         job.requiredSkills.some((s) => s.toLowerCase().includes(searchQuery.toLowerCase()))
 
       if (!matchesSearch) return false
-
-      if (filterType === 'remote') {
-        return job.remote.toLowerCase().includes('remote') || job.remote.toLowerCase().includes('hybrid')
-      }
-      if (filterType === 'high-match') {
-        return job.matchScore >= 80
-      }
+      if (categoryTab !== 'ALL' && job.category !== categoryTab) return false
+      if (filterRemote && !job.remote.toLowerCase().includes('remote')) return false
       return true
     })
-  }, [searchQuery, filterType])
+  }, [searchQuery, categoryTab, filterRemote])
 
   const getMatchColor = (score: number) => {
     if (score >= 85) return 'text-emerald-400'
@@ -48,20 +48,34 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
   return (
     <div className="space-y-8">
       {/* Header */}
-      <section>
-        <h1 className="heading-lg text-warm-ivory mb-1">AI JOB FINDER & RECRUIT MATCHING</h1>
-        <p className="text-warm-ivory/60 font-mono text-xs">
-          OPERATION // REAL-TIME OPPORTUNITY MATCHING AGAINST CANDIDATE CAPABILITY MATRIX
-        </p>
+      <section className="relative overflow-hidden rounded-xl border border-burgundy/30 bg-gradient-obsidian p-6 md:p-8 shadow-glow-crimson">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="stamp-live">AI MATCHING ENGINE</span>
+              <span className="text-xs font-mono text-warm-ivory/60">OPERATION // JOB-RADAR-ALIGNMENT</span>
+            </div>
+            <h1 className="heading-lg text-warm-ivory mb-1">AI JOB FINDER & RECRUIT MATCHING</h1>
+            <p className="text-xs md:text-sm text-warm-ivory/70 font-mono">
+              EXPLAINABLE ATTRIBUTE MATCHING, IMMEDIATE-FIT VS GROWTH-FIT ROLE VECTORS & ENCRYPTED TRANSMISSIONS
+            </p>
+          </div>
+          <button
+            onClick={() => onNavigate?.('assessment')}
+            className="btn-secondary text-xs font-mono py-2.5 px-4"
+          >
+            UPDATE CAPABILITY SCORE
+          </button>
+        </div>
       </section>
 
-      {/* Search & Filters */}
+      {/* Search & Category Pills */}
       <section className="space-y-4">
         <div className="relative">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-warm-ivory/40" size={18} />
           <input
             type="text"
-            placeholder="Search active listings, target companies, required tech stacks..."
+            placeholder="Search active target roles, hiring companies, tech stacks, or locations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-11 pr-4 py-3 bg-charcoal border border-burgundy/30 rounded-lg text-warm-ivory placeholder-warm-ivory/40 font-mono text-xs outline-none focus:border-crimson focus:ring-1 focus:ring-crimson/50 transition-all"
@@ -69,51 +83,65 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
         </div>
 
         {/* Filter Pills */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setCategoryTab('ALL')}
+              className={cn(
+                'px-3.5 py-1.5 rounded-lg text-xs font-mono transition-all border',
+                categoryTab === 'ALL'
+                  ? 'bg-gradient-crimson border-crimson text-warm-ivory font-bold shadow-glow-crimson'
+                  : 'bg-burgundy/10 border-burgundy/25 text-warm-ivory/70 hover:bg-burgundy/20'
+              )}
+            >
+              ALL TARGETS ({mockJobs.length})
+            </button>
+            <button
+              onClick={() => setCategoryTab('Immediate-Fit')}
+              className={cn(
+                'px-3.5 py-1.5 rounded-lg text-xs font-mono transition-all border flex items-center gap-1.5',
+                categoryTab === 'Immediate-Fit'
+                  ? 'bg-gradient-crimson border-crimson text-warm-ivory font-bold shadow-glow-crimson'
+                  : 'bg-burgundy/10 border-burgundy/25 text-warm-ivory/70 hover:bg-burgundy/20'
+              )}
+            >
+              <CheckCircle size={12} className="text-emerald-400" />
+              <span>IMMEDIATE-FIT (85%+)</span>
+            </button>
+            <button
+              onClick={() => setCategoryTab('Growth-Fit')}
+              className={cn(
+                'px-3.5 py-1.5 rounded-lg text-xs font-mono transition-all border flex items-center gap-1.5',
+                categoryTab === 'Growth-Fit'
+                  ? 'bg-gradient-crimson border-crimson text-warm-ivory font-bold shadow-glow-crimson'
+                  : 'bg-burgundy/10 border-burgundy/25 text-warm-ivory/70 hover:bg-burgundy/20'
+              )}
+            >
+              <Sparkles size={12} className="text-amber-400" />
+              <span>GROWTH-FIT (UPSKILLING)</span>
+            </button>
+          </div>
+
           <button
-            onClick={() => setFilterType('all')}
+            onClick={() => setFilterRemote(!filterRemote)}
             className={cn(
-              'px-3.5 py-1.5 rounded-lg text-xs font-mono transition-all',
-              filterType === 'all'
-                ? 'bg-crimson text-warm-ivory font-bold shadow-glow-crimson'
-                : 'bg-charcoal border border-burgundy/30 text-warm-ivory/70 hover:text-warm-ivory'
+              'px-3 py-1.5 rounded-lg text-xs font-mono transition-all border',
+              filterRemote
+                ? 'bg-emerald-400/20 text-emerald-400 border-emerald-400/40 font-bold'
+                : 'bg-burgundy/10 border-burgundy/25 text-warm-ivory/70 hover:bg-burgundy/20'
             )}
           >
-            ALL OPPORTUNITIES ({mockJobs.length})
-          </button>
-          <button
-            onClick={() => setFilterType('remote')}
-            className={cn(
-              'px-3.5 py-1.5 rounded-lg text-xs font-mono transition-all',
-              filterType === 'remote'
-                ? 'bg-crimson text-warm-ivory font-bold shadow-glow-crimson'
-                : 'bg-charcoal border border-burgundy/30 text-warm-ivory/70 hover:text-warm-ivory'
-            )}
-          >
-            REMOTE / HYBRID
-          </button>
-          <button
-            onClick={() => setFilterType('high-match')}
-            className={cn(
-              'px-3.5 py-1.5 rounded-lg text-xs font-mono transition-all',
-              filterType === 'high-match'
-                ? 'bg-crimson text-warm-ivory font-bold shadow-glow-crimson'
-                : 'bg-charcoal border border-burgundy/30 text-warm-ivory/70 hover:text-warm-ivory'
-            )}
-          >
-            HIGH MATCH ONLY (80%+)
+            {filterRemote ? '✓ REMOTE ONLY' : 'REMOTE / HYBRID'}
           </button>
         </div>
       </section>
 
-      {/* Main Grid: Job Cards & Selected Detail */}
+      {/* Main Grid: Job Cards List & Selected Target Detail */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Job Cards List */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-warm-ivory/70">
-              AVAILABLE TARGETS // {filteredJobs.length} FOUND
-            </span>
+        <div className="lg:col-span-5 space-y-3">
+          <div className="flex items-center justify-between text-xs font-mono text-warm-ivory/60">
+            <span>ACTIVE OPPORTUNITIES // {filteredJobs.length} LISTINGS</span>
           </div>
 
           <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1">
@@ -127,20 +155,24 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
                     key={job.id}
                     onClick={() => setSelectedJob(job)}
                     className={cn(
-                      'p-4 rounded-lg border transition-all cursor-pointer text-left',
+                      'p-4 rounded-lg border transition-all cursor-pointer text-left space-y-2.5',
                       isSelected
                         ? 'bg-charcoal border-crimson shadow-glow-crimson ring-1 ring-crimson/50'
-                        : 'card hover:border-crimson/50'
+                        : 'card-hover border-burgundy/25'
                     )}
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="stamp-classified text-[8px]">{job.category}</span>
+                          <span className="text-[10px] font-mono text-warm-ivory/40">{job.id}</span>
+                        </div>
                         <h3 className="text-sm font-bold text-warm-ivory leading-tight">{job.title}</h3>
                         <p className="text-xs text-warm-ivory/70 font-mono mt-0.5">{job.company}</p>
                       </div>
                       <button
                         onClick={(e) => toggleBookmark(e, job.id)}
-                        className="text-warm-ivory/60 hover:text-crimson transition-colors p-1"
+                        className="text-warm-ivory/60 hover:text-crimson p-1 transition-colors"
                       >
                         {isBookmarked ? (
                           <BookmarkCheck size={18} className="text-crimson" />
@@ -150,19 +182,19 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-warm-ivory/70 mb-3">
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-warm-ivory/70">
                       <span className="flex items-center gap-1">
                         <MapPin size={12} className="text-crimson" /> {job.location}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <DollarSign size={12} className="text-emerald-400" /> {job.salary}
+                      <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                        <DollarSign size={12} /> {job.salary}
                       </span>
                     </div>
 
                     {/* Match Score Bar */}
-                    <div className="space-y-1.5 mb-3">
+                    <div className="space-y-1">
                       <div className="flex items-center justify-between text-xs font-mono">
-                        <span className="text-warm-ivory/60">MATCH FIT</span>
+                        <span className="text-warm-ivory/50">COMPUTED FIT</span>
                         <span className={cn('font-bold', getMatchColor(job.matchScore))}>
                           {job.matchScore}%
                         </span>
@@ -179,7 +211,7 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
                     </div>
 
                     {/* Skill Tags */}
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
                       {job.requiredSkills.slice(0, 3).map((skill: string) => (
                         <span
                           key={skill}
@@ -199,53 +231,49 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
               })
             ) : (
               <div className="card p-8 text-center font-mono text-xs text-warm-ivory/50">
-                No active targets match the filtered criteria.
+                No active targets match your filtered parameters.
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column: Selected Target In-Depth Intel */}
+        {/* Right Column: Selected Target In-Depth Dossier */}
         {selectedJob && (
           <div className="lg:col-span-7 space-y-6">
-            <div className="card bg-charcoal border-crimson/40">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="card bg-charcoal border-crimson/40 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-burgundy/20 pb-4">
                 <div>
-                  <span className="text-[10px] font-mono text-crimson uppercase tracking-widest font-bold">
-                    TARGET DOSSIER // {selectedJob.id}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="stamp-classified">TARGET DOSSIER</span>
+                    <span className="text-xs font-mono text-crimson font-bold">{selectedJob.id}</span>
+                  </div>
                   <h2 className="heading-md text-warm-ivory mt-1">{selectedJob.title}</h2>
                   <p className="text-xs text-warm-ivory/70 font-mono mt-0.5">
-                    {selectedJob.company} • {selectedJob.location} • {selectedJob.type}
+                    {selectedJob.company} • {selectedJob.companyTier} • {selectedJob.location}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-[10px] font-mono text-warm-ivory/50">COMPUTED FIT</p>
-                    <p className={cn('text-2xl font-bold font-mono', getMatchColor(selectedJob.matchScore))}>
-                      {selectedJob.matchScore}%
-                    </p>
-                  </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-mono text-warm-ivory/50">ALIGNED FIT SCORE</p>
+                  <p className={cn('text-3xl font-bold font-mono', getMatchColor(selectedJob.matchScore))}>
+                    {selectedJob.matchScore}%
+                  </p>
                 </div>
               </div>
 
-              <div className="divider-h my-4" />
-
-              {/* Match Breakdown */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              {/* Explainable Match Breakdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-3.5 bg-burgundy/15 rounded-lg border border-burgundy/25 space-y-2.5">
-                  <p className="text-xs font-mono text-warm-ivory/70 mb-2 font-semibold">ATTRIBUTE FIT BREAKDOWN</p>
+                  <p className="text-xs font-mono text-warm-ivory/70 font-bold uppercase">
+                    EXPLAINABLE MATCH WEIGHTS
+                  </p>
                   {Object.entries(selectedJob.matchBreakdown).map(([key, value]) => (
                     <div key={key} className="space-y-1">
                       <div className="flex items-center justify-between text-xs font-mono">
                         <span className="text-warm-ivory/80 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                        <span className="text-crimson font-bold">{value as number}%</span>
+                        <span className="text-crimson font-bold">{value}%</span>
                       </div>
                       <div className="w-full bg-burgundy/30 rounded-full h-1 overflow-hidden">
-                        <div
-                          style={{ width: `${value}%` }}
-                          className="h-full bg-gradient-crimson rounded-full"
-                        />
+                        <div style={{ width: `${value}%` }} className="h-full bg-gradient-crimson rounded-full" />
                       </div>
                     </div>
                   ))}
@@ -253,20 +281,28 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
 
                 <div className="p-3.5 bg-burgundy/15 rounded-lg border border-burgundy/25 flex flex-col justify-between">
                   <div>
-                    <p className="text-xs font-mono text-warm-ivory/70 mb-2 font-semibold">TARGET COMPENSATION & TERMS</p>
-                    <p className="text-2xl font-bold text-warm-ivory font-mono mb-1">{selectedJob.salary}</p>
-                    <p className="text-xs text-emerald-400 font-mono">Remote Policy: {selectedJob.remote}</p>
-                    <p className="text-xs text-warm-ivory/60 font-mono mt-2">Posted: {selectedJob.postedDate}</p>
+                    <p className="text-xs font-mono text-warm-ivory/70 font-bold uppercase">COMPENSATION & TERMS</p>
+                    <p className="text-2xl font-bold text-emerald-400 font-mono my-1">{selectedJob.salary}</p>
+                    <p className="text-xs text-warm-ivory/80 font-mono">Policy: {selectedJob.remote}</p>
+                    <p className="text-xs text-warm-ivory/60 font-mono mt-2">Posted Date: {selectedJob.postedDate}</p>
                   </div>
                   <div className="mt-4 pt-3 border-t border-burgundy/20 flex items-center gap-2 text-xs font-mono text-warm-ivory/70">
                     <ShieldCheck size={14} className="text-emerald-400" />
-                    <span>Verified Employer Target</span>
+                    <span>Verified Authenticated Enterprise</span>
                   </div>
                 </div>
               </div>
 
-              {/* Required Skills vs Candidate Strengths */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              {/* Description */}
+              <div className="space-y-2 text-xs font-mono">
+                <span className="text-warm-ivory/60 font-bold uppercase">MISSION BRIEF:</span>
+                <p className="text-warm-ivory/80 leading-relaxed p-3 bg-burgundy/10 rounded-lg border border-burgundy/20">
+                  {selectedJob.description}
+                </p>
+              </div>
+
+              {/* Matched Skills vs Preferred Skills */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-mono text-emerald-400 mb-2 font-bold">MATCHED SKILLS</p>
                   <div className="space-y-1.5">
@@ -292,6 +328,19 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
                 </div>
               </div>
 
+              {/* Responsibilities & Benefits */}
+              <div className="space-y-2 text-xs font-mono pt-2 border-t border-burgundy/20">
+                <span className="text-warm-ivory/60 font-bold uppercase">CORE RESPONSIBILITIES:</span>
+                <div className="space-y-1">
+                  {selectedJob.responsibilities.map((r, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-warm-ivory/80">
+                      <span className="text-crimson font-bold">›</span>
+                      <span>{r}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3 pt-2">
                 <button
@@ -306,7 +355,7 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
                 >
                   {appliedJobs[selectedJob.id] ? (
                     <>
-                      <CheckCircle size={14} /> TRANSMISSION SENT // APPLIED
+                      <CheckCircle size={14} /> TRANSMISSION SENT // APPLICATION FILED
                     </>
                   ) : (
                     <>TRANSMIT APPLICATION DOSSIER <ArrowRight size={14} /></>
@@ -323,36 +372,6 @@ export const JobFinder: React.FC<{ onNavigate?: (page: string) => void }> = ({ o
             </div>
           </div>
         )}
-      </section>
-
-      {/* Recommended Sprints for Higher Job Yield */}
-      <section className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp size={18} className="text-crimson" />
-          <h3 className="heading-sm text-warm-ivory font-mono text-sm">STRATEGIC UNLOCKS // SKILL LEVERAGE</h3>
-        </div>
-        <p className="text-xs text-warm-ivory/60 font-mono mb-4">
-          Mastering any of these high-yield capabilities will significantly increase candidate match scores across open positions:
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { skill: 'TypeScript Generics & AST', impact: '+240 Openings', lift: '+14% Match Score', action: 'skill-heist' },
-            { skill: 'AWS Architecture & Lambda', impact: '+180 Openings', lift: '+18% Match Score', action: 'skill-heist' },
-            { skill: 'Docker Container Pipelines', impact: '+120 Openings', lift: '+11% Match Score', action: 'skill-heist' },
-          ].map((rec) => (
-            <div
-              key={rec.skill}
-              onClick={() => onNavigate?.(rec.action)}
-              className="card-hover p-4 border border-burgundy/30 rounded-lg cursor-pointer group"
-            >
-              <p className="font-semibold text-warm-ivory text-sm group-hover:text-crimson transition-colors">{rec.skill}</p>
-              <div className="flex items-center justify-between mt-3 text-xs font-mono">
-                <span className="text-emerald-400 font-bold">{rec.impact}</span>
-                <span className="text-crimson font-bold">{rec.lift}</span>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
     </div>
   )
