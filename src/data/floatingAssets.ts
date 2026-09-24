@@ -90,5 +90,9 @@ export const currencyNoteAssets = {
       </pattern>
     </defs>
     <rect width="100%" height="100%" fill="url(#guilloche)"/>
-  `
+  `,
+
+  textures: {
+    paperGrain: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAAklEQVR42mP4////hwAMALD8wOgA6JY0AAAAAElFTkSuQmCC'
+  }
 };

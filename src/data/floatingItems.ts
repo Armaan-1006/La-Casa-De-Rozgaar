@@ -23,7 +23,7 @@ export function getSalaryForScore(score: number): string {
 }
 
 // Determine which skills to feature based on score (higher score = more likely to be featured)
-export function getFeaturedSkills(maxItems: number = 2): Array<{name: string; score: number; salary: string}> {
+export function getFeaturedSkills(maxItems: number = 3): Array<{name: string; score: number; salary: string}> {
   // Sort skills by score descending
   const sorted = [...mockCandidate.skills].sort((a, b) => b.score - a.score)
   // Take top N
@@ -36,7 +36,7 @@ export function getFeaturedSkills(maxItems: number = 2): Array<{name: string; sc
 }
 
 // Pick currency notes based on overall candidate level (average skill score)
-export function getCurrencyNotes(count: number = 2): Array<{value: number; denom: string; color: string}> {
+export function getCurrencyNotes(count: number = 3): Array<{value: number; denom: string; color: string}> {
   const avgScore = mockCandidate.skills.reduce((sum, s) => sum + s.score, 0) / mockCandidate.skills.length
   // Higher avgScore -> higher denomination notes
   const sortedNotes = [...currencyNoteAssets.denominations].sort((a, b) => {
@@ -62,20 +62,22 @@ export interface FloatingItemDef {
   baseRot: number
 }
 
-// Fixed quadrant slots to ensure balanced distribution across the canvas
-const quadrantSlots = [
-  { anchorX: '26%', anchorY: '28%', baseRot: -5 },
-  { anchorX: '78%', anchorY: '24%', baseRot: 6 },
-  { anchorX: '32%', anchorY: '76%', baseRot: 7 },
-  { anchorX: '74%', anchorY: '72%', baseRot: -6 }
+// Perimeter full-screen slots for optimal immersion without cluttering the center content
+const screenSlots: Array<{ anchorX: string; anchorY: string; baseRot: number; depth: 'foreground' | 'mid' | 'background' }> = [
+  { anchorX: '12%', anchorY: '20%', baseRot: -7, depth: 'background' },
+  { anchorX: '84%', anchorY: '18%', baseRot: 6, depth: 'foreground' },
+  { anchorX: '15%', anchorY: '78%', baseRot: 5, depth: 'mid' },
+  { anchorX: '82%', anchorY: '80%', baseRot: -6, depth: 'foreground' },
+  { anchorX: '52%', anchorY: '12%', baseRot: 3, depth: 'background' },
+  { anchorX: '88%', anchorY: '50%', baseRot: -4, depth: 'mid' }
 ]
 
 // Generate the list of floating items to render
 export function generateFloatingItems(): FloatingItemDef[] {
-  const rawItems: Array<Omit<FloatingItemDef, 'anchorX' | 'anchorY' | 'baseRot'>> = []
+  const rawItems: Array<{ type: 'offerLetter' | 'currencyNote'; id: string; data: any }> = []
   
-  // Add 2 offer letters from top skills
-  const featuredSkills = getFeaturedSkills(2)
+  // Add 3 offer letters from top skills
+  const featuredSkills = getFeaturedSkills(3)
   featuredSkills.forEach((skill, index) => {
     rawItems.push({
       type: 'offerLetter',
@@ -83,37 +85,32 @@ export function generateFloatingItems(): FloatingItemDef[] {
       data: {
         skill: skill.name,
         salary: skill.salary,
-        // Generate a reference code
         ref: `LC-${mockCandidate.id}-${skill.name.toUpperCase()}-0${index + 1}`
-      },
-      // Depth layer: alternate between foreground and mid
-      depth: index % 2 === 0 ? 'foreground' : 'mid'
+      }
     })
   })
   
-  // Add 2 currency notes
-  const notes = getCurrencyNotes(2)
+  // Add 3 currency notes
+  const notes = getCurrencyNotes(3)
   notes.forEach((note, index) => {
     rawItems.push({
       type: 'currencyNote',
       id: `note-${index}`,
-      data: note,
-      // Depth layer: alternate
-      depth: index % 2 === 0 ? 'mid' : 'background'
+      data: note
     })
   })
   
-  // Shuffle for varied ordering
-  for (let i = rawItems.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[rawItems[i], rawItems[j]] = [rawItems[j], rawItems[i]]
-  }
-  
-  // Assign quadrant slots
-  return rawItems.map((item, index) => ({
-    ...item,
-    anchorX: quadrantSlots[index % quadrantSlots.length].anchorX,
-    anchorY: quadrantSlots[index % quadrantSlots.length].anchorY,
-    baseRot: quadrantSlots[index % quadrantSlots.length].baseRot
-  }))
+  // Interleave and assign perimeter positions
+  return screenSlots.map((slot, index) => {
+    const raw = rawItems[index % rawItems.length]
+    return {
+      type: raw.type,
+      id: `${raw.id}-${index}`,
+      data: raw.data,
+      depth: slot.depth,
+      anchorX: slot.anchorX,
+      anchorY: slot.anchorY,
+      baseRot: slot.baseRot
+    }
+  })
 }
