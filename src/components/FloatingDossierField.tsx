@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { offerLetterTemplate, currencyNoteAssets } from '../data/floatingAssets'
-import { generateFloatingItems } from '../data/floatingItems'
+import { generateFloatingItems, FloatingItemDef } from '../data/floatingItems'
 import { useTheme } from '../hooks/useTheme'
 
 // Depth layer configuration
@@ -22,43 +22,35 @@ const motionConfig = {
 
 // Amplitudes for floating motion
 const floatAmplitude = {
-  x: 20,   // pixels
-  y: 15,   // pixels
-  z: 0.05, // 5% scale change
-  rot: 5   // degrees
+  x: 12,   // pixels (reduced for subtlety)
+  y: 10,   // pixels (reduced for subtlety)
+  z: 0.03, // 3% scale change (reduced for subtlety)
+  rot: 3   // degrees (reduced for subtlety)
 }
 
 // Amplitudes for mouse parallax
 const parallaxAmplitude = {
-  x: 30, // pixels
-  y: 20  // pixels
-}
-
-type FloatingItem = {
-  type: 'offerLetter' | 'currencyNote'
-  id: string
-  data: any
-  depth: keyof typeof depthConfig
+  x: 25, // Adjusted for professional subtlety
+  y: 18  // Adjusted for professional subtlety
 }
 
 export const FloatingDossierField: React.FC = () => {
   const { isDark } = useTheme()
-  const [items] = useState(() => generateFloatingItems()) // stabilize items
+  const [items] = useState<FloatingItemDef[]>(() => generateFloatingItems()) // stabilize items
   const containerRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Array<HTMLDivElement | null>>([])
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [lerpMousePos, setLerpMousePos] = useState({ x: 0, y: 0 })
   const rafRef = useRef<number>(0)
 
-  
-
-  // Mouse parallax - normalize to container
+  // Mouse tracking with LERP smoothing
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      // Normalize to -1 to 1 within the container
-      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1
-      const y = ((e.clientY - rect.top) / rect.height) * 2 - 1
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
+      // Normalize to -1 to 1 within the viewport
+      const x = ((e.clientX) / window.innerWidth) * 2 - 1
+      const y = ((e.clientY) / window.innerHeight) * 2 - 1
       setMousePos({ x, y })
     }
 
@@ -66,11 +58,17 @@ export const FloatingDossierField: React.FC = () => {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [])
 
-  // Animation loop
+  // Smooth LERP animation loop
   useEffect(() => {
     const start = performance.now()
 
     const animate = () => {
+      // Smooth LERP towards target mouse position
+      const lerpFactor = 0.12 // Reduced for smoother, more professional feel
+      const lerpedX = lerpMousePos.x + (mousePos.x - lerpMousePos.x) * lerpFactor
+      const lerpedY = lerpMousePos.y + (mousePos.y - lerpMousePos.y) * lerpFactor
+      setLerpMousePos({ x: lerpedX, y: lerpedY })
+
       const elapsed = (performance.now() - start) / 1000 // in seconds
       const t = (elapsed % motionConfig.duration) / motionConfig.duration // 0-1
 
@@ -89,17 +87,22 @@ export const FloatingDossierField: React.FC = () => {
         const floatZ = floatAmplitude.z * Math.sin(2 * Math.PI * motionConfig.freqZ * t + phaseOffset)
         const floatRot = floatAmplitude.rot * Math.sin(2 * Math.PI * motionConfig.freqRot * t + phaseOffset)
 
-        // Mouse parallax
-        const parallaxX = mousePos.x * depthConfig[item.depth].parallax * parallaxAmplitude.x
-        const parallaxY = mousePos.y * depthConfig[item.depth].parallax * parallaxAmplitude.y
+        // Mouse parallax with 3D tilt effect
+        const parallaxX = lerpedX * depthConfig[item.depth].parallax * parallaxAmplitude.x * 2.5
+        const parallaxY = lerpedY * depthConfig[item.depth].parallax * parallaxAmplitude.y * 2.5
+        // 3D tilt based on mouse position
+        const tiltX = lerpedY * 12 // rotateX based on vertical mouse position (subtler)
+        const tiltY = lerpedX * 12 // rotateY based on horizontal mouse position (subtler)
 
         // Base transform (centers the item)
         const baseTransform = `translate(-50%, -50%) scale(${depthConfig[item.depth].scale})`
 
-        // Combined transform
+        // Combined transform with 3D perspective
         const transform = `${baseTransform} 
           translate(${floatX + parallaxX}px, ${floatY + parallaxY}px) 
           scale(${1 + floatZ}) 
+          rotateX(${tiltX}deg) 
+          rotateY(${tiltY}deg) 
           rotate(${item.baseRot + floatRot}deg)`
 
         // Base style (opacity, filter)
@@ -120,17 +123,19 @@ export const FloatingDossierField: React.FC = () => {
     return () => {
       window.cancelAnimationFrame(rafRef.current)
     }
-  }, [mousePos])
+  }, [])
 
   return (
     <div
       ref={containerRef}
       className={`fixed inset-0 pointer-events-none z-0 ${isDark ? 'dark' : 'light'}`}
       style={{
-        left: '256px', // sidebar width
-        width: `calc(100vw - 256px)`,
+        left: '0',
+        width: '100vw',
         height: '100vh',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        perspective: '1200px',
+        transform: `translate(${lerpMousePos.x * 30}px, ${lerpMousePos.y * 30}px)`
       }}
     >
       {items.map((item, index) => (
@@ -145,9 +150,17 @@ export const FloatingDossierField: React.FC = () => {
         >
           <div className="floating-item">
             {item.type === 'offerLetter' ? (
-              <OfferLetter data={item.data} isDark={isDark} />
+              <OfferLetter
+                data={item.data}
+                isDark={isDark}
+                mousePos={lerpMousePos}
+              />
             ) : (
-              <CurrencyNote data={item.data} isDark={isDark} />
+              <CurrencyNote
+                data={item.data}
+                isDark={isDark}
+                mousePos={lerpMousePos}
+              />
             )}
           </div>
         </div>
@@ -157,9 +170,14 @@ export const FloatingDossierField: React.FC = () => {
 }
 
 // Offer Letter Component
-const OfferLetter = ({ data, isDark }: { data: { skill: string; salary: string; ref: string }; isDark: boolean }) => {
+const OfferLetter = ({ data, isDark, mousePos }: { data: { skill: string; salary: string; ref: string }; isDark: boolean; mousePos: { x: number; y: number }; }) => {
   const theme = isDark ? offerLetterTemplate.themeColors.dark : offerLetterTemplate.themeColors.light
   const { layout, fonts, textures } = offerLetterTemplate
+
+  // Calculate holographic sheen based on mouse position
+  // Creates a moving gradient that simulates light reflection
+  const sheenAngle = Math.atan2(mousePos.y, mousePos.x) * (180 / Math.PI); // Convert to degrees
+  const sheenOffset = `${(sheenAngle + 90) % 360}deg`; // Offset for dynamic movement
 
   return (
     <div className="offer-letter" style={{
@@ -173,9 +191,20 @@ const OfferLetter = ({ data, isDark }: { data: { skill: string; salary: string; 
       boxSizing: 'border-box',
       borderRadius: '4px',
       boxShadow: `0 8px 32px rgba(0,0,0,0.3)`,
-      backgroundImage: `url(${textures.paperGrain}), url(${textures.fiber})`,
-      backgroundBlendMode: 'overlay, overlay',
-      backgroundSize: 'auto, cover'
+      backgroundImage: `
+        url(${textures.paperGrain}),
+        url(${textures.fiber}),
+        linear-gradient(
+          ${sheenOffset},
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.3) 30%,
+          rgba(255, 255, 255, 0.5) 50%,
+          rgba(255, 255, 255, 0.3) 70%,
+          rgba(255, 255, 255, 0) 100%
+        )
+      `,
+      backgroundBlendMode: 'overlay, overlay, overlay',
+      backgroundSize: 'auto, cover, 200% 200%'
     }}>
       {/* Seal / Watermark */}
       <div style={{
@@ -275,12 +304,17 @@ const OfferLetter = ({ data, isDark }: { data: { skill: string; salary: string; 
 }
 
 // Currency Note Component
-const CurrencyNote = ({ data, isDark }: { data: { value: number; denom: string; color: string }; isDark: boolean }) => {
+const CurrencyNote = ({ data, isDark, mousePos }: { data: { value: number; denom: string; color: string }; isDark: boolean; mousePos: { x: number; y: number }; }) => {
   const theme = isDark ? offerLetterTemplate.themeColors.dark : offerLetterTemplate.themeColors.light
   const { baseWidth, baseHeight, fonts } = currencyNoteAssets
 
   // Use the note's color as accent, but ensure it's visible on background
   const accentColor = data.color
+
+  // Calculate holographic sheen based on mouse position
+  // Creates a moving gradient that simulates light reflection on security features
+  const sheenAngle = Math.atan2(mousePos.y, mousePos.x) * (180 / Math.PI); // Convert to degrees
+  const sheenOffset = `${(sheenAngle + 90) % 360}deg`; // Offset for dynamic movement
 
   return (
     <div className="currency-note" style={{
@@ -300,10 +334,18 @@ const CurrencyNote = ({ data, isDark }: { data: { value: number; denom: string; 
           ${theme.accent}1px,
           transparent 1px,
           transparent 4px
+        ),
+        linear-gradient(
+          ${sheenOffset},
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.3) 30%,
+          rgba(255, 255, 255, 0.5) 50%,
+          rgba(255, 255, 255, 0.3) 70%,
+          rgba(255, 255, 255, 0) 100%
         )
       `,
-      backgroundBlendMode: 'overlay, overlay',
-      backgroundSize: 'auto, 10px 10px'
+      backgroundBlendMode: 'overlay, overlay, overlay',
+      backgroundSize: 'auto, 10px 10px, 200% 200%'
     }}>
       {/* Security Strip */}
       <div style={{
