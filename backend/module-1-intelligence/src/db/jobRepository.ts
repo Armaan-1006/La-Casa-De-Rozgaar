@@ -1,5 +1,5 @@
 import { query, transaction } from '../db/index.js';
-import type { Job, RawJobRecord, JobSkill } from '../types/index.js';
+import type { Job, JobSkill } from '../types/index.js';
 
 export class JobRepository {
   // Create a new job record

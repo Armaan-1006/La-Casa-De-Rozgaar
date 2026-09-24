@@ -36,7 +36,7 @@ export async function closePool(): Promise<void> {
 }
 
 // Query helper with error handling
-export async function query<T = any>(
+export async function query<T extends pg.QueryResultRow = any>(
   text: string,
   params?: any[]
 ): Promise<pg.QueryResult<T>> {

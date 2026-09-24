@@ -5,7 +5,7 @@ import { closePool } from './db/index.js';
 const signals = ['SIGINT', 'SIGTERM'];
 
 async function start() {
-  let app;
+  let app: Awaited<ReturnType<typeof buildApp>> | undefined;
 
   try {
     // Build and start the Fastify app
@@ -41,6 +41,11 @@ Press CTRL+C to stop
     signals.forEach((signal) => {
       process.on(signal, async () => {
         console.log(`\n⚠️  ${signal} received, starting graceful shutdown...`);
+
+        if (!app) {
+          console.log('⚠️  Server not initialized');
+          process.exit(0);
+        }
 
         try {
           // Close Fastify server
