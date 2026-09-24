@@ -35,7 +35,7 @@ const parallaxAmplitude = {
 }
 
 export const FloatingDossierField: React.FC = () => {
-  const { isDark } = useTheme()
+  const { isDark, isHeist } = useTheme()
   const [items] = useState<FloatingItemDef[]>(() => generateFloatingItems()) // stabilize items
   const containerRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Array<HTMLDivElement | null>>([])
@@ -45,6 +45,8 @@ export const FloatingDossierField: React.FC = () => {
 
   // Mouse tracking with LERP smoothing
   useEffect(() => {
+    if (!isHeist) return
+
     const handleMouseMove = (e: MouseEvent) => {
       const rect = containerRef.current?.getBoundingClientRect()
       if (!rect) return
@@ -60,6 +62,8 @@ export const FloatingDossierField: React.FC = () => {
 
   // Smooth LERP animation loop
   useEffect(() => {
+    if (!isHeist) return
+
     const start = performance.now()
 
     const animate = () => {
@@ -123,7 +127,11 @@ export const FloatingDossierField: React.FC = () => {
     return () => {
       window.cancelAnimationFrame(rafRef.current)
     }
-  }, [])
+  }, [isHeist])
+
+  if (!isHeist) {
+    return null
+  }
 
   return (
     <div

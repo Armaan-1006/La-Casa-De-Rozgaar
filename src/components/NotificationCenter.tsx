@@ -1,5 +1,6 @@
 import { useState, type FC } from 'react'
 import { X, Bell, Zap, TrendingUp, Briefcase, BookOpen, Check, Trash2 } from 'lucide-react'
+import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 
 interface NotificationItem {
@@ -19,6 +20,7 @@ interface NotificationCenterProps {
 }
 
 export const NotificationCenter: FC<NotificationCenterProps> = ({ isOpen, onClose, onNavigate }) => {
+  const { isHeist } = useTheme()
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     {
       id: 'N-1',
@@ -79,13 +81,13 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({ isOpen, onClos
   const getIcon = (cat: string) => {
     switch (cat) {
       case 'SKILL':
-        return <Zap size={14} className="text-emerald-400" />
+        return <Zap size={14} className={isHeist ? 'text-emerald-400' : 'text-emerald-600'} />
       case 'MARKET':
-        return <TrendingUp size={14} className="text-crimson" />
+        return <TrendingUp size={14} className={isHeist ? 'text-crimson' : 'text-red-600'} />
       case 'CAREER':
-        return <Briefcase size={14} className="text-blue-400" />
+        return <Briefcase size={14} className={isHeist ? 'text-blue-400' : 'text-blue-600'} />
       case 'LEARNING':
-        return <BookOpen size={14} className="text-amber-400" />
+        return <BookOpen size={14} className={isHeist ? 'text-amber-400' : 'text-amber-600'} />
       default:
         return <Bell size={14} />
     }
@@ -95,36 +97,78 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({ isOpen, onClos
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end">
-      <div className="w-full max-w-md bg-charcoal h-full border-l border-burgundy/40 shadow-glow-crimson flex flex-col">
+      <div
+        className={cn(
+          'w-full max-w-md h-full flex flex-col transition-colors',
+          isHeist
+            ? 'bg-charcoal border-l border-burgundy/40 shadow-glow-crimson'
+            : 'bg-white border-l border-slate-200 shadow-2xl'
+        )}
+      >
         {/* Header */}
-        <div className="p-5 border-b border-burgundy/30 flex items-center justify-between bg-obsidian/70">
+        <div
+          className={cn(
+            'p-5 border-b flex items-center justify-between',
+            isHeist ? 'border-burgundy/30 bg-obsidian/70' : 'border-slate-200 bg-slate-50'
+          )}
+        >
           <div className="flex items-center gap-2.5">
-            <Bell size={18} className="text-crimson" />
-            <h3 className="heading-xs text-warm-ivory">INTELLIGENCE ALERTS</h3>
+            <Bell size={18} className={isHeist ? 'text-crimson' : 'text-slate-700'} />
+            <h3
+              className={cn(
+                'text-base font-bold',
+                isHeist ? 'heading-xs text-warm-ivory' : 'font-sans text-slate-900'
+              )}
+            >
+              {isHeist ? 'INTELLIGENCE ALERTS' : 'Platform Alerts & Notifications'}
+            </h3>
             {unreadCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-crimson text-warm-ivory text-[10px] font-mono font-bold">
+              <span
+                className={cn(
+                  'px-2 py-0.5 rounded-full text-[10px] font-bold',
+                  isHeist
+                    ? 'bg-crimson text-warm-ivory font-mono'
+                    : 'bg-red-50 text-red-700 border border-red-200 font-sans'
+                )}
+              >
                 {unreadCount} NEW
               </span>
             )}
           </div>
-          <button onClick={onClose} className="text-warm-ivory/40 hover:text-crimson p-1">
+          <button
+            onClick={onClose}
+            className={isHeist ? 'text-warm-ivory/40 hover:text-crimson p-1' : 'text-slate-400 hover:text-slate-700 p-1'}
+          >
             <X size={18} />
           </button>
         </div>
 
         {/* Toolbar */}
-        <div className="px-5 py-2.5 border-b border-burgundy/20 flex items-center justify-between text-xs font-mono text-warm-ivory/60 bg-burgundy/10">
+        <div
+          className={cn(
+            'px-5 py-2.5 border-b flex items-center justify-between text-xs',
+            isHeist
+              ? 'border-burgundy/20 bg-burgundy/10 text-warm-ivory/60 font-mono'
+              : 'border-slate-200 bg-slate-50/60 text-slate-600 font-sans'
+          )}
+        >
           <button
             onClick={markAllRead}
             disabled={unreadCount === 0}
-            className="hover:text-warm-ivory disabled:opacity-40 transition-colors flex items-center gap-1"
+            className={cn(
+              'disabled:opacity-40 transition-colors flex items-center gap-1',
+              isHeist ? 'hover:text-warm-ivory' : 'hover:text-slate-900'
+            )}
           >
             <Check size={12} /> Mark all read
           </button>
           <button
             onClick={clearAll}
             disabled={notifications.length === 0}
-            className="hover:text-crimson disabled:opacity-40 transition-colors flex items-center gap-1"
+            className={cn(
+              'disabled:opacity-40 transition-colors flex items-center gap-1',
+              isHeist ? 'hover:text-crimson' : 'hover:text-red-600'
+            )}
           >
             <Trash2 size={12} /> Clear wire
           </button>
@@ -139,35 +183,79 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({ isOpen, onClos
                 onClick={() => handleItemClick(item)}
                 className={cn(
                   'p-3.5 rounded-lg border cursor-pointer transition-all space-y-1.5',
-                  item.unread
-                    ? 'bg-burgundy/20 border-crimson/50 text-warm-ivory'
-                    : 'bg-burgundy/10 border-burgundy/20 text-warm-ivory/70 hover:bg-burgundy/15'
+                  isHeist
+                    ? item.unread
+                      ? 'bg-burgundy/20 border-crimson/50 text-warm-ivory'
+                      : 'bg-burgundy/10 border-burgundy/20 text-warm-ivory/70 hover:bg-burgundy/15'
+                    : item.unread
+                    ? 'bg-red-50/30 border-red-200 text-slate-900 shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100/70'
                 )}
               >
-                <div className="flex items-center justify-between text-[10px] font-mono">
+                <div
+                  className={cn(
+                    'flex items-center justify-between text-[10px]',
+                    isHeist ? 'font-mono' : 'font-sans'
+                  )}
+                >
                   <span className="flex items-center gap-1 font-bold">
                     {getIcon(item.category)}
-                    <span>{item.category} ALERT</span>
+                    <span className={isHeist ? 'text-warm-ivory' : 'text-slate-800'}>
+                      {item.category} ALERT
+                    </span>
                   </span>
-                  <span className="text-warm-ivory/40">{item.timestamp}</span>
+                  <span className={isHeist ? 'text-warm-ivory/40' : 'text-slate-500'}>
+                    {item.timestamp}
+                  </span>
                 </div>
-                <h4 className="text-xs font-bold text-warm-ivory font-mono leading-tight">{item.title}</h4>
-                <p className="text-[11px] font-mono text-warm-ivory/70 leading-relaxed">{item.detail}</p>
-                <div className="pt-1 flex items-center justify-end text-[10px] font-mono text-crimson font-bold">
-                  <span>DISPATCH TO BRIEFING →</span>
+                <h4
+                  className={cn(
+                    'text-xs font-bold leading-tight',
+                    isHeist ? 'text-warm-ivory font-mono' : 'text-slate-900 font-sans'
+                  )}
+                >
+                  {item.title}
+                </h4>
+                <p
+                  className={cn(
+                    'text-[11px] leading-relaxed',
+                    isHeist ? 'text-warm-ivory/70 font-mono' : 'text-slate-600 font-sans'
+                  )}
+                >
+                  {item.detail}
+                </p>
+                <div
+                  className={cn(
+                    'pt-1 flex items-center justify-end text-[10px] font-bold',
+                    isHeist ? 'font-mono text-crimson' : 'font-sans text-red-700'
+                  )}
+                >
+                  <span>{isHeist ? 'DISPATCH TO BRIEFING →' : 'View Module Briefing →'}</span>
                 </div>
               </div>
             ))
           ) : (
-            <div className="p-8 text-center text-xs font-mono text-warm-ivory/40">
+            <div
+              className={cn(
+                'p-8 text-center text-xs',
+                isHeist ? 'font-mono text-warm-ivory/40' : 'font-sans text-slate-500'
+              )}
+            >
               Zero pending intelligence transmissions.
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-3 bg-obsidian/90 border-t border-burgundy/30 text-center text-[10px] font-mono text-warm-ivory/40">
-          SECURE CHANNEL // 256-BIT ENCRYPTED TELEMETRY
+        <div
+          className={cn(
+            'p-3 border-t text-center text-[10px]',
+            isHeist
+              ? 'bg-obsidian/90 border-burgundy/30 font-mono text-warm-ivory/40'
+              : 'bg-slate-50 border-slate-200 font-sans text-slate-500'
+          )}
+        >
+          {isHeist ? 'SECURE CHANNEL // 256-BIT ENCRYPTED TELEMETRY' : 'VERIFIED TELEMETRY // SOC2 SECURE PIPELINE'}
         </div>
       </div>
     </div>
