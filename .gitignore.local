@@ -1,0 +1,14 @@
+# Environment files with secrets
+.env.production
+*.env.production
+.env.local
+*.env.local
+
+# Don't commit Neon/Upstash credentials
+backend/.env.production
+backend/module-1-intelligence/.env.production
+
+# These are already in .gitignore but let's be explicit
+.env
+*.env
+!.env.example
