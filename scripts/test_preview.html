@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {
+    background: #0b0c10;
+    margin: 0;
+    display: flex;
+    justify-content: space-between;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .sil-container {
+    height: 85vh;
+    align-self: flex-end;
+    opacity: 0.8;
+  }
+</style>
+</head>
+<body>
+  <div id="rio-container" class="sil-container"></div>
+  <div id="prof-container" class="sil-container"></div>
+
+  <script>
+    fetch('svg_paths.json')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('rio-container').innerHTML = `
+          <svg viewBox="0 0 768 1376" style="height: 100%; width: auto;">
+            <defs>
+              <linearGradient id="rioGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0e0d12" stop-opacity="0.9" />
+                <stop offset="75%" stop-color="#0e0d12" stop-opacity="0.8" />
+                <stop offset="98%" stop-color="#0e0d12" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="${data.rio}" fill="url(#rioGrad)" stroke="rgba(180, 30, 40, 0.4)" stroke-width="1.5" />
+          </svg>
+        `;
+        document.getElementById('prof-container').innerHTML = `
+          <svg viewBox="0 0 768 1376" style="height: 100%; width: auto;">
+            <defs>
+              <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0e0d12" stop-opacity="0.9" />
+                <stop offset="75%" stop-color="#0e0d12" stop-opacity="0.8" />
+                <stop offset="98%" stop-color="#0e0d12" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path d="${data.prof}" fill="url(#profGrad)" stroke="rgba(180, 30, 40, 0.4)" stroke-width="1.5" />
+          </svg>
+        `;
+      });
+  </script>
+</body>
+</html>

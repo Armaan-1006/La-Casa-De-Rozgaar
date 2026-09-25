@@ -10,8 +10,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
-  Sparkles,
-  KeyRound,
   ChevronRight,
   Briefcase,
   Layers,
@@ -19,7 +17,7 @@ import {
 } from 'lucide-react'
 import { useAuth, DEMO_PRESETS, type UserRole } from '../hooks/useAuth'
 import { useTheme } from '../hooks/useTheme'
-import { ThemeModeSwitch } from '../components/ThemeModeSwitch'
+import { FallingOfferLetters } from '../components/FallingOfferLetters'
 import { cn } from '../lib/utils'
 
 interface LoginPageProps {
@@ -28,7 +26,8 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) => {
-  const { isHeist } = useTheme()
+  // Login page always operates in dedicated cinematic Heist presentation; main app retains user theme
+  const isHeist = true
   const { login, register, quickLogin, isLoading, user, isAuthenticated, logout } = useAuth()
 
   // Form tab: 'login' | 'register'
@@ -187,7 +186,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
           <>
             <div className="absolute inset-0 bg-gradient-to-b from-obsidian/90 via-obsidian/75 to-obsidian" />
             <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-crimson/15 rounded-full blur-[140px]" />
-            <div className="absolute bottom-10 left-10 w-96 h-96 bg-burgundy/30 rounded-full blur-[120px]" />
             <div className="absolute inset-0 classified-grid opacity-40" />
           </>
         ) : (
@@ -197,6 +195,57 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
             <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] opacity-70" />
           </>
         )}
+
+        {/* Silhouette: Subtle Left Shadow — Rio presenting candidate file */}
+        <motion.div
+          animate={{ y: [0, -1.5, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+          className={cn(
+            'absolute left-0 sm:left-2 lg:left-4 xl:left-8 bottom-0 pointer-events-none select-none transition-opacity duration-700',
+            'h-[60vh] sm:h-[68vh] lg:h-[76vh] max-h-[760px]',
+            'flex items-end justify-start',
+            isHeist ? 'opacity-[0.08] sm:opacity-[0.09] lg:opacity-[0.11]' : 'opacity-0'
+          )}
+          style={{ zIndex: 1 }}
+        >
+          <img
+            src="/images/rio_shadow_final.png"
+            alt=""
+            aria-hidden="true"
+            className="h-full w-auto object-contain object-bottom filter blur-[0.7px]"
+            style={{
+              maskImage: 'radial-gradient(ellipse 80% 85% at 50% 55%, black 10%, rgba(0,0,0,0.4) 40%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 80% 85% at 50% 55%, black 10%, rgba(0,0,0,0.4) 40%, transparent 70%)'
+            }}
+          />
+        </motion.div>
+
+        {/* Silhouette: Subtle Right Shadow — Professor presenting offer letter */}
+        <motion.div
+          animate={{ y: [0, -1.5, 0] }}
+          transition={{ duration: 10.5, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }}
+          className={cn(
+            'absolute right-0 sm:right-2 lg:right-4 xl:right-8 bottom-0 pointer-events-none select-none transition-opacity duration-700',
+            'h-[60vh] sm:h-[68vh] lg:h-[76vh] max-h-[760px]',
+            'flex items-end justify-end',
+            isHeist ? 'opacity-[0.08] sm:opacity-[0.09] lg:opacity-[0.11]' : 'opacity-0'
+          )}
+          style={{ zIndex: 1 }}
+        >
+          <img
+            src="/images/professor_shadow_final.png"
+            alt=""
+            aria-hidden="true"
+            className="h-full w-auto object-contain object-bottom filter blur-[0.7px]"
+            style={{
+              maskImage: 'radial-gradient(ellipse 80% 85% at 50% 55%, black 10%, rgba(0,0,0,0.4) 40%, transparent 70%)',
+              WebkitMaskImage: 'radial-gradient(ellipse 80% 85% at 50% 55%, black 10%, rgba(0,0,0,0.4) 40%, transparent 70%)'
+            }}
+          />
+        </motion.div>
+
+        {/* Continuous Falling Offer Letters Animation — Atmospheric Heist Document Stream */}
+        <FallingOfferLetters />
       </div>
 
       {/* Top Header Bar */}
@@ -236,7 +285,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
 
         {/* Action Controls */}
         <div className="flex items-center gap-3">
-          <ThemeModeSwitch variant="compact" />
           <button
             onClick={() => onNavigate('war-room')}
             className={cn(
@@ -335,7 +383,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   )}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-crimson/20 text-crimson border border-crimson/40 flex items-center justify-center font-bold text-xs">
                       RS
                     </div>
                     <div>
@@ -351,7 +399,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     </div>
                   </div>
                   {activePresetLoading === 'candidate' ? (
-                    <span className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                   )}
@@ -370,7 +418,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   )}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-crimson/20 text-crimson border border-crimson/40 flex items-center justify-center font-bold text-xs">
                       PP
                     </div>
                     <div>
@@ -386,7 +434,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     </div>
                   </div>
                   {activePresetLoading === 'candidate_data' ? (
-                    <span className="w-3.5 h-3.5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                   )}
@@ -405,7 +453,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   )}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-crimson/20 text-crimson border border-crimson/40 flex items-center justify-center font-bold text-xs">
                       MV
                     </div>
                     <div>
@@ -421,7 +469,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     </div>
                   </div>
                   {activePresetLoading === 'recruiter' ? (
-                    <span className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                   )}
@@ -440,7 +488,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   )}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-amber-600/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-crimson/20 text-crimson border border-crimson/40 flex items-center justify-center font-bold text-xs">
                       ER
                     </div>
                     <div>
@@ -456,7 +504,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     </div>
                   </div>
                   {activePresetLoading === 'planner' ? (
-                    <span className="w-3.5 h-3.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                   )}
@@ -590,11 +638,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   >
                     REQUEST CLEARANCE
                   </button>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-[11px] font-mono opacity-60">
-                  <Shield size={12} className={isHeist ? 'text-crimson' : 'text-blue-600'} />
-                  <span>AES-256</span>
                 </div>
               </div>
 
@@ -758,7 +801,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                       </div>
                     ) : (
                       <>
-                        <KeyRound size={17} />
                         <span>AUTHORIZE ACCESS // SIGN IN</span>
                         <ArrowRight size={17} />
                       </>
@@ -956,7 +998,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                       </div>
                     ) : (
                       <>
-                        <Sparkles size={17} />
                         <span>REQUEST CLEARANCE // REGISTER</span>
                         <ArrowRight size={17} />
                       </>
