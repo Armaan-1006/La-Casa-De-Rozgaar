@@ -173,19 +173,11 @@ function AppContent() {
     }
   }
 
-  // Full-screen presentation for Authentication Gateway
+  // Full-screen presentation for Authentication Gateway — always dedicated Heist presentation
   if (currentPage === 'login') {
     return (
-      <div
-        className={cn(
-          'min-h-screen overflow-y-auto relative transition-colors duration-300',
-          isHeist
-            ? 'bg-obsidian text-warm-ivory classified-grid'
-            : 'bg-[#F8F9FA] text-[#0F172A]'
-        )}
-      >
+      <div className="min-h-screen overflow-y-auto relative transition-colors duration-300 bg-obsidian text-warm-ivory classified-grid">
         <ThemeTransitionOverlay />
-        {isHeist && <FloatingDossierField />}
         <LoginPage onNavigate={handleNavigation} />
       </div>
     )
