@@ -307,10 +307,41 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
           try {
             const rawDetected = await nativeDetector.detect(activeVideo)
             // Validate that detected faces have realistic dimensions (>20px)
-            detectedFaces = (rawDetected || []).filter((f: any) => {
+            const validFaces = (rawDetected || []).filter((f: any) => {
               const b = f.boundingBox
               return b && b.width > 20 && b.height > 20
             })
+
+            // ANTI-POSTER FIX: Only count the LARGEST face (closest to camera = real person)
+            // This filters out posters, photos, or small faces in the background
+            if (validFaces.length > 0) {
+              // Sort by face area (width * height) descending
+              validFaces.sort((a: any, b: any) => {
+                const areaA = a.boundingBox.width * a.boundingBox.height
+                const areaB = b.boundingBox.width * b.boundingBox.height
+                return areaB - areaA
+              })
+              
+              const largestFace = validFaces[0]
+              const largestArea = largestFace.boundingBox.width * largestFace.boundingBox.height
+              
+              // Only include secondary faces if they're at least 60% as large as the primary face
+              // (This prevents counting small posters/photos while allowing a second real person)
+              detectedFaces = validFaces.filter((f: any) => {
+                const faceArea = f.boundingBox.width * f.boundingBox.height
+                return faceArea >= largestArea * 0.6
+              })
+              
+              // Additional safety: If we still have multiple faces, only use the largest one
+              // unless the second face is very close in size (within 80%)
+              if (detectedFaces.length > 1) {
+                const secondLargestArea = detectedFaces[1].boundingBox.width * detectedFaces[1].boundingBox.height
+                if (secondLargestArea < largestArea * 0.8) {
+                  // Second face is significantly smaller - likely a poster, keep only largest
+                  detectedFaces = [largestFace]
+                }
+              }
+            }
           } catch (e) {
             detectedFaces = []
           }
