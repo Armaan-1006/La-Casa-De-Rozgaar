@@ -1,0 +1,26 @@
+# Vercel Serverless Configuration for Module 2
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/server.ts",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 10
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/health",
+      "dest": "src/server.ts"
+    },
+    {
+      "src": "/api/v1/(.*)",
+      "dest": "src/server.ts"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
