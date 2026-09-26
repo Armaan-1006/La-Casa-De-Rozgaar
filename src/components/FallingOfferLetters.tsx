@@ -75,97 +75,430 @@ const DOSSIER_TEMPLATES: OfferLetterData[] = [
   },
 ]
 
+type PaperState = 'FALLING' | 'HOVERING' | 'GRABBED' | 'RELEASING'
+
+// Centralized physics tuning parameters
+const PHYSICS_CONFIG = {
+  // Gravity & terminal drift
+  BASE_SPEED_MIN: 42,
+  BASE_SPEED_MAX: 78,
+  AIR_DRAG: 0.965,
+  ROTATION_DRAG: 0.93,
+
+  // Environmental wind
+  WIND_FREQUENCY: 0.12,
+  WIND_STRENGTH: 16,
+
+  // Cursor air disturbance parameters
+  AIR_DISTURB_RADIUS: 130, // px influence zone
+  AIR_SPRING_K: 24, // restoring stiffness toward equilibrium
+  AIR_DAMPING_C: 7.5, // damping coefficient (settles smoothly ~0.76 damping ratio)
+  MAX_AIR_DISP_X: 3.5, // max displacement in px (1-4px)
+  MAX_AIR_DISP_Y: 2.5, // max displacement in px (1-3px)
+  MAX_AIR_ROT: 2.5, // max rotation perturbation in deg (0.5-3 deg)
+
+  // Grab & dragging
+  GRAB_SPRING: 0.28, // smooth physical lag factor per frame
+  DRAG_TILT_FACTOR: 0.12, // degrees per px/s
+  MAX_DRAG_TILT: 24, // maximum degrees of tilt
+  MAX_THROW_VELOCITY: 460, // clamped release velocity px/s
+
+  // Smooth zoom limits
+  MIN_SCALE: 0.70,
+  MAX_SCALE: 2.00,
+  ZOOM_LERP: 0.18,
+}
+
 // Internal physics model for each active document in the reusable pool
 interface PaperPhysicsItem {
   id: number
   template: OfferLetterData
   zone: 'left' | 'right'
-  xNorm: number // 0 to 1 normalized horizontal center anchor
-  y: number // absolute px position
-  baseSpeed: number // px per second
-  driftAmp: number // px amplitude
-  driftFreq: number // Hz
-  driftPhase: number // radians
-  flutterFreq: number // Hz
-  flutterPhase: number // radians
-  rotZBase: number // base angle in deg
-  rotZAmp: number // oscillation deg
-  rotXAmp: number // pitch oscillation deg
-  rotYAmp: number // roll oscillation deg
+
+  // Position in px
+  x: number
+  y: number
+  vx: number
+  vy: number
+
+  // Natural aerodynamic parameters
+  baseSpeed: number
+  driftAmp: number
+  driftFreq: number
+  driftPhase: number
+  flutterFreq: number
+  flutterPhase: number
+
+  // 3D Rotations
+  rotZ: number
+  rotZBase: number
+  rotZAmp: number
+  rotX: number
+  rotY: number
+  rotXAmp: number
+  rotYAmp: number
+  vRotZ: number
+
+  // Scale
   scale: number
+  naturalScale: number
+  targetScale: number
+
+  // Visual appearance
   opacity: number
+  baseOpacity: number
+  shadowBlur: number
+  liftZ: number
+
+  // State & interaction
+  state: PaperState
+  isHovered: boolean
+
+  // Physical air disturbance (damped spring-mass state)
+  airDispX: number
+  airDispY: number
+  airDispVx: number
+  airDispVy: number
+  airRotZ: number
+  airRotVz: number
+
+  // Grab offset relative to center of paper
+  grabOffsetX: number
+  grabOffsetY: number
+
+  width: number
+  height: number
 }
 
 // Generate pool item with randomized independent phase and aerodynamic properties
-function createPaperItem(id: number, initialY: number, forceZone?: 'left' | 'right'): PaperPhysicsItem {
+function createPaperItem(
+  id: number,
+  initialY: number,
+  forceZone?: 'left' | 'right',
+  vw: number = typeof window !== 'undefined' ? window.innerWidth : 1200
+): PaperPhysicsItem {
   const zone = forceZone || (id % 2 === 0 ? 'left' : 'right')
-  
-  // Left zone spans 1.5% to 21% of viewport width
-  // Right zone spans 79% to 98% of viewport width
-  // Center (22% to 78%) is strictly protected so login form remains clean
+
+  // Left zone spans 2% to 20% of viewport width
+  // Right zone spans 80% to 98% of viewport width
+  // Center is strictly protected so login form remains clean
   const xNorm = zone === 'left'
     ? 0.02 + Math.random() * 0.18
     : 0.80 + Math.random() * 0.18
 
   const template = DOSSIER_TEMPLATES[id % DOSSIER_TEMPLATES.length]
+  const naturalScale = 0.68 + Math.random() * 0.20
+  const baseOpacity = 0.16 + Math.random() * 0.16
+  const baseSpeed = PHYSICS_CONFIG.BASE_SPEED_MIN + Math.random() * (PHYSICS_CONFIG.BASE_SPEED_MAX - PHYSICS_CONFIG.BASE_SPEED_MIN)
 
   return {
     id,
     template,
     zone,
-    xNorm,
+    x: xNorm * vw,
     y: initialY,
-    baseSpeed: 42 + Math.random() * 38, // 42 to 80 px/sec (gentle terminal velocity)
-    driftAmp: 16 + Math.random() * 24, // 16 to 40 px horizontal drift
-    driftFreq: 0.22 + Math.random() * 0.25, // slow fluid wave
+    vx: 0,
+    vy: baseSpeed,
+    baseSpeed,
+    driftAmp: 16 + Math.random() * 24,
+    driftFreq: 0.20 + Math.random() * 0.22,
     driftPhase: Math.random() * Math.PI * 2,
-    flutterFreq: 0.65 + Math.random() * 0.55, // flutter oscillation
+    flutterFreq: 0.60 + Math.random() * 0.50,
     flutterPhase: Math.random() * Math.PI * 2,
-    rotZBase: (Math.random() - 0.5) * 24, // -12 to +12 deg base tilt
-    rotZAmp: 8 + Math.random() * 10, // ±8 to ±18 deg Z flutter
-    rotXAmp: 18 + Math.random() * 16, // ±18 to ±34 deg pitch
-    rotYAmp: 12 + Math.random() * 14, // ±12 to ±26 deg roll
-    scale: 0.68 + Math.random() * 0.22, // 0.68 to 0.90 scale for depth layering
-    opacity: 0.14 + Math.random() * 0.18, // 0.14 to 0.32 subtle atmospheric presence
+    rotZ: (Math.random() - 0.5) * 22,
+    rotZBase: (Math.random() - 0.5) * 22,
+    rotZAmp: 8 + Math.random() * 10,
+    rotX: 0,
+    rotY: 0,
+    rotXAmp: 16 + Math.random() * 14,
+    rotYAmp: 12 + Math.random() * 12,
+    vRotZ: 0,
+    scale: naturalScale,
+    naturalScale,
+    targetScale: naturalScale,
+    opacity: baseOpacity,
+    baseOpacity,
+    shadowBlur: 14,
+    liftZ: 0,
+    state: 'FALLING',
+    isHovered: false,
+    airDispX: 0,
+    airDispY: 0,
+    airDispVx: 0,
+    airDispVy: 0,
+    airRotZ: 0,
+    airRotVz: 0,
+    grabOffsetX: 0,
+    grabOffsetY: 0,
+    width: 148,
+    height: 198,
   }
+}
+
+// Recycle paper cleanly once offscreen without accumulating DOM nodes or piles
+function recyclePaper(item: PaperPhysicsItem, vw: number, _vh: number) {
+  item.y = -220 - Math.random() * 140
+  item.zone = Math.random() < 0.5 ? 'left' : 'right'
+  const xNorm = item.zone === 'left'
+    ? 0.02 + Math.random() * 0.18
+    : 0.80 + Math.random() * 0.18
+  item.x = xNorm * vw
+  item.vx = 0
+  item.vy = item.baseSpeed
+  item.vRotZ = 0
+  item.rotZ = item.rotZBase
+  item.rotX = 0
+  item.rotY = 0
+  item.scale = item.naturalScale
+  item.targetScale = item.naturalScale
+  item.opacity = item.baseOpacity
+  item.state = 'FALLING'
+  item.driftPhase = Math.random() * Math.PI * 2
+  item.flutterPhase = Math.random() * Math.PI * 2
+  item.airDispX = 0
+  item.airDispY = 0
+  item.airDispVx = 0
+  item.airDispVy = 0
+  item.airRotZ = 0
+  item.airRotVz = 0
 }
 
 export const FallingOfferLetters: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const itemElementsRef = useRef<(HTMLDivElement | null)[]>([])
   const physicsItemsRef = useRef<PaperPhysicsItem[]>([])
+  const activeGrabbedIdRef = useRef<number | null>(null)
   const rafIdRef = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
 
-  // Initialize pool of documents with pre-spawned staggered vertical distribution
+  // Cursor tracking & recent velocity buffer
+  const cursorPos = useRef({
+    x: -9999,
+    y: -9999,
+    vx: 0,
+    vy: 0,
+    lastTime: 0,
+  })
+  const pointerHistory = useRef<{ x: number; y: number; time: number }[]>([])
+
+  // Helper to release grabbed paper safely back to physics
+  const releasePaper = (item: PaperPhysicsItem) => {
+    if (item.state !== 'GRABBED') return
+
+    const now = performance.now()
+    const history = pointerHistory.current.filter((p) => now - p.time <= 140)
+    let throwVx = 0
+    let throwVy = 0
+
+    if (history.length >= 2) {
+      const first = history[0]
+      const last = history[history.length - 1]
+      const dt = Math.max((last.time - first.time) / 1000, 0.02)
+      throwVx = ((last.x - first.x) / dt) * 0.55
+      throwVy = ((last.y - first.y) / dt) * 0.55
+    }
+
+    item.vx = Math.max(
+      -PHYSICS_CONFIG.MAX_THROW_VELOCITY,
+      Math.min(PHYSICS_CONFIG.MAX_THROW_VELOCITY, throwVx)
+    )
+    item.vy = Math.max(
+      -PHYSICS_CONFIG.MAX_THROW_VELOCITY * 0.6,
+      Math.min(PHYSICS_CONFIG.MAX_THROW_VELOCITY, throwVy)
+    )
+    item.vRotZ = Math.max(-14, Math.min(14, item.vx * 0.04))
+
+    item.state = 'RELEASING'
+    item.airDispX = 0
+    item.airDispY = 0
+    item.airDispVx = 0
+    item.airDispVy = 0
+    item.airRotZ = 0
+    item.airRotVz = 0
+    activeGrabbedIdRef.current = null
+    item.targetScale = item.naturalScale
+  }
+
+  // Pointer event handlers for each individual paper
+  const handlePointerDown = (id: number, e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+
+    // If another paper was grabbed, release it first
+    if (activeGrabbedIdRef.current !== null && activeGrabbedIdRef.current !== id) {
+      const prev = physicsItemsRef.current.find((it) => it.id === activeGrabbedIdRef.current)
+      if (prev) releasePaper(prev)
+    }
+
+    const item = physicsItemsRef.current.find((it) => it.id === id)
+    if (!item) return
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // ignore if pointer capture is unavailable
+    }
+
+    activeGrabbedIdRef.current = id
+    item.state = 'GRABBED'
+
+    cursorPos.current.x = e.clientX
+    cursorPos.current.y = e.clientY
+    cursorPos.current.vx = 0
+    cursorPos.current.vy = 0
+
+    // Store grab offset relative to center of paper
+    const centerX = item.x + item.width / 2
+    const centerY = item.y + item.height / 2
+    item.grabOffsetX = e.clientX - centerX
+    item.grabOffsetY = e.clientY - centerY
+
+    // Zero out velocity & air disturbance
+    item.vx = 0
+    item.vy = 0
+    item.vRotZ = 0
+    item.airDispX = 0
+    item.airDispY = 0
+    item.airDispVx = 0
+    item.airDispVy = 0
+    item.airRotZ = 0
+    item.airRotVz = 0
+
+    item.targetScale = Math.min(PHYSICS_CONFIG.MAX_SCALE, item.scale * 1.08)
+  }
+
+  const handlePointerUp = (id: number, e: React.PointerEvent<HTMLDivElement>) => {
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
+    } catch {
+      // ignore
+    }
+
+    const item = physicsItemsRef.current.find((it) => it.id === id)
+    if (item && item.state === 'GRABBED') {
+      releasePaper(item)
+    }
+  }
+
+  const handlePointerCancel = (id: number, e: React.PointerEvent<HTMLDivElement>) => {
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      }
+    } catch {
+      // ignore
+    }
+
+    const item = physicsItemsRef.current.find((it) => it.id === id)
+    if (item) {
+      releasePaper(item)
+    }
+  }
+
+  const handlePointerEnter = (id: number) => {
+    const item = physicsItemsRef.current.find((it) => it.id === id)
+    if (!item || item.state === 'GRABBED') return
+    item.isHovered = true
+  }
+
+  const handlePointerLeave = (id: number) => {
+    const item = physicsItemsRef.current.find((it) => it.id === id)
+    if (!item) return
+    item.isHovered = false
+  }
+
+  // Global window listeners for wheel zoom & cursor tracking
   useEffect(() => {
-    // Detect mobile viewport to adjust pool density for 60 FPS performance
+    // 1. Mouse wheel zoom — ONLY active while a paper is grabbed
+    const handleWheel = (e: WheelEvent) => {
+      const grabbedId = activeGrabbedIdRef.current
+      if (grabbedId === null) {
+        // No paper grabbed -> allow normal webpage scroll!
+        return
+      }
+
+      // Grabbed paper active -> prevent webpage scroll and zoom paper
+      e.preventDefault()
+
+      const item = physicsItemsRef.current.find((it) => it.id === grabbedId)
+      if (!item) return
+
+      // Wheel UP (deltaY < 0) = Zoom IN; Wheel DOWN (deltaY > 0) = Zoom OUT
+      const delta = -e.deltaY * 0.0016
+      item.targetScale = Math.min(
+        PHYSICS_CONFIG.MAX_SCALE,
+        Math.max(PHYSICS_CONFIG.MIN_SCALE, item.targetScale + delta)
+      )
+    }
+
+    // 2. Continuous pointer position & velocity tracking
+    const handlePointerMove = (e: PointerEvent) => {
+      const now = performance.now()
+      const dt = Math.max((now - cursorPos.current.lastTime) / 1000, 0.008)
+      cursorPos.current.lastTime = now
+
+      if (cursorPos.current.x > -9000) {
+        const rawVx = (e.clientX - cursorPos.current.x) / dt
+        const rawVy = (e.clientY - cursorPos.current.y) / dt
+        cursorPos.current.vx = cursorPos.current.vx * 0.6 + rawVx * 0.4
+        cursorPos.current.vy = cursorPos.current.vy * 0.6 + rawVy * 0.4
+      }
+      cursorPos.current.x = e.clientX
+      cursorPos.current.y = e.clientY
+
+      pointerHistory.current.push({ x: e.clientX, y: e.clientY, time: now })
+      const cutoff = now - 140
+      pointerHistory.current = pointerHistory.current.filter((p) => p.time >= cutoff)
+    }
+
+    // Safety fallback on window blur / global pointer release
+    const handleWindowPointerUp = () => {
+      if (activeGrabbedIdRef.current !== null) {
+        const item = physicsItemsRef.current.find((it) => it.id === activeGrabbedIdRef.current)
+        if (item) releasePaper(item)
+      }
+    }
+
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    window.addEventListener('pointermove', handlePointerMove, { passive: true })
+    window.addEventListener('pointerup', handleWindowPointerUp)
+    window.addEventListener('pointercancel', handleWindowPointerUp)
+    window.addEventListener('blur', handleWindowPointerUp)
+
+    return () => {
+      window.removeEventListener('wheel', handleWheel)
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handleWindowPointerUp)
+      window.removeEventListener('pointercancel', handleWindowPointerUp)
+      window.removeEventListener('blur', handleWindowPointerUp)
+    }
+  }, [])
+
+  // Physics simulation loop
+  useEffect(() => {
     const isMobile = window.innerWidth < 768
     const isTablet = window.innerWidth < 1024
     const poolSize = isMobile ? 4 : isTablet ? 8 : 12
 
+    const vw = window.innerWidth || 1200
     const vh = window.innerHeight || 800
 
-    // Pre-populate items at staggered heights so screen is active immediately
+    // Pre-populate pool staggered across vertical screen space
     const items: PaperPhysicsItem[] = []
     for (let i = 0; i < poolSize; i++) {
-      // Stagger vertical positions from -120px to vh * 0.95
-      const staggeredY = (i / poolSize) * (vh + 150) - 150 + (Math.random() - 0.5) * 80
+      const staggeredY = (i / poolSize) * (vh + 160) - 160 + (Math.random() - 0.5) * 80
       const zone = i % 2 === 0 ? 'left' : 'right'
-      items.push(createPaperItem(i, staggeredY, zone))
+      items.push(createPaperItem(i, staggeredY, zone, vw))
     }
     physicsItemsRef.current = items
 
-    // Check for prefers-reduced-motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    // If reduced motion is preferred, render statically and don't run RAF
     if (prefersReducedMotion) {
       items.forEach((item, index) => {
         const el = itemElementsRef.current[index]
         if (!el) return
-        const xPx = item.xNorm * window.innerWidth
-        el.style.transform = `translate3d(${xPx}px, ${item.y}px, 0) rotate(${item.rotZBase}deg) scale(${item.scale})`
+        el.style.transform = `translate3d(${item.x}px, ${item.y}px, 0) rotate(${item.rotZBase}deg) scale(${item.scale})`
         el.style.opacity = `${item.opacity * 0.8}`
       })
       return
@@ -173,51 +506,236 @@ export const FallingOfferLetters: React.FC = () => {
 
     lastTimeRef.current = performance.now()
 
-    // Smooth aerodynamic RAF loop with delta time & ZERO React state updates
     const animate = (now: number) => {
-      const dt = Math.min((now - lastTimeRef.current) / 1000, 0.06) // cap at 60ms to prevent jumping
+      const dt = Math.min((now - lastTimeRef.current) / 1000, 0.05) // cap dt at 50ms
       lastTimeRef.current = now
 
-      const vw = window.innerWidth
+      const currentVw = window.innerWidth
       const currentVh = window.innerHeight
+      const nowSec = now / 1000
 
+      // Slowly varying ambient wind force
+      const ambientWind =
+        Math.sin(nowSec * PHYSICS_CONFIG.WIND_FREQUENCY * Math.PI * 2) * PHYSICS_CONFIG.WIND_STRENGTH +
+        Math.cos(nowSec * (PHYSICS_CONFIG.WIND_FREQUENCY * 1.8) * Math.PI * 2) *
+          (PHYSICS_CONFIG.WIND_STRENGTH * 0.35)
+
+      const curX = cursorPos.current.x
+      const curY = cursorPos.current.y
       const currentItems = physicsItemsRef.current
+
+      // Decay cursor velocity if mouse has stopped moving (ensures paper settles when cursor stops)
+      const timeSinceCursorMove = (now - cursorPos.current.lastTime) / 1000
+      if (timeSinceCursorMove > 0.04) {
+        const decay = Math.pow(0.04, dt * 15)
+        cursorPos.current.vx *= decay
+        cursorPos.current.vy *= decay
+        if (Math.abs(cursorPos.current.vx) < 0.5) cursorPos.current.vx = 0
+        if (Math.abs(cursorPos.current.vy) < 0.5) cursorPos.current.vy = 0
+      }
+
+      // Responsive active count
+      const activeCount = currentVw < 768 ? 4 : currentVw < 1024 ? 8 : 12
 
       for (let i = 0; i < currentItems.length; i++) {
         const item = currentItems[i]
         const el = itemElementsRef.current[i]
         if (!el) continue
 
-        // 1. Advance falling position
-        item.y += item.baseSpeed * dt
-
-        // 2. Continuous Loop Recycle Condition
-        // When document exits completely past the bottom of the viewport
-        if (item.y > currentVh + 180) {
-          // Respawn safely above the screen
-          item.y = -200 - Math.random() * 120
-          // Alternate or randomize zone, keeping center strictly clear
-          item.zone = Math.random() < 0.5 ? 'left' : 'right'
-          item.xNorm = item.zone === 'left'
-            ? 0.02 + Math.random() * 0.18
-            : 0.80 + Math.random() * 0.18
-          item.baseSpeed = 42 + Math.random() * 38
-          item.driftPhase = Math.random() * Math.PI * 2
-          item.flutterPhase = Math.random() * Math.PI * 2
+        if (i >= activeCount) {
+          el.style.display = 'none'
+          continue
+        } else {
+          el.style.display = 'block'
         }
 
-        // 3. Smooth Aerodynamic Flutter & Horizontal Drift Physics
-        const timeSec = now / 1000
-        const drift = Math.sin(timeSec * item.driftFreq * Math.PI * 2 + item.driftPhase) * item.driftAmp
-        const flutterZ = Math.sin(timeSec * item.flutterFreq * Math.PI * 2 + item.flutterPhase) * item.rotZAmp
-        const pitchX = Math.cos(timeSec * item.flutterFreq * Math.PI * 2 + item.flutterPhase) * item.rotXAmp
-        const rollY = Math.sin(timeSec * (item.flutterFreq * 0.75) * Math.PI * 2 + item.flutterPhase) * item.rotYAmp
+        // ============================================
+        // 1. GRABBED STATE — User holding paper
+        // ============================================
+        if (item.state === 'GRABBED') {
+          // Desired center position following cursor
+          const targetCenterX = curX - item.grabOffsetX
+          const targetCenterY = curY - item.grabOffsetY
+          const targetX = targetCenterX - item.width / 2
+          const targetY = targetCenterY - item.height / 2
 
-        const currentX = item.xNorm * vw + drift
-        const currentRotZ = item.rotZBase + flutterZ
+          // Smooth spring-like physical lag
+          item.x += (targetX - item.x) * PHYSICS_CONFIG.GRAB_SPRING
+          item.y += (targetY - item.y) * PHYSICS_CONFIG.GRAB_SPRING
 
-        // 4. Apply high-performance hardware-accelerated 3D transform directly
-        el.style.transform = `translate3d(${currentX.toFixed(1)}px, ${item.y.toFixed(1)}px, 0) perspective(650px) rotateX(${pitchX.toFixed(1)}deg) rotateY(${rollY.toFixed(1)}deg) rotateZ(${currentRotZ.toFixed(1)}deg) scale(${item.scale})`
+          // Horizontal cursor speed tilts the paper realistically
+          const dragTilt = Math.max(
+            -PHYSICS_CONFIG.MAX_DRAG_TILT,
+            Math.min(PHYSICS_CONFIG.MAX_DRAG_TILT, cursorPos.current.vx * PHYSICS_CONFIG.DRAG_TILT_FACTOR)
+          )
+          item.rotZ += (dragTilt - item.rotZ) * 0.16
+
+          // Pitch and roll tilt based on cursor velocity
+          const targetPitch = Math.max(-14, Math.min(14, cursorPos.current.vy * 0.035))
+          const targetRoll = Math.max(-14, Math.min(14, -cursorPos.current.vx * 0.035))
+          item.rotX += (targetPitch - item.rotX) * 0.14
+          item.rotY += (targetRoll - item.rotY) * 0.14
+
+          // Smooth scale zoom toward targetScale
+          const prevScale = item.scale
+          item.scale += (item.targetScale - item.scale) * PHYSICS_CONFIG.ZOOM_LERP
+
+          // Preserve anchor under cursor while zooming
+          if (prevScale > 0 && Math.abs(item.scale - prevScale) > 0.0001) {
+            const ratio = item.scale / prevScale
+            item.grabOffsetX *= ratio
+            item.grabOffsetY *= ratio
+          }
+
+          // Increased prominence while held
+          item.opacity += (0.92 - item.opacity) * 0.15
+          item.shadowBlur = 32
+          item.liftZ = 18
+
+          // Elevate z-index while held so it can be inspected without being clipped
+          el.style.zIndex = '35'
+          el.style.cursor = 'grabbing'
+
+          // Apply hardware-accelerated 3D transform
+          el.style.transform = `translate3d(${item.x.toFixed(1)}px, ${item.y.toFixed(1)}px, 0) perspective(650px) rotateX(${item.rotX.toFixed(1)}deg) rotateY(${item.rotY.toFixed(1)}deg) rotateZ(${item.rotZ.toFixed(1)}deg) scale(${item.scale.toFixed(3)})`
+          el.style.opacity = `${item.opacity.toFixed(2)}`
+          el.style.filter = `drop-shadow(0 ${Math.round(16 + item.liftZ)}px ${Math.round(item.shadowBlur)}px rgba(0, 0, 0, 0.65))`
+
+          continue
+        }
+
+        // ============================================
+        // 2. NON-GRABBED STATES ('FALLING' | 'RELEASING' | 'HOVERING')
+        // ============================================
+        el.style.zIndex = '2'
+        el.style.cursor = 'grab'
+
+        // Scale smoothly relaxes back toward natural scale
+        item.scale += (item.naturalScale - item.scale) * 0.03
+        item.targetScale = item.scale
+
+        // Opacity relaxes back to ambient atmospheric level
+        item.opacity += (item.baseOpacity - item.opacity) * 0.05
+        item.shadowBlur += (14 - item.shadowBlur) * 0.08
+        item.liftZ += (0 - item.liftZ) * 0.08
+
+        if (item.state === 'RELEASING') {
+          // Air resistance damps throw velocities
+          item.vx *= Math.pow(PHYSICS_CONFIG.AIR_DRAG, dt * 60)
+          item.vy += (item.baseSpeed - item.vy) * 0.08
+          item.vRotZ *= Math.pow(PHYSICS_CONFIG.ROTATION_DRAG, dt * 60)
+          item.rotZ += item.vRotZ * dt * 60
+
+          if (Math.abs(item.vy - item.baseSpeed) < 6 && Math.abs(item.vx) < 12) {
+            item.state = 'FALLING'
+          }
+        } else {
+          // Natural downward falling
+          item.vy += (item.baseSpeed - item.vy) * 0.08
+          item.vx *= Math.pow(PHYSICS_CONFIG.AIR_DRAG, dt * 60)
+        }
+
+        // Advance position with gravity, drift & ambient wind
+        item.y += item.vy * dt
+        item.x += (item.vx + ambientWind) * dt
+
+        // Natural aerodynamic sway & flutter
+        const flutterZ = Math.sin(nowSec * item.flutterFreq * Math.PI * 2 + item.flutterPhase) * item.rotZAmp
+        const pitchX = Math.cos(nowSec * item.flutterFreq * Math.PI * 2 + item.flutterPhase) * item.rotXAmp
+        const rollY = Math.sin(nowSec * (item.flutterFreq * 0.75) * Math.PI * 2 + item.flutterPhase) * item.rotYAmp
+
+        const naturalRotZ = item.rotZBase + flutterZ
+        item.rotZ += (naturalRotZ - item.rotZ) * 0.08
+        item.rotX += (pitchX - item.rotX) * 0.1
+        item.rotY += (rollY - item.rotY) * 0.1
+
+        // ============================================
+        // 3. CURSOR AIR DISTURBANCE (PHYSICAL DAMPED OSCILLATOR)
+        // ============================================
+        const paperCenterX = item.x + item.width / 2
+        const paperCenterY = item.y + item.height / 2
+        const distX = paperCenterX - curX
+        const distY = paperCenterY - curY
+        const dist = Math.hypot(distX, distY)
+
+        let extForceX = 0
+        let extForceY = 0
+        let extTorque = 0
+
+        if (dist < PHYSICS_CONFIG.AIR_DISTURB_RADIUS && dist > 1) {
+          // Smooth Hermite / cosine falloff: 0 at boundary, 1.0 at center
+          const normDist = dist / PHYSICS_CONFIG.AIR_DISTURB_RADIUS
+          const falloff = Math.cos(normDist * Math.PI * 0.5)
+
+          // Normalized direction vector: CURSOR -> PAPER
+          const dirX = distX / dist
+          const dirY = distY / dist
+
+          // Cursor velocity & speed
+          const cVx = cursorPos.current.vx
+          const cVy = cursorPos.current.vy
+          const cSpeed = Math.hypot(cVx, cVy)
+
+          // 1. Dynamic wake from cursor motion (hand dragging air)
+          const wakeX = cVx * 0.035
+          const wakeY = cVy * 0.030
+
+          // 2. Air displacement from cursor proximity & velocity
+          // Clamped so rapid sweeps don't produce violent motion
+          const dispSpeed = Math.min(cSpeed, 350)
+          const pushMag = dispSpeed * 0.04
+          const pushX = dirX * pushMag
+          const pushY = dirY * pushMag * 0.65
+
+          // Combined physical air force
+          extForceX = (wakeX * 0.6 + pushX * 0.4) * falloff * 18
+          extForceY = (wakeY * 0.5 + pushY * 0.5) * falloff * 14
+
+          // 3. Subtle aerodynamic torque
+          const torqueMotion = (cVx * 0.015) * falloff * 10
+          const torquePush = (dirX * 0.8) * (dispSpeed * 0.015) * falloff * 8
+          extTorque = torqueMotion + torquePush
+
+          // Clamp forces to ensure subtle 1-4px displacement max
+          extForceX = Math.max(-50, Math.min(50, extForceX))
+          extForceY = Math.max(-40, Math.min(40, extForceY))
+          extTorque = Math.max(-30, Math.min(30, extTorque))
+        }
+
+        // Physical 2nd-order damped spring integration
+        // F = -k * x - c * v + extForce
+        const dtSpring = Math.min(dt, 0.033)
+        const springFx = -PHYSICS_CONFIG.AIR_SPRING_K * item.airDispX - PHYSICS_CONFIG.AIR_DAMPING_C * item.airDispVx
+        const springFy = -PHYSICS_CONFIG.AIR_SPRING_K * item.airDispY - PHYSICS_CONFIG.AIR_DAMPING_C * item.airDispVy
+        const springFrot = -PHYSICS_CONFIG.AIR_SPRING_K * item.airRotZ - PHYSICS_CONFIG.AIR_DAMPING_C * item.airRotVz
+
+        item.airDispVx += (springFx + extForceX) * dtSpring
+        item.airDispVy += (springFy + extForceY) * dtSpring
+        item.airRotVz += (springFrot + extTorque) * dtSpring
+
+        item.airDispX += item.airDispVx * dtSpring
+        item.airDispY += item.airDispVy * dtSpring
+        item.airRotZ += item.airRotVz * dtSpring
+
+        // Strict physical clamping to preserve subtle paper feel (1-4px, 0.5-3 deg)
+        item.airDispX = Math.max(-PHYSICS_CONFIG.MAX_AIR_DISP_X, Math.min(PHYSICS_CONFIG.MAX_AIR_DISP_X, item.airDispX))
+        item.airDispY = Math.max(-PHYSICS_CONFIG.MAX_AIR_DISP_Y, Math.min(PHYSICS_CONFIG.MAX_AIR_DISP_Y, item.airDispY))
+        item.airRotZ = Math.max(-PHYSICS_CONFIG.MAX_AIR_ROT, Math.min(PHYSICS_CONFIG.MAX_AIR_ROT, item.airRotZ))
+
+        // Render transforms with subtle air disturbance and optional micro-skew
+        const renderX = item.x + item.airDispX
+        const renderY = item.y + item.airDispY
+        const renderRotZ = item.rotZ + item.airRotZ
+        const skewX = Math.max(-0.75, Math.min(0.75, -item.airRotZ * 0.35))
+
+        el.style.transform = `translate3d(${renderX.toFixed(1)}px, ${renderY.toFixed(1)}px, 0) perspective(650px) rotateX(${item.rotX.toFixed(1)}deg) rotateY(${item.rotY.toFixed(1)}deg) rotateZ(${renderRotZ.toFixed(1)}deg) skewX(${skewX.toFixed(2)}deg) scale(${item.scale.toFixed(3)})`
+        el.style.opacity = `${item.opacity.toFixed(2)}`
+        el.style.filter = `drop-shadow(0 ${Math.round(8 + item.liftZ)}px ${Math.round(item.shadowBlur)}px rgba(0, 0, 0, ${item.opacity > 0.4 ? 0.65 : 0.42}))`
+
+        // Check for recycling offscreen
+        if (item.y > currentVh + 220 || item.x < -240 || item.x > currentVw + 240) {
+          recyclePaper(item, currentVw, currentVh)
+        }
       }
 
       rafIdRef.current = requestAnimationFrame(animate)
@@ -232,11 +750,11 @@ export const FallingOfferLetters: React.FC = () => {
     }
   }, [])
 
-  // Static pool generation for initial DOM elements
-  // Uses 12 reusable nodes for desktop (auto-managed in RAF)
-  const pool = physicsItemsRef.current.length > 0
-    ? physicsItemsRef.current
-    : Array.from({ length: 12 }, (_, i) => createPaperItem(i, -300))
+  // Static pool generation for DOM elements (desktop 12 items)
+  const pool =
+    physicsItemsRef.current.length > 0
+      ? physicsItemsRef.current
+      : Array.from({ length: 12 }, (_, i) => createPaperItem(i, -300))
 
   return (
     <div
@@ -251,17 +769,25 @@ export const FallingOfferLetters: React.FC = () => {
           ref={(el) => {
             itemElementsRef.current[index] = el
           }}
-          className="absolute top-0 left-0 will-change-transform"
+          onPointerDown={(e) => handlePointerDown(item.id, e)}
+          onPointerUp={(e) => handlePointerUp(item.id, e)}
+          onPointerCancel={(e) => handlePointerCancel(item.id, e)}
+          onPointerEnter={() => handlePointerEnter(item.id)}
+          onPointerLeave={() => handlePointerLeave(item.id)}
+          className="absolute top-0 left-0 will-change-transform pointer-events-auto cursor-grab touch-none select-none"
           style={{
             width: '148px',
             height: '198px',
             transform: `translate3d(-999px, -999px, 0) scale(${item.scale})`,
             opacity: item.opacity,
+            transformOrigin: 'center center',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
           }}
         >
           {/* Authentic Heist Employment Offer Letter Document */}
           <div
-            className="w-full h-full rounded-[3px] p-2.5 box-border flex flex-col justify-between relative shadow-lg"
+            className="w-full h-full rounded-[3px] p-2.5 box-border flex flex-col justify-between relative shadow-lg pointer-events-none"
             style={{
               backgroundColor: '#f6f3eb',
               color: '#1a1c20',

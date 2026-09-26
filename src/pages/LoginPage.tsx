@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Shield,
   Lock,
   Mail,
   Eye,
@@ -16,7 +15,6 @@ import {
   Fingerprint
 } from 'lucide-react'
 import { useAuth, DEMO_PRESETS, type UserRole } from '../hooks/useAuth'
-import { useTheme } from '../hooks/useTheme'
 import { FallingOfferLetters } from '../components/FallingOfferLetters'
 import { cn } from '../lib/utils'
 
