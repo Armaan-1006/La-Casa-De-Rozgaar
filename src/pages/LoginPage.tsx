@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Lock,
@@ -11,10 +11,10 @@ import {
   ArrowRight,
   ChevronRight,
   Briefcase,
-  Layers,
   Fingerprint
 } from 'lucide-react'
 import { useAuth, DEMO_PRESETS, type UserRole } from '../hooks/useAuth'
+import { applyDomTheme } from '../hooks/useTheme'
 import { FallingOfferLetters } from '../components/FallingOfferLetters'
 import { cn } from '../lib/utils'
 
@@ -26,6 +26,12 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) => {
   // Login page always operates in dedicated cinematic Heist presentation; main app retains user theme
   const isHeist = true
+
+  // Guarantee DOM root is strictly set to Heist theme upon entering the login page
+  useEffect(() => {
+    applyDomTheme('heist', true)
+  }, [])
+
   const { login, register, quickLogin, isLoading, user, isAuthenticated, logout } = useAuth()
 
   // Form tab: 'login' | 'register'
@@ -387,7 +393,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
                         <span>Rahul Sharma</span>
-                        <span className="text-[10px] px-1 py-0.2 rounded bg-emerald-500/10 text-emerald-500 font-mono">
+                        <span className="text-[10px] px-1 py-0.2 rounded bg-crimson/15 text-crimson font-mono">
                           CANDIDATE
                         </span>
                       </div>
@@ -422,7 +428,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
                         <span>Priya Patel</span>
-                        <span className="text-[10px] px-1 py-0.2 rounded bg-cyan-500/10 text-cyan-500 font-mono">
+                        <span className="text-[10px] px-1 py-0.2 rounded bg-crimson/15 text-crimson font-mono">
                           CANDIDATE
                         </span>
                       </div>
@@ -457,7 +463,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
                         <span>Marcus Vance</span>
-                        <span className="text-[10px] px-1 py-0.2 rounded bg-indigo-500/10 text-indigo-500 font-mono">
+                        <span className="text-[10px] px-1 py-0.2 rounded bg-crimson/15 text-crimson font-mono">
                           RECRUITER
                         </span>
                       </div>
@@ -492,7 +498,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
                         <span>Elena Rostova</span>
-                        <span className="text-[10px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-500 font-mono">
+                        <span className="text-[10px] px-1 py-0.2 rounded bg-crimson/15 text-crimson font-mono">
                           PLANNER
                         </span>
                       </div>
@@ -799,7 +805,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                       </div>
                     ) : (
                       <>
-                        <span>AUTHORIZE ACCESS // SIGN IN</span>
+                        <span>AUTHORIZE ACCESS</span>
                         <ArrowRight size={17} />
                       </>
                     )}
@@ -910,7 +916,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     <label className={cn('block text-xs font-mono font-medium mb-1.5', isHeist ? 'text-warm-ivory/80' : 'text-slate-700')}>
                       OPERATIONAL ROLE & CLEARANCE LEVEL
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       {/* Candidate */}
                       <button
                         type="button"
@@ -950,26 +956,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                         <span className="text-xs font-bold font-mono mt-1">RECRUITER</span>
                         <span className="text-[10px] opacity-70">Talent Discovery</span>
                       </button>
-
-                      {/* Workforce Planner */}
-                      <button
-                        type="button"
-                        onClick={() => setRegRole('WORKFORCE_PLANNER')}
-                        className={cn(
-                          'p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col',
-                          regRole === 'WORKFORCE_PLANNER'
-                            ? isHeist
-                              ? 'bg-crimson/20 border-crimson text-white shadow-glow-crimson'
-                              : 'bg-blue-50 border-blue-500 text-blue-900'
-                            : isHeist
-                            ? 'bg-obsidian/70 border-burgundy/30 text-warm-ivory/60 hover:text-warm-ivory'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        )}
-                      >
-                        <Layers size={15} className={regRole === 'WORKFORCE_PLANNER' ? 'text-crimson' : 'text-slate-400'} />
-                        <span className="text-xs font-bold font-mono mt-1">PLANNER</span>
-                        <span className="text-[10px] opacity-70">Capability Gaps</span>
-                      </button>
                     </div>
                   </div>
 
@@ -1003,20 +989,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   </button>
                 </form>
               )}
-
-              {/* Bottom Security Telemetry Footer */}
-              <div
-                className={cn(
-                  'mt-6 pt-4 border-t border-inherit/20 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono',
-                  isHeist ? 'text-warm-ivory/50' : 'text-slate-400'
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>MODULE 2 BACKEND: PORT 3001 OK</span>
-                </div>
-                <div>SQLITE DB ENCRYPTED // JWT BEARER RBAC</div>
-              </div>
             </div>
           </motion.div>
         </div>

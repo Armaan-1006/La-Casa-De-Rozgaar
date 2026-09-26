@@ -1217,3 +1217,38 @@ html.theme-professional ::-webkit-scrollbar-thumb:hover {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   PERMANENT HEIST MODE FOR LOGIN PAGE
+   The login page strictly and exclusively uses the Money Heist aesthetic.
+   ========================================================================== */
+html[data-page="login"],
+html[data-page="login"] body,
+html.theme-heist[data-page="login"] {
+  background-color: #0A0A0C !important;
+  color: #F4EBD9 !important;
+}
+
+html[data-page="login"] [class*="bg-charcoal"] {
+  background-color: rgba(17, 18, 21, 0.9) !important;
+}
+
+html[data-page="login"] [class*="bg-obsidian"] {
+  background-color: #0A0A0C !important;
+}
+
+html[data-page="login"] [class*="text-crimson"],
+html[data-page="login"] .text-crimson {
+  color: #DC2626 !important;
+}
+
+html[data-page="login"] [class*="border-burgundy"] {
+  border-color: rgba(114, 47, 55, 0.6) !important;
+}
+
+html[data-page="login"] .classified-grid {
+  background-image: linear-gradient(rgba(179, 19, 43, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(179, 19, 43, 0.03) 1px, transparent 1px) !important;
+  background-size: 24px 24px !important;
+}
+
