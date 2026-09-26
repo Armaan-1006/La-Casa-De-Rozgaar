@@ -253,7 +253,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
                   </div>
                 </div>
                 <button
-                  onClick={logout}
+                  onClick={() => {
+                    logout()
+                    handleNavClick('login')
+                  }}
                   title="Sign out"
                   className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
                 >
@@ -431,7 +434,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
                 </div>
               </div>
               <button
-                onClick={logout}
+                onClick={() => {
+                  logout()
+                  handleNavClick('login')
+                }}
                 title="Terminate clearance session"
                 className="p-1 text-warm-ivory/40 hover:text-crimson rounded hover:bg-burgundy/20 transition-colors cursor-pointer"
               >
@@ -667,6 +673,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onClick={() => {
                         setUserMenuOpen(false)
                         logout()
+                        onNavigate('login')
                       }}
                       className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
                     >
@@ -816,6 +823,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={() => {
                       setUserMenuOpen(false)
                       logout()
+                      onNavigate('login')
                     }}
                     className="w-full text-left px-3.5 py-2 hover:bg-crimson/20 text-crimson font-bold flex items-center gap-2 cursor-pointer"
                   >

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Sidebar, Header } from './components/Layout'
 import { CommandPalette } from './components/CommandPalette'
 import { NotificationCenter } from './components/NotificationCenter'
-import { ThemeProvider, useTheme } from './hooks/useTheme'
+import { ThemeProvider, useTheme, applyDomTheme } from './hooks/useTheme'
 import { ThemeTransitionOverlay } from './components/ThemeTransitionOverlay'
 import { cn } from './lib/utils'
 
@@ -51,48 +51,59 @@ export type PageType =
   | 'research'
   | 'feed'
 
+const VALID_PAGES: PageType[] = [
+  'login',
+  'war-room',
+  'market-intelligence',
+  'skill-intelligence',
+  'role-intelligence',
+  'compensation',
+  'forecast',
+  'candidate-dossier',
+  'assessment',
+  'skill-heist',
+  'job-finder',
+  'career-intelligence',
+  'simulation',
+  'employer-dashboard',
+  'talent-vault',
+  'workforce-gaps',
+  'roadmap',
+  'interviews',
+  'research',
+  'feed',
+]
+
+function isValidPage(page: string): boolean {
+  return VALID_PAGES.includes(page as PageType)
+}
+
+function getInitialPage(): PageType {
+  if (typeof window === 'undefined') return 'war-room'
+  const hash = window.location.hash.replace('#/', '')
+  if (hash && isValidPage(hash)) {
+    return hash as PageType
+  }
+  return 'war-room'
+}
+
 function AppContent() {
-  const { isHeist } = useTheme()
+  const { isHeist, mode } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
-  // Initialize from hash if present, e.g. #/job-finder
-  const getInitialPage = (): PageType => {
-    const hash = window.location.hash.replace('#/', '')
-    if (hash && isValidPage(hash)) {
-      return hash as PageType
-    }
-    return 'war-room'
-  }
-
-  const isValidPage = (page: string): boolean => {
-    const validPages: PageType[] = [
-      'login',
-      'war-room',
-      'market-intelligence',
-      'skill-intelligence',
-      'role-intelligence',
-      'compensation',
-      'forecast',
-      'candidate-dossier',
-      'assessment',
-      'skill-heist',
-      'job-finder',
-      'career-intelligence',
-      'simulation',
-      'employer-dashboard',
-      'talent-vault',
-      'workforce-gaps',
-      'roadmap',
-      'interviews',
-      'research',
-      'feed',
-    ]
-    return validPages.includes(page as PageType)
-  }
-
   const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage)
+
+  // Guarantee that the DOM is strictly in Heist Mode whenever currentPage is 'login',
+  // and restored to the user's saved preference when navigating into the main app.
+  useEffect(() => {
+    if (currentPage === 'login') {
+      applyDomTheme('heist', true)
+    } else {
+      applyDomTheme(mode, false)
+    }
+  }, [currentPage, mode])
 
   const handleNavigation = (page: string) => {
     if (isValidPage(page)) {
@@ -177,7 +188,6 @@ function AppContent() {
   if (currentPage === 'login') {
     return (
       <div className="min-h-screen overflow-y-auto relative transition-colors duration-300 bg-obsidian text-warm-ivory classified-grid">
-        <ThemeTransitionOverlay />
         <LoginPage onNavigate={handleNavigation} />
       </div>
     )
