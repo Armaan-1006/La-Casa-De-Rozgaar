@@ -73,8 +73,7 @@ const heistNavigationItems: NavGroup[] = [
     submenu: [
       { label: 'Mastermind HQ', href: 'employer-dashboard' },
       { label: 'Talent Vault', href: 'talent-vault' },
-      { label: 'Workforce Capability', href: 'employer-dashboard' },
-      { label: 'Capability Gaps', href: 'workforce-gaps' },
+      { label: 'Workforce Gaps', href: 'workforce-gaps' },
     ],
   },
   {

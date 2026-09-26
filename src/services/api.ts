@@ -21,6 +21,30 @@ import {
 const API_BASE = '/api/v1'
 const TOKEN_KEY = 'lcdr_auth_token'
 const USER_KEY = 'lcdr_auth_user'
+const CANDIDATE_STORAGE_KEY = 'lcdr_candidate_profile'
+
+export function getStoredCandidate() {
+  if (typeof window === 'undefined') return mockCandidate
+  try {
+    const raw = localStorage.getItem(CANDIDATE_STORAGE_KEY)
+    if (raw) {
+      return { ...mockCandidate, ...JSON.parse(raw) }
+    }
+  } catch {
+    // fallback
+  }
+  return mockCandidate
+}
+
+export function saveStoredCandidate(candidate: typeof mockCandidate) {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(CANDIDATE_STORAGE_KEY, JSON.stringify(candidate))
+    window.dispatchEvent(new Event('candidate-profile-updated'))
+  } catch {
+    // ignore
+  }
+}
 
 interface ApiResponse<T> {
   data?: T
@@ -181,15 +205,16 @@ class ApiService {
   public candidate = {
     getProfile: async () => {
       await this.ensureAuth()
+      const stored = getStoredCandidate()
       const res = await this.request<any>('/candidates/profile')
       if (res.data) {
         // Merge with rich UI format
-        return {
-          ...mockCandidate,
+        const merged = {
+          ...stored,
           ...res.data,
-          name: res.data.name || mockCandidate.name,
-          targetRole: (res.data.target_roles && res.data.target_roles[0]) || mockCandidate.targetRole,
-          location: res.data.location || mockCandidate.location,
+          name: res.data.name || stored.name,
+          targetRole: (res.data.target_roles && res.data.target_roles[0]) || stored.targetRole,
+          location: res.data.location || stored.location,
           experience: `${res.data.total_experience_years || 4} years`,
           skills: res.data.skills?.length
             ? res.data.skills.map((s: any) => ({
@@ -199,10 +224,12 @@ class ApiService {
                 gap: Math.round(((s.verified_score || s.assessment_score || 7.0) - 8.5) * 10) / 10,
                 tier: (s.verified_score || s.assessment_score || 7.0) >= 8 ? 'strength' : (s.verified_score || s.assessment_score || 7.0) >= 6 ? 'high' : 'critical'
               }))
-            : mockCandidate.skills
+            : stored.skills
         }
+        saveStoredCandidate(merged)
+        return merged
       }
-      return mockCandidate
+      return stored
     },
 
     updateProfile: async (data: {
@@ -216,17 +243,26 @@ class ApiService {
       portfolioLinks?: string[]
     }) => {
       await this.ensureAuth()
+      const current = getStoredCandidate()
+      const updated = {
+        ...current,
+        name: data.name || current.name,
+        targetRole: (data.targetRoles && data.targetRoles[0]) || current.targetRole,
+        location: data.location || current.location,
+      }
+      saveStoredCandidate(updated)
       const res = await this.request<any>('/candidates/profile', {
         method: 'PUT',
         body: JSON.stringify(data),
       })
-      return res.data || data
+      return res.data || updated
     },
 
     getSkills: async () => {
       await this.ensureAuth()
+      const stored = getStoredCandidate()
       const res = await this.request<any[]>('/candidates/skills')
-      return res.data || mockCandidate.skills
+      return res.data || stored.skills
     },
 
     addSkill: async (skillId: string, skillName: string, score: number) => {
@@ -236,6 +272,98 @@ class ApiService {
         body: JSON.stringify({ skillId, skillName, selfReportedScore: score }),
       })
       return res.data
+    },
+
+    applyAssessmentScore: (data: {
+      score: number
+      percentage: number
+      correctCount?: number
+      totalQuestions?: number
+      trustScore?: number
+      integrityStatus?: 'CLEAN' | 'SUSPICIOUS' | 'FLAGGED'
+      strikes?: number
+      violationsCount?: number
+      completedAt?: string
+    }) => {
+      const current = getStoredCandidate()
+      const scoreOutOf10 = Number(data.score.toFixed(1))
+      const pct = data.percentage
+      const violationsCount = data.violationsCount ?? 0
+      const strikes = data.strikes ?? 0
+      const integrityStatus = data.integrityStatus ?? 'CLEAN'
+      const completedAt = data.completedAt ?? new Date().toISOString().split('T')[0]
+
+      const category = pct >= 85
+        ? 'EXCEPTIONAL OPERATIVE'
+        : pct >= 70
+        ? 'STRONG CANDIDATE'
+        : pct >= 50
+        ? 'COMPETENT OPERATIVE'
+        : 'DEVELOPING OPERATIVE'
+
+      const percentile = pct >= 90
+        ? 'Top 3% of Market'
+        : pct >= 80
+        ? 'Top 8% of Market'
+        : pct >= 70
+        ? 'Top 14% of Market'
+        : 'Top 35% of Market'
+
+      const integrity = integrityStatus === 'CLEAN'
+        ? 'VERIFIED // ZERO ANOMALIES'
+        : integrityStatus === 'SUSPICIOUS'
+        ? 'PASS // MINOR WARNINGS'
+        : 'FLAGGED // INTEGRITY BREACH'
+
+      const focusRate = `${Math.max(88, Math.min(100, 100 - violationsCount * 2))}%`
+      const newRoleReadiness = Math.min(99, Math.max(55, Math.round(pct * 0.9 + 5)))
+
+      // Update or add certification entry
+      const existingCerts = current.certifications || []
+      const certTitle = `Secure Diagnostic Assessment (Score: ${scoreOutOf10}/10)`
+      const filteredCerts = existingCerts.filter((c: any) => !c.name.includes('Diagnostic Assessment') && !c.name.includes('Secure Skill'))
+      const updatedCerts = [
+        { name: certTitle, issuer: 'La Casa De Rozgaar', date: completedAt, status: 'VERIFIED' },
+        ...filteredCerts
+      ]
+
+      // Scale verified skill scores slightly on good performance
+      const updatedSkills = (current.skills || []).map((s: any) => {
+        if (pct >= 70) {
+          const delta = pct >= 85 ? 0.4 : 0.2
+          const newScore = Math.min(9.9, Number((s.score + delta).toFixed(1)))
+          return {
+            ...s,
+            score: newScore,
+            gap: Math.round((newScore - s.market) * 10) / 10,
+            tier: newScore >= 8 ? 'strength' : newScore >= 6 ? 'high' : 'critical'
+          }
+        }
+        return s
+      })
+
+      const updatedCandidate = {
+        ...current,
+        lastAssessment: completedAt,
+        roleReadiness: newRoleReadiness,
+        assessment: {
+          score: scoreOutOf10,
+          category,
+          completedAt,
+          integrity,
+          percentile,
+          proctorSignals: {
+            tabSwitches: strikes,
+            focusRate,
+            cameraSession: 'CONSENTED // CONFIRMED',
+          },
+        },
+        skills: updatedSkills,
+        certifications: updatedCerts,
+      }
+
+      saveStoredCandidate(updatedCandidate)
+      return updatedCandidate
     },
   }
 

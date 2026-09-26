@@ -1,10 +1,10 @@
 import { useState, useEffect, type FC } from 'react'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Edit, Download, Share2, CheckCircle, ArrowRight, ShieldCheck, Award, Briefcase, GraduationCap, X, Check } from 'lucide-react'
-import { mockCandidate } from '../data/mockData'
+import { type CandidateProfile } from '../data/mockData'
 import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
-import { api } from '../services/api'
+import { api, getStoredCandidate } from '../services/api'
 
 interface CandidateDossierProps {
   onNavigate?: (page: string) => void
@@ -14,7 +14,7 @@ interface CandidateDossierProps {
 // ENTERPRISE CANDIDATE PROFILE COMPONENT
 // ============================================================================
 const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) => {
-  const [candidate, setCandidate] = useState(mockCandidate)
+  const [candidate, setCandidate] = useState<CandidateProfile>(getStoredCandidate)
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'assessment' | 'experience'>('overview')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
@@ -23,15 +23,22 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
   // Fetch live candidate profile
   useEffect(() => {
     let mounted = true
-    api.candidate.getProfile().then((data) => {
-      if (mounted && data) {
-        setCandidate(data)
-        setEditName(data.name)
-        setEditRole(data.targetRole)
-        setEditLoc(data.location)
-      }
-    })
-    return () => { mounted = false }
+    const loadProfile = () => {
+      api.candidate.getProfile().then((data) => {
+        if (mounted && data) {
+          setCandidate(data as CandidateProfile)
+          setEditName(data.name)
+          setEditRole(data.targetRole)
+          setEditLoc(data.location)
+        }
+      })
+    }
+    loadProfile()
+    window.addEventListener('candidate-profile-updated', loadProfile)
+    return () => {
+      mounted = false
+      window.removeEventListener('candidate-profile-updated', loadProfile)
+    }
   }, [])
 
   // Edit form state
@@ -40,7 +47,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
   const [editLoc, setEditLoc] = useState(candidate.location)
 
   const handleSaveProfile = async () => {
-    setCandidate((prev) => ({
+    setCandidate((prev: CandidateProfile) => ({
       ...prev,
       name: editName,
       targetRole: editRole,
@@ -54,8 +61,8 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
         targetRoles: [editRole],
         location: editLoc,
       })
-    } catch (err) {
-      console.error('Failed to sync profile with backend:', err)
+    } catch {
+      // Offline fallback: state preserved in local state
     }
   }
 
@@ -70,7 +77,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
     setTimeout(() => setExportNotice(false), 3000)
   }
 
-  const radarData = candidate.skills.map((skill) => ({
+  const radarData = candidate.skills.map((skill: any) => ({
     skill: skill.name,
     current: skill.score,
     market: skill.market,
@@ -203,7 +210,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {candidate.skills.slice(0, 4).map((skill) => (
+              {candidate.skills.slice(0, 4).map((skill: any) => (
                 <div key={skill.name} className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-800">{skill.name}</span>
@@ -229,7 +236,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
               Validated Technical Skills
             </h3>
             <div className="space-y-3">
-              {candidate.skills.map((skill) => {
+              {candidate.skills.map((skill: any) => {
                 const gap = skill.gap
                 const isReady = gap >= 0
                 return (
@@ -341,11 +348,11 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
               <h3 className="text-sm font-semibold text-slate-900">Verified Technical Projects</h3>
             </div>
             <div className="space-y-3">
-              {candidate.projects.map((proj) => (
+              {candidate.projects.map((proj: any) => (
                 <div key={proj.title} className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5 text-xs">
                   <h4 className="font-semibold text-slate-900">{proj.title}</h4>
                   <div className="flex flex-wrap gap-1">
-                    {proj.tech.map((t) => (
+                    {proj.tech.map((t: any) => (
                       <span key={t} className="px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded text-[10px]">
                         {t}
                       </span>
@@ -364,7 +371,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
               <h3 className="text-sm font-semibold text-slate-900">Certifications & Education</h3>
             </div>
             <div className="space-y-3">
-              {candidate.certifications.map((cert) => (
+              {candidate.certifications.map((cert: any) => (
                 <div key={cert.name} className="p-3 bg-slate-50 rounded border border-slate-200 flex items-center justify-between text-xs">
                   <div>
                     <h4 className="font-semibold text-slate-900">{cert.name}</h4>
@@ -459,7 +466,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
 // ============================================================================
 export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const { isHeist } = useTheme()
-  const [candidate, setCandidate] = useState(mockCandidate)
+  const [candidate, setCandidate] = useState<CandidateProfile>(getStoredCandidate)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
@@ -467,15 +474,22 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   // Fetch live candidate profile
   useEffect(() => {
     let mounted = true
-    api.candidate.getProfile().then((data) => {
-      if (mounted && data) {
-        setCandidate(data)
-        setEditName(data.name)
-        setEditRole(data.targetRole)
-        setEditLoc(data.location)
-      }
-    })
-    return () => { mounted = false }
+    const loadProfile = () => {
+      api.candidate.getProfile().then((data) => {
+        if (mounted && data) {
+          setCandidate(data as CandidateProfile)
+          setEditName(data.name)
+          setEditRole(data.targetRole)
+          setEditLoc(data.location)
+        }
+      })
+    }
+    loadProfile()
+    window.addEventListener('candidate-profile-updated', loadProfile)
+    return () => {
+      mounted = false
+      window.removeEventListener('candidate-profile-updated', loadProfile)
+    }
   }, [])
 
   // In Enterprise Mode: render the enterprise candidate profile
@@ -489,7 +503,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const [editLoc, setEditLoc] = useState(candidate.location)
 
   const handleSaveProfile = async () => {
-    setCandidate((prev) => ({
+    setCandidate((prev: CandidateProfile) => ({
       ...prev,
       name: editName,
       targetRole: editRole,
@@ -503,8 +517,8 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
         targetRoles: [editRole],
         location: editLoc,
       })
-    } catch (err) {
-      console.error('Failed to sync profile with backend:', err)
+    } catch {
+      // Offline fallback: state preserved in local state
     }
   }
 
@@ -519,7 +533,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
     setTimeout(() => setExportNotice(false), 3000)
   }
 
-  const radarData = candidate.skills.map((skill) => ({
+  const radarData = candidate.skills.map((skill: any) => ({
     skill: skill.name,
     current: skill.score,
     market: skill.market,
@@ -620,7 +634,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
             CERTIFIED SKILL PROFILE & MARKET EXPECTATIONS
           </h3>
           <div className="space-y-3.5">
-            {candidate.skills.map((skill) => {
+            {candidate.skills.map((skill: any) => {
               const gap = skill.gap
               const isStrength = gap >= 0
               return (
@@ -737,11 +751,11 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
             <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">VERIFIED FIELD PROJECTS</h3>
           </div>
           <div className="space-y-3">
-            {candidate.projects.map((proj) => (
+            {candidate.projects.map((proj: any) => (
               <div key={proj.title} className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 space-y-1 text-xs font-mono">
                 <h4 className="font-bold text-warm-ivory">{proj.title}</h4>
                 <div className="flex flex-wrap gap-1 my-1">
-                  {proj.tech.map((t) => (
+                  {proj.tech.map((t: any) => (
                     <span key={t} className="px-1.5 py-0.5 bg-burgundy/20 rounded text-[10px] text-warm-ivory/80">
                       {t}
                     </span>
@@ -760,7 +774,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
             <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">AUTHENTICATED CREDENTIALS</h3>
           </div>
           <div className="space-y-3">
-            {candidate.certifications.map((cert) => (
+            {candidate.certifications.map((cert: any) => (
               <div key={cert.name} className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 flex items-center justify-between text-xs font-mono">
                 <div>
                   <h4 className="font-bold text-warm-ivory">{cert.name}</h4>
