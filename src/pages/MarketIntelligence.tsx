@@ -3,6 +3,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { ArrowRight, Globe, DollarSign } from 'lucide-react'
 import { mockMarketData } from '../data/mockData'
 import { formatNumber } from '../lib/utils'
+import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 
 interface MarketIntelligenceProps {
@@ -10,6 +11,7 @@ interface MarketIntelligenceProps {
 }
 
 export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNavigate }) => {
+  const { isProfessional } = useTheme()
   const [selectedRoleName, setSelectedRoleName] = useState('Full Stack Developer')
 
   const activeRole =
@@ -113,25 +115,26 @@ export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNaviga
           <div className="w-full h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={activeRole.trajectory}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.12)" />
-                <XAxis dataKey="month" stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
-                <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isProfessional ? '#E2E8F0' : 'rgba(179,19,43,0.12)'} />
+                <XAxis dataKey="month" stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />
+                <YAxis stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(21,21,24,0.95)',
-                    border: '1px solid rgba(179,19,43,0.4)',
+                    background: isProfessional ? '#FFFFFF' : 'rgba(21,21,24,0.95)',
+                    border: isProfessional ? '1px solid #E2E8F0' : '1px solid rgba(179,19,43,0.4)',
                     borderRadius: '8px',
-                    color: '#F2E9DC',
+                    color: isProfessional ? '#0F172A' : '#F2E9DC',
                     fontFamily: 'monospace',
+                    boxShadow: isProfessional ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="#B3132B"
+                  stroke={isProfessional ? '#2563EB' : '#B3132B'}
                   strokeWidth={3}
-                  dot={{ fill: '#B3132B', r: 4 }}
-                  activeDot={{ r: 7, fill: '#E63946' }}
+                  dot={{ fill: isProfessional ? '#2563EB' : '#B3132B', r: 4 }}
+                  activeDot={{ r: 7, fill: isProfessional ? '#1D4ED8' : '#E63946' }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -180,19 +183,20 @@ export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNaviga
         <div className="w-full h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={mockMarketData.locationDemand}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.1)" />
-              <XAxis dataKey="location" stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
-              <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={isProfessional ? '#E2E8F0' : 'rgba(179,19,43,0.1)'} />
+              <XAxis dataKey="location" stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />
+              <YAxis stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />
               <Tooltip
                 contentStyle={{
-                  background: 'rgba(21,21,24,0.95)',
-                  border: '1px solid rgba(179,19,43,0.4)',
+                  background: isProfessional ? '#FFFFFF' : 'rgba(21,21,24,0.95)',
+                  border: isProfessional ? '1px solid #E2E8F0' : '1px solid rgba(179,19,43,0.4)',
                   borderRadius: '8px',
-                  color: '#F2E9DC',
+                  color: isProfessional ? '#0F172A' : '#F2E9DC',
                   fontFamily: 'monospace',
+                  boxShadow: isProfessional ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
                 }}
               />
-              <Bar dataKey="jobs" fill="#B3132B" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="jobs" fill={isProfessional ? '#2563EB' : '#B3132B'} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

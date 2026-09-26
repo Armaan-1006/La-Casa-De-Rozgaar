@@ -773,20 +773,20 @@ export const WarRoom: React.FC<WarRoomProps> = ({ onNavigate }) => {
                 <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(21,21,24,0.95)',
-                    border: '1px solid rgba(179,19,43,0.4)',
+                    background: isHeist ? 'rgba(21,21,24,0.95)' : '#FFFFFF',
+                    border: isHeist ? '1px solid rgba(179,19,43,0.4)' : '1px solid #E2E8F0',
                     borderRadius: '8px',
-                    color: '#F2E9DC',
+                    color: isHeist ? '#F2E9DC' : '#0F172A',
                     fontFamily: 'monospace',
                   }}
                 />
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="#B3132B"
+                  stroke={isHeist ? '#B3132B' : '#2563EB'}
                   strokeWidth={2.5}
-                  dot={{ fill: '#B3132B', r: 4 }}
-                  activeDot={{ r: 6, fill: '#E63946' }}
+                  dot={{ fill: isHeist ? '#B3132B' : '#2563EB', r: 4 }}
+                  activeDot={{ r: 6, fill: isHeist ? '#E63946' : '#1D4ED8' }}
                 />
               </LineChart>
             </ResponsiveContainer>

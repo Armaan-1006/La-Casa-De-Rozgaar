@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Search, ArrowRight, Zap, CheckCircle2 } from 'lucide-react'
 import { mockMarketData, TrackedSkill } from '../data/mockData'
 import { getTrendColor, getTrendIcon } from '../lib/utils'
+import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 
 interface SkillIntelligenceProps {
@@ -10,6 +11,7 @@ interface SkillIntelligenceProps {
 }
 
 export const SkillIntelligence: React.FC<SkillIntelligenceProps> = ({ onNavigate }) => {
+  const { isProfessional } = useTheme()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSkillName, setSelectedSkillName] = useState(mockMarketData.topSkills[0].name)
 
@@ -176,19 +178,27 @@ export const SkillIntelligence: React.FC<SkillIntelligenceProps> = ({ onNavigate
             <div className="w-full h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={selectedSkill.history}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.12)" />
-                  <XAxis dataKey="month" stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
-                  <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} domain={['dataMin - 10', 'dataMax + 10']} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isProfessional ? '#E2E8F0' : 'rgba(179,19,43,0.12)'} />
+                  <XAxis dataKey="month" stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />
+                  <YAxis stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} domain={['dataMin - 10', 'dataMax + 10']} />
                   <Tooltip
                     contentStyle={{
-                      background: 'rgba(21,21,24,0.95)',
-                      border: '1px solid rgba(179,19,43,0.4)',
+                      background: isProfessional ? '#FFFFFF' : 'rgba(21,21,24,0.95)',
+                      border: isProfessional ? '1px solid #E2E8F0' : '1px solid rgba(179,19,43,0.4)',
                       borderRadius: '8px',
-                      color: '#F2E9DC',
+                      color: isProfessional ? '#0F172A' : '#F2E9DC',
                       fontFamily: 'monospace',
+                      boxShadow: isProfessional ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
                     }}
                   />
-                  <Line type="monotone" dataKey="value" stroke="#B3132B" strokeWidth={2.5} dot={{ fill: '#B3132B', r: 3 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke={isProfessional ? '#2563EB' : '#B3132B'}
+                    strokeWidth={2.5}
+                    dot={{ fill: isProfessional ? '#2563EB' : '#B3132B', r: 3 }}
+                    activeDot={{ r: 6, fill: isProfessional ? '#1D4ED8' : '#E63946' }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>

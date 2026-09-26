@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { MapPin, ArrowRight } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 
 interface CompensationProps {
@@ -8,6 +9,7 @@ interface CompensationProps {
 }
 
 export const CompensationIntelligence: React.FC<CompensationProps> = ({ onNavigate }) => {
+  const { isProfessional } = useTheme()
   const [selectedRole, setSelectedRole] = useState('Full Stack Developer')
   const [selectedCity, setSelectedCity] = useState('Bangalore')
 
@@ -169,20 +171,21 @@ export const CompensationIntelligence: React.FC<CompensationProps> = ({ onNaviga
           <div className="w-full h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(179,19,43,0.1)" />
-                <XAxis dataKey="percentile" stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
-                <YAxis stroke="rgba(242,233,220,0.4)" tick={{ fill: 'rgba(242,233,220,0.6)', fontSize: 11 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={isProfessional ? '#E2E8F0' : 'rgba(179,19,43,0.1)'} />
+                <XAxis dataKey="percentile" stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />
+                <YAxis stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(21,21,24,0.95)',
-                    border: '1px solid rgba(179,19,43,0.4)',
+                    background: isProfessional ? '#FFFFFF' : 'rgba(21,21,24,0.95)',
+                    border: isProfessional ? '1px solid #E2E8F0' : '1px solid rgba(179,19,43,0.4)',
                     borderRadius: '8px',
-                    color: '#F2E9DC',
+                    color: isProfessional ? '#0F172A' : '#F2E9DC',
                     fontFamily: 'monospace',
+                    boxShadow: isProfessional ? '0 4px 12px rgba(0,0,0,0.08)' : 'none',
                   }}
                   formatter={(val: number) => [`₹${(val / 100).toFixed(2)} Lakhs / yr`, 'Total Base']}
                 />
-                <Bar dataKey="salary" fill="#B3132B" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="salary" fill={isProfessional ? '#2563EB' : '#B3132B'} radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
