@@ -21,6 +21,7 @@ import {
   Activity,
   Users
 } from 'lucide-react'
+import { FaceDetector, FilesetResolver, Detection } from '@mediapipe/tasks-vision'
 import { mockAssessmentQuestions, AssessmentQuestion } from '../data/mockData'
 import { cn } from '../lib/utils'
 import { api } from '../services/api'
@@ -56,14 +57,15 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null)
   const [pauseReason, setPauseReason] = useState<'FACE_ABSENT' | 'MULTIPLE_FACES' | null>(null)
+  const [modelReady, setModelReady] = useState(false)
 
   // Live Biometric Telemetry
   const [faceDetected, setFaceDetected] = useState(false)
   const [faceCount, setFaceCount] = useState(0)
   const [gazeStatus, setGazeStatus] = useState<'CENTERED' | 'LOOKING_AWAY' | 'UNVERIFIED' | 'MULTIPLE_FACES'>('UNVERIFIED')
   const [faceConfidence, setFaceConfidence] = useState(0)
-  const [motionEnergy, setMotionEnergy] = useState(0)
   const [faceBox, setFaceBox] = useState<FaceBox | null>(null)
+  const [secondaryFaceBoxes, setSecondaryFaceBoxes] = useState<FaceBox[]>([])
   const [proctorToast, setProctorToast] = useState<{ text: string; type: 'warn' | 'danger' } | null>(null)
 
   // Proctoring & Anti-Cheat State
@@ -83,8 +85,8 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
   const proctorToastTimerRef = useRef<any>(null)
   const lastKeyTimeRef = useRef<number>(0)
   const streamRef = useRef<MediaStream | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const prevFrameDataRef = useRef<Uint8ClampedArray | null>(null)
+  const mediaPipeDetectorRef = useRef<FaceDetector | null>(null)
+  const lastVideoTimeRef = useRef<number>(-1)
 
   const questions = mockAssessmentQuestions
   const currentQ: AssessmentQuestion = questions[currentIndex] || questions[0]
@@ -129,7 +131,7 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
 
     setPhase('SUBMITTED')
 
-    // Calculate score
+    // Calculate score & telemetry metrics
     let correctCount = 0
     questions.forEach((q, idx) => {
       if (selectedAnswers[idx] === q.correct) {
@@ -137,13 +139,30 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
       }
     })
     const totalMarks = Number((correctCount * 0.5).toFixed(1))
+    const totalQuestions = questions.length
+    const percentage = Math.round((correctCount / totalQuestions) * 100)
+
+    const totalPenalties = violations.reduce((sum, v) => sum + v.penalty, 0)
+    const trustScore = Math.max(0, Math.min(100, 100 - totalPenalties))
+
+    let integrityStatus: 'CLEAN' | 'SUSPICIOUS' | 'FLAGGED' = 'CLEAN'
+    if (trustScore < 60 || strikes >= 3) {
+      integrityStatus = 'FLAGGED'
+    } else if (trustScore < 85 || strikes > 0) {
+      integrityStatus = 'SUSPICIOUS'
+    }
 
     try {
-      await api.candidate.addSkill('skill_assessment_mcq', 'Technical Diagnostic Assessment', totalMarks)
-    } catch (err) {
-      console.warn('Backend attempt logging:', err)
+      await api.candidate.applyAssessmentScore({
+        score: totalMarks,
+        percentage,
+        trustScore,
+        integrityStatus,
+      })
+    } catch {
+      // Offline fallback: result recorded in memory
     }
-  }, [questions, selectedAnswers])
+  }, [questions, selectedAnswers, violations, strikes])
 
   // Initialize camera stream
   const initializeCamera = useCallback(async () => {
@@ -215,471 +234,414 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
     setViolations((prev) => [newViolation, ...prev])
   }, [timeLeft])
 
-  // Real-time AI Vision Proctoring: Strict Multi-Stage Face & Biometric Verification, Gaze Tracking, Motion Differencing, Auto-Pause
+  // Initialize MediaPipe FaceDetector Neural Model
+  useEffect(() => {
+    let isMounted = true
+    async function initMediaPipe() {
+      try {
+        const vision = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+        )
+        if (!isMounted) return
+
+        const detector = await FaceDetector.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite',
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          minDetectionConfidence: 0.32,
+          minSuppressionThreshold: 0.32,
+        })
+
+        if (isMounted) {
+          mediaPipeDetectorRef.current = detector
+          setModelReady(true)
+        }
+      } catch (err) {
+        console.warn('MediaPipe GPU initialization failed, attempting CPU fallback:', err)
+        try {
+          const vision = await FilesetResolver.forVisionTasks(
+            'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+          )
+          if (!isMounted) return
+
+          const detector = await FaceDetector.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath:
+                'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite',
+              delegate: 'CPU',
+            },
+            runningMode: 'VIDEO',
+            minDetectionConfidence: 0.32,
+            minSuppressionThreshold: 0.32,
+          })
+
+          if (isMounted) {
+            mediaPipeDetectorRef.current = detector
+            setModelReady(true)
+          }
+        } catch (cpuErr) {
+          console.warn('MediaPipe CPU initialization fallback:', cpuErr)
+        }
+      }
+    }
+
+    initMediaPipe()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // Helper function for Intersection-over-Union (IoU) overlap detection
+  const computeIoU = (
+    boxA: { x: number; y: number; width: number; height: number },
+    boxB: { x: number; y: number; width: number; height: number }
+  ) => {
+    const xA = Math.max(boxA.x, boxB.x)
+    const yA = Math.max(boxA.y, boxB.y)
+    const xB = Math.min(boxA.x + boxA.width, boxB.x + boxB.width)
+    const yB = Math.min(boxA.y + boxA.height, boxB.y + boxB.height)
+
+    const interW = Math.max(0, xB - xA)
+    const interH = Math.max(0, yB - yA)
+    const interArea = interW * interH
+
+    const areaA = boxA.width * boxA.height
+    const areaB = boxB.width * boxB.height
+    const unionArea = areaA + areaB - interArea
+
+    return unionArea > 0 ? interArea / unionArea : 0
+  }
+
+  // Real-time AI Vision Proctoring: MediaPipe Neural Vision + Robust Multi-Person Engine
   useEffect(() => {
     if (!cameraActive) return
 
-    const canvas = document.createElement('canvas')
-    canvas.width = 160
-    canvas.height = 120
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    canvasRef.current = canvas
+    // Off-screen canvas for real-time fallback frame processing
+    const sampleCanvas = document.createElement('canvas')
+    sampleCanvas.width = 160
+    sampleCanvas.height = 120
+    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true })
 
+    // State tracking with debouncing
     let consecutiveAbsenceCount = 0
+    let consecutiveValidFaceCount = 0
+    let consecutiveMultipleFaceCount = 0
     let consecutiveGazeShiftCount = 0
     let lastViolationLoggedAt = 0
+    let prevSmoothedBox: FaceBox | null = null
 
-    // Check for native browser FaceDetector API (hardware accelerated if supported)
-    const hasNativeFaceDetector = typeof window !== 'undefined' && 'FaceDetector' in window
-    const nativeDetector = hasNativeFaceDetector
-      ? new (window as any).FaceDetector({ maxDetectedFaces: 4, fastMode: true })
-      : null
-
-    const handleNoFaceDetected = () => {
-      consecutiveAbsenceCount++
+    const handleAbsenceConfirmed = () => {
       setFaceCount(0)
       setFaceDetected(false)
       setGazeStatus('UNVERIFIED')
       setFaceConfidence(0)
       setFaceBox(null)
+      setSecondaryFaceBoxes([])
+      prevSmoothedBox = null
 
-      if (consecutiveAbsenceCount >= 2 && phase === 'IN_PROGRESS') {
-        if (!isExamPaused) {
-          setIsExamPaused(true)
-          setPauseReason('FACE_ABSENT')
-          setStrikes((prev) => {
-            const nextStrike = prev + 1
-            addViolation('FACE_ABSENT', `Face lost from frame. Test auto-paused. (Strike ${nextStrike}/3)`, 20)
+      if (phase === 'IN_PROGRESS' && !isExamPaused) {
+        setIsExamPaused(true)
+        setPauseReason('FACE_ABSENT')
+        setStrikes((prev) => {
+          const nextStrike = prev + 1
+          addViolation('FACE_ABSENT', `Face lost from camera frame. Exam auto-paused. (Strike ${nextStrike}/3)`, 20)
 
-            if (nextStrike >= 3) {
-              setViolationModalMessage('CRITICAL INTEGRITY BREACH: Maximum strikes reached (3 Face Lost / Window breaches). Exam automatically terminated.')
-              setShowViolationModal(true)
-              setTimeout(() => {
-                handleFinalizeSubmit()
-              }, 2500)
-            }
-            return nextStrike
-          })
-          triggerProctorToast('⚠️ TEST PAUSED: Face lost from frame. Realign with camera to resume.', 'danger')
-        }
+          if (nextStrike >= 3) {
+            setViolationModalMessage('CRITICAL INTEGRITY BREACH: Maximum strikes reached. Exam automatically terminated.')
+            setShowViolationModal(true)
+            setTimeout(() => handleFinalizeSubmit(), 2500)
+          }
+          return nextStrike
+        })
+        triggerProctorToast('⚠️ TEST PAUSED: Face lost from frame. Realign with camera to resume.', 'danger')
       }
     }
 
-    const handleMultipleFacesDetected = (count: number) => {
+    const handleMultipleFacesConfirmed = (count: number) => {
       setFaceCount(count)
       setFaceDetected(true)
       setGazeStatus('MULTIPLE_FACES')
       setFaceConfidence(45)
 
-      if (phase === 'IN_PROGRESS') {
-        if (!isExamPaused) {
-          setIsExamPaused(true)
-          setPauseReason('MULTIPLE_FACES')
-          setStrikes((prev) => {
-            const nextStrike = prev + 1
-            addViolation('MULTIPLE_FACES', `Multiple individuals (${count}) detected in proctor feed. Test auto-paused. (Strike ${nextStrike}/3)`, 25)
+      if (phase === 'IN_PROGRESS' && !isExamPaused) {
+        setIsExamPaused(true)
+        setPauseReason('MULTIPLE_FACES')
+        setStrikes((prev) => {
+          const nextStrike = prev + 1
+          addViolation('MULTIPLE_FACES', `Multiple individuals (${count}) detected in frame. Exam auto-paused. (Strike ${nextStrike}/3)`, 25)
 
-            if (nextStrike >= 3) {
-              setViolationModalMessage('CRITICAL INTEGRITY BREACH: Maximum strikes reached (3 Multiple Persons / Biometric breaches). Exam terminated.')
-              setShowViolationModal(true)
-              setTimeout(() => {
-                handleFinalizeSubmit()
-              }, 2500)
-            }
-            return nextStrike
-          })
-          triggerProctorToast(`🚨 TEST PAUSED: Multiple persons (${count}) detected in frame! Ensure only 1 person is present to resume.`, 'danger')
-        }
+          if (nextStrike >= 3) {
+            setViolationModalMessage('CRITICAL INTEGRITY BREACH: Multiple individuals detected. Exam terminated.')
+            setShowViolationModal(true)
+            setTimeout(() => handleFinalizeSubmit(), 2500)
+          }
+          return nextStrike
+        })
+        triggerProctorToast(`🚨 TEST PAUSED: ${count} persons detected! Ensure only 1 person is present.`, 'danger')
+      }
+    }
+
+    const handleSingleFaceConfirmed = () => {
+      if (isExamPaused && phase === 'IN_PROGRESS') {
+        setIsExamPaused(false)
+        setPauseReason(null)
       }
     }
 
     const interval = setInterval(async () => {
       const activeVideo = phase === 'BRIEFING' ? videoPreviewRef.current : videoHudRef.current
-      if (!activeVideo || activeVideo.readyState < 2 || !ctx) return
+      if (!activeVideo || activeVideo.readyState < 2) return
 
       try {
-        const videoWidth = activeVideo.videoWidth || 640
-        const videoHeight = activeVideo.videoHeight || 480
-
-        // 1. Hardware FaceDetector API if available and functional
-        let detectedFaces: any[] = []
-        if (nativeDetector) {
-          try {
-            const rawDetected = await nativeDetector.detect(activeVideo)
-            // Validate that detected faces have realistic dimensions (>20px)
-            const validFaces = (rawDetected || []).filter((f: any) => {
-              const b = f.boundingBox
-              return b && b.width > 20 && b.height > 20
-            })
-
-            // ANTI-POSTER FIX: Only count the LARGEST face (closest to camera = real person)
-            // This filters out posters, photos, or small faces in the background
-            if (validFaces.length > 0) {
-              // Sort by face area (width * height) descending
-              validFaces.sort((a: any, b: any) => {
-                const areaA = a.boundingBox.width * a.boundingBox.height
-                const areaB = b.boundingBox.width * b.boundingBox.height
-                return areaB - areaA
-              })
-              
-              const largestFace = validFaces[0]
-              const largestArea = largestFace.boundingBox.width * largestFace.boundingBox.height
-              
-              // Only include secondary faces if they're at least 60% as large as the primary face
-              // (This prevents counting small posters/photos while allowing a second real person)
-              detectedFaces = validFaces.filter((f: any) => {
-                const faceArea = f.boundingBox.width * f.boundingBox.height
-                return faceArea >= largestArea * 0.6
-              })
-              
-              // Additional safety: If we still have multiple faces, only use the largest one
-              // unless the second face is very close in size (within 80%)
-              if (detectedFaces.length > 1) {
-                const secondLargestArea = detectedFaces[1].boundingBox.width * detectedFaces[1].boundingBox.height
-                if (secondLargestArea < largestArea * 0.8) {
-                  // Second face is significantly smaller - likely a poster, keep only largest
-                  detectedFaces = [largestFace]
-                }
-              }
-            }
-          } catch (e) {
-            detectedFaces = []
-          }
-        }
-
-        // 2. Sample Frame into Canvas Buffer for Biometric Clustering and Motion Differencing
-        ctx.drawImage(activeVideo, 0, 0, 160, 120)
-        const frame = ctx.getImageData(0, 0, 160, 120)
-        const data = frame.data
-        const totalPixels = 160 * 120 // 19,200
-
-        const GRID_COLS = 20
-        const GRID_ROWS = 15
-        const CELL_SIZE = 8 // 160/20 = 8, 120/15 = 8
-        const grid = new Uint8Array(GRID_COLS * GRID_ROWS)
-
-        let totalBrightness = 0
-        let motionDiff = 0
-        const prev = prevFrameDataRef.current
-
-        // Grayscale luminance array for fast variance and texture analysis
-        const lumaBuffer = new Uint8Array(totalPixels)
-
-        for (let y = 0; y < 120; y++) {
-          const rowOffset = y * 160
-          const gy = Math.floor(y / CELL_SIZE)
-          for (let x = 0; x < 160; x++) {
-            const pixelIdx = rowOffset + x
-            const idx = pixelIdx * 4
-            const r = data[idx]
-            const g = data[idx + 1]
-            const b = data[idx + 2]
-
-            // Fast Grayscale Luma
-            const luma = Math.round((r * 299 + g * 587 + b * 114) / 1000)
-            lumaBuffer[pixelIdx] = luma
-            totalBrightness += luma
-
-            if (prev) {
-              motionDiff += Math.abs(r - prev[idx]) + Math.abs(g - prev[idx + 1]) + Math.abs(b - prev[idx + 2])
-            }
-
-            // --- Multi-Space Strict Skin Chrominance Filter ---
-            // 1. Intensity Envelope: Reject deep dark shadows and overexposed white glare
-            if (r >= 45 && g >= 30 && b >= 20 && !(r > 248 && g > 248 && b > 248)) {
-              // 2. RGB Photometric Ordering (Human skin: R dominates G, and G >= B)
-              if (r > g && g >= b * 0.78 && (r - g) >= 10 && (r - b) >= 14) {
-                // 3. YCbCr Chrominance Box
-                const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128
-                const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128
-                if (cb >= 78 && cb <= 126 && cr >= 134 && cr <= 174) {
-                  // 4. HSV Hue & Saturation Range (Rejects yellow paint, wood tones, ambient orange lighting)
-                  const maxC = Math.max(r, g, b)
-                  const minC = Math.min(r, g, b)
-                  const delta = maxC - minC
-                  const sat = maxC > 0 ? delta / maxC : 0
-                  let hue = 0
-                  if (delta > 0) {
-                    if (maxC === r) hue = ((g - b) / delta) % 6
-                    else if (maxC === g) hue = (b - r) / delta + 2
-                    else hue = (r - g) / delta + 4
-                    hue = Math.round(hue * 60)
-                    if (hue < 0) hue += 360
-                  }
-
-                  if ((hue <= 45 || hue >= 340) && sat >= 0.18 && sat <= 0.72) {
-                    const gx = Math.floor(x / CELL_SIZE)
-                    grid[gy * GRID_COLS + gx]++
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        prevFrameDataRef.current = new Uint8ClampedArray(data)
-
-        const avgBrightness = totalBrightness / totalPixels
-        const avgMotion = prev ? motionDiff / (totalPixels * 3) : 0
-        const computedMotionLevel = Math.min(100, Math.round(avgMotion * 5))
-        setMotionEnergy(computedMotionLevel)
-
-        const isCoveredOrDark = avgBrightness < 15 || avgBrightness > 240
         const now = Date.now()
+        const videoW = activeVideo.videoWidth || 640
+        const videoH = activeVideo.videoHeight || 480
 
-        // 3. Evaluate Detections
-        if (detectedFaces.length > 0) {
-          // Native FaceDetector High-Precision Result
-          if (detectedFaces.length > 1) {
-            handleMultipleFacesDetected(detectedFaces.length)
-          } else {
-            setFaceCount(1)
-            const face = detectedFaces[0].boundingBox
-            const rawNormX = Math.max(0, Math.min(100, (face.x / videoWidth) * 100))
-            const rawNormY = Math.max(0, Math.min(100, (face.y / videoHeight) * 100))
-            const normW = Math.max(20, Math.min(80, (face.width / videoWidth) * 100))
-            const normH = Math.max(25, Math.min(90, (face.height / videoHeight) * 100))
+        let rawFaces: Array<{
+          x: number
+          y: number
+          width: number
+          height: number
+          area: number
+          confidence: number
+          keypoints?: any[]
+        }> = []
 
-            // Mirrored X alignment for CSS -scale-x-100 video
-            const mirroredX = Math.max(2, Math.min(98 - normW, 100 - (rawNormX + normW)))
-            setFaceBox({ x: Math.round(mirroredX), y: Math.round(rawNormY), width: Math.round(normW), height: Math.round(normH) })
-            setFaceDetected(true)
+        // Primary Engine: Google MediaPipe Neural Face Detector
+        if (mediaPipeDetectorRef.current) {
+          try {
+            const detectionResult = mediaPipeDetectorRef.current.detectForVideo(activeVideo, performance.now())
+            if (detectionResult && detectionResult.detections) {
+              rawFaces = detectionResult.detections
+                .filter((d: Detection) => {
+                  if (!d.boundingBox) return false
+                  const score = d.categories[0]?.score ?? 0
+                  if (score < 0.32) return false
 
-            // Auto-resume test if previously paused and single face is recognized
-            if (isExamPaused && strikes < 3) {
-              setIsExamPaused(false)
-              setPauseReason(null)
-              triggerProctorToast('✓ Single face verified. Exam resumed.', 'warn')
-            }
+                  const b = d.boundingBox
+                  const normW = (b.width / videoW) * 100
+                  const normH = (b.height / videoH) * 100
 
-            const centerX = mirroredX + normW / 2
-            const centerY = rawNormY + normH / 2
-            const isCentered = centerX >= 28 && centerX <= 72 && centerY >= 18 && centerY <= 82
+                  // Minimum face geometry filter (filters out tiny background specks/textures)
+                  if (normW < 5.0 || normH < 5.0) return false
 
-            if (!isCentered || avgMotion > 16) {
-              setGazeStatus('LOOKING_AWAY')
-              setFaceConfidence(65)
-              consecutiveGazeShiftCount++
-
-              if (consecutiveGazeShiftCount >= 3 && phase === 'IN_PROGRESS' && now - lastViolationLoggedAt > 8000) {
-                lastViolationLoggedAt = now
-                addViolation('RAPID_HEAD_MOVEMENT', `Gaze shift or head turn deviation detected (Δ Motion: ${computedMotionLevel}%)`, 8)
-                triggerProctorToast('⚠️ GAZE SHIFT: Please keep your eyes centered on the screen.', 'warn')
-              }
-            } else {
-              setGazeStatus('CENTERED')
-              setFaceConfidence(Math.min(99, Math.round(92 + Math.random() * 6)))
-              consecutiveGazeShiftCount = 0
-            }
-          }
-          consecutiveAbsenceCount = 0
-        } else {
-          // --- Multi-Stage Biometric Spatial Clustering & Facial Contrast Engine ---
-          if (isCoveredOrDark) {
-            handleNoFaceDetected()
-            return
-          }
-
-          // Step A: Connected Component Analysis on 20x15 block grid
-          const visited = new Uint8Array(GRID_COLS * GRID_ROWS)
-          interface CandidateCluster {
-            cells: number
-            minGx: number
-            maxGx: number
-            minGy: number
-            maxGy: number
-            skinCount: number
-          }
-          const clusters: CandidateCluster[] = []
-
-          for (let gy = 0; gy < GRID_ROWS; gy++) {
-            for (let gx = 0; gx < GRID_COLS; gx++) {
-              const gIdx = gy * GRID_COLS + gx
-              // Minimum 16 skin pixels out of 64 (25% cell density) to count as active skin cell
-              if (!visited[gIdx] && grid[gIdx] >= 16) {
-                const queue: [number, number][] = [[gx, gy]]
-                visited[gIdx] = 1
-                let cellCount = 0
-                let clusterSkin = 0
-                let minGx = gx, maxGx = gx, minGy = gy, maxGy = gy
-
-                while (queue.length > 0) {
-                  const [cx, cy] = queue.shift()!
-                  cellCount++
-                  const cIdx = cy * GRID_COLS + cx
-                  clusterSkin += grid[cIdx]
-                  if (cx < minGx) minGx = cx
-                  if (cx > maxGx) maxGx = cx
-                  if (cy < minGy) minGy = cy
-                  if (cy > maxGy) maxGy = cy
-
-                  const neighbors: [number, number][] = [
-                    [cx + 1, cy],
-                    [cx - 1, cy],
-                    [cx, cy + 1],
-                    [cx, cy - 1],
-                  ]
-                  for (const [nx, ny] of neighbors) {
-                    if (nx >= 0 && nx < GRID_COLS && ny >= 0 && ny < GRID_ROWS) {
-                      const nIdx = ny * GRID_COLS + nx
-                      if (!visited[nIdx] && grid[nIdx] >= 16) {
-                        visited[nIdx] = 1
-                        queue.push([nx, ny])
-                      }
+                  // Landmark verification: ensure eye keypoints exist and are separated
+                  if (d.keypoints && d.keypoints.length >= 2) {
+                    const rightEye = d.keypoints[0]
+                    const leftEye = d.keypoints[1]
+                    if (rightEye && leftEye) {
+                      const eyeDist = Math.abs(leftEye.x - rightEye.x)
+                      if (eyeDist < 0.01) return false
                     }
                   }
-                }
-
-                clusters.push({
-                  cells: cellCount,
-                  minGx,
-                  maxGx,
-                  minGy,
-                  maxGy,
-                  skinCount: clusterSkin,
+                  return true
                 })
-              }
+                .map((d: Detection) => {
+                  const b = d.boundingBox!
+                  const normX = (b.originX / videoW) * 100
+                  const normY = (b.originY / videoH) * 100
+                  const normW = (b.width / videoW) * 100
+                  const normH = (b.height / videoH) * 100
+                  const area = normW * normH
+                  const confidence = Math.round((d.categories[0]?.score || 0.85) * 100)
+                  return {
+                    x: normX,
+                    y: normY,
+                    width: normW,
+                    height: normH,
+                    area,
+                    confidence,
+                    keypoints: d.keypoints,
+                  }
+                })
             }
+          } catch (mpErr) {
+            console.warn('MediaPipe frame inference error:', mpErr)
+          }
+        } else if (typeof window !== 'undefined' && ('FaceDetector' in window)) {
+          // Hardware/Browser Native FaceDetector Fallback (Neural Shape Detection API)
+          try {
+            const nativeDetector = new (window as any).FaceDetector({ fastMode: true, maxDetectedFaces: 5 })
+            const detected = await nativeDetector.detect(activeVideo)
+            if (detected && detected.length > 0) {
+              rawFaces = detected
+                .filter((f: any) => f.boundingBox && (f.boundingBox.width / videoW) * 100 >= 5.0)
+                .map((f: any) => {
+                  const b = f.boundingBox
+                  const normX = (b.x / videoW) * 100
+                  const normY = (b.y / videoH) * 100
+                  const normW = (b.width / videoW) * 100
+                  const normH = (b.height / videoH) * 100
+                  return {
+                    x: normX,
+                    y: normY,
+                    width: normW,
+                    height: normH,
+                    area: normW * normH,
+                    confidence: 88,
+                    keypoints: f.landmarks,
+                  }
+                })
+            }
+          } catch {}
+        }
+
+        // Distinct Individuals Extraction (Non-Maximum Suppression)
+        // Sort descending by area so the closest candidate is index 0
+        rawFaces.sort((a, b) => b.area - a.area)
+
+        const distinctFaces: typeof rawFaces = []
+        for (const face of rawFaces) {
+          const isOverlapDuplicate = distinctFaces.some((accepted) => computeIoU(accepted, face) > 0.38)
+          if (!isOverlapDuplicate) {
+            distinctFaces.push(face)
+          }
+        }
+
+        // 4. Closest Person Priority & Debounced State Transitions
+        if (distinctFaces.length === 0) {
+          consecutiveAbsenceCount++
+          consecutiveValidFaceCount = 0
+          consecutiveMultipleFaceCount = 0
+
+          // Immediately clear live tracking indicators and overlays so ghost boxes disappear
+          setFaceDetected(false)
+          setFaceCount(0)
+          setFaceConfidence(0)
+          setGazeStatus('UNVERIFIED')
+          setFaceBox(null)
+          setSecondaryFaceBoxes([])
+          prevSmoothedBox = null
+
+          // Sustained absence triggers test pause & strike (debounce of 2 frames ~ 300ms)
+          if (consecutiveAbsenceCount >= 2) {
+            handleAbsenceConfirmed()
+          }
+        } else if (distinctFaces.length > 1) {
+          // MULTIPLE PERSONS DETECTED
+          consecutiveMultipleFaceCount++
+          consecutiveAbsenceCount = 0
+          consecutiveValidFaceCount = 0
+
+          const primaryFace = distinctFaces[0]
+          const secondaryFaces = distinctFaces.slice(1)
+
+          // Immediate telemetry update for UI
+          setFaceCount(distinctFaces.length)
+          setFaceDetected(true)
+
+          // Secondary face bounding boxes for visual verification
+          const secBoxes = secondaryFaces.map((f) => ({
+            x: Math.max(0, Math.min(100 - f.width, 100 - (f.x + f.width))),
+            y: Math.max(0, Math.min(100 - f.height, f.y)),
+            width: Math.round(f.width),
+            height: Math.round(f.height),
+          }))
+          setSecondaryFaceBoxes(secBoxes)
+
+          // Primary examinee bounding box
+          const rawMirroredX = 100 - (primaryFace.x + primaryFace.width)
+          const smoothBox: FaceBox = {
+            x: prevSmoothedBox ? Math.round(prevSmoothedBox.x * 0.55 + rawMirroredX * 0.45) : Math.round(rawMirroredX),
+            y: prevSmoothedBox ? Math.round(prevSmoothedBox.y * 0.55 + primaryFace.y * 0.45) : Math.round(primaryFace.y),
+            width: prevSmoothedBox ? Math.round(prevSmoothedBox.width * 0.55 + primaryFace.width * 0.45) : Math.round(primaryFace.width),
+            height: prevSmoothedBox ? Math.round(prevSmoothedBox.height * 0.55 + primaryFace.height * 0.45) : Math.round(primaryFace.height),
+          }
+          prevSmoothedBox = smoothBox
+
+          setFaceBox({
+            x: Math.max(0, Math.min(100 - smoothBox.width, smoothBox.x)),
+            y: Math.max(0, Math.min(100 - smoothBox.height, smoothBox.y)),
+            width: Math.max(8, Math.min(80, smoothBox.width)),
+            height: Math.max(10, Math.min(85, smoothBox.height)),
+          })
+
+          if (consecutiveMultipleFaceCount >= 2) {
+            handleMultipleFacesConfirmed(distinctFaces.length)
+          }
+        } else {
+          // SINGLE EXAMINEE ALIGNED
+          consecutiveValidFaceCount++
+          consecutiveAbsenceCount = 0
+          if (consecutiveMultipleFaceCount > 0) consecutiveMultipleFaceCount--
+          setSecondaryFaceBoxes([])
+
+          if (consecutiveValidFaceCount >= 1) {
+            handleSingleFaceConfirmed()
           }
 
-          // Step B: Filter and Biometrically Validate Clusters
-          clusters.sort((a, b) => b.cells - a.cells)
+          setFaceCount(1)
+          setFaceDetected(true)
 
-          const validFaces: { cluster: CandidateCluster; stdDev: number }[] = []
+          const primaryFace = distinctFaces[0]
+          // Horizontal mirroring for selfie preview (CSS transform -scale-x-100)
+          const rawMirroredX = 100 - (primaryFace.x + primaryFace.width)
 
-          for (const c of clusters) {
-            // Cluster must be between 8 cells (~512 skin px) and 180 cells (<60% of frame)
-            if (c.cells < 8 || c.cells > 180) continue
+          // Exponential Moving Average (EMA) smoothing for stable bounding box
+          const smoothBox: FaceBox = {
+            x: prevSmoothedBox ? Math.round(prevSmoothedBox.x * 0.55 + rawMirroredX * 0.45) : Math.round(rawMirroredX),
+            y: prevSmoothedBox ? Math.round(prevSmoothedBox.y * 0.55 + primaryFace.y * 0.45) : Math.round(primaryFace.y),
+            width: prevSmoothedBox ? Math.round(prevSmoothedBox.width * 0.55 + primaryFace.width * 0.45) : Math.round(primaryFace.width),
+            height: prevSmoothedBox ? Math.round(prevSmoothedBox.height * 0.55 + primaryFace.height * 0.45) : Math.round(primaryFace.height),
+          }
+          prevSmoothedBox = smoothBox
 
-            const wBlocks = c.maxGx - c.minGx + 1
-            const hBlocks = c.maxGy - c.minGy + 1
+          setFaceBox({
+            x: Math.max(0, Math.min(100 - smoothBox.width, smoothBox.x)),
+            y: Math.max(0, Math.min(100 - smoothBox.height, smoothBox.y)),
+            width: Math.max(8, Math.min(80, smoothBox.width)),
+            height: Math.max(10, Math.min(85, smoothBox.height)),
+          })
 
-            // Aspect ratio check (height / width between 0.75 and 2.3)
-            const aspect = hBlocks / wBlocks
-            if (aspect < 0.75 || aspect > 2.3) continue
-
-            // Bounding box fill density (human face is oval, filling 35% - 90% of box)
-            const boxBlocks = wBlocks * hBlocks
-            const density = c.cells / boxBlocks
-            if (density < 0.35 || density > 0.92) continue
-
-            // Facial luminance variance and eye/cheek gradient analysis
-            const minPxX = c.minGx * CELL_SIZE
-            const maxPxX = Math.min(160, (c.maxGx + 1) * CELL_SIZE)
-            const minPxY = c.minGy * CELL_SIZE
-            const maxPxY = Math.min(120, (c.maxGy + 1) * CELL_SIZE)
-            const pixelH = maxPxY - minPxY
-
-            let lumaSum = 0
-            let lumaSqSum = 0
-            let sampleCount = 0
-            let band1Sum = 0, band1Count = 0 // Top band (eyes/brows)
-            let band2Sum = 0, band2Count = 0 // Mid band (cheeks/nose)
-
-            for (let py = minPxY; py < maxPxY; py += 2) {
-              const relY = (py - minPxY) / (pixelH || 1)
-              const rOff = py * 160
-              for (let px = minPxX; px < maxPxX; px += 2) {
-                const lum = lumaBuffer[rOff + px]
-                lumaSum += lum
-                lumaSqSum += lum * lum
-                sampleCount++
-
-                if (relY <= 0.45) {
-                  band1Sum += lum
-                  band1Count++
-                } else if (relY <= 0.75) {
-                  band2Sum += lum
-                  band2Count++
+          // Gaze & Head Pose Estimation
+          let isHeadTurnedAway = false
+          if (primaryFace.keypoints && primaryFace.keypoints.length >= 3) {
+            const rightEye = primaryFace.keypoints[0]
+            const leftEye = primaryFace.keypoints[1]
+            const nose = primaryFace.keypoints[2]
+            if (rightEye && leftEye && nose) {
+              const eyeMidX = (rightEye.x + leftEye.x) / 2
+              const eyeDist = Math.abs(leftEye.x - rightEye.x)
+              if (eyeDist > 0.01) {
+                const yawRatio = Math.abs(nose.x - eyeMidX) / eyeDist
+                if (yawRatio > 0.45) {
+                  isHeadTurnedAway = true
                 }
               }
             }
-
-            if (sampleCount < 16) continue
-
-            const meanLuma = lumaSum / sampleCount
-            const variance = (lumaSqSum / sampleCount) - (meanLuma * meanLuma)
-            const stdDev = Math.sqrt(Math.max(0, variance))
-
-            // Rejects flat painted walls, wooden doors, or plain surfaces with no facial features
-            if (stdDev < 7.0) continue
-
-            const band1Avg = band1Count > 0 ? band1Sum / band1Count : meanLuma
-            const band2Avg = band2Count > 0 ? band2Sum / band2Count : meanLuma
-            const bandDiff = Math.abs(band1Avg - band2Avg)
-
-            // Must have contrast or sufficient standard deviation
-            if (bandDiff < 2.0 && stdDev < 9.0) continue
-
-            validFaces.push({ cluster: c, stdDev })
           }
 
-          if (validFaces.length === 0) {
-            handleNoFaceDetected()
+          const centerX = smoothBox.x + smoothBox.width / 2
+          const centerY = smoothBox.y + smoothBox.height / 2
+          const isCenteredInFrame = centerX >= 15 && centerX <= 85 && centerY >= 6 && centerY <= 94
+          const isLookingAtScreen = isCenteredInFrame && !isHeadTurnedAway
+
+          if (isLookingAtScreen) {
+            setGazeStatus('CENTERED')
+            setFaceConfidence(Math.max(85, primaryFace.confidence))
+            consecutiveGazeShiftCount = 0
           } else {
-            // Face confirmed
-            if (validFaces.length > 1 && validFaces[1].cluster.cells >= 12) {
-              handleMultipleFacesDetected(validFaces.length)
-            } else {
-              setFaceCount(1)
-              const primary = validFaces[0]
-              const c = primary.cluster
-              consecutiveAbsenceCount = 0
-              setFaceDetected(true)
+            setGazeStatus('LOOKING_AWAY')
+            setFaceConfidence(Math.min(75, primaryFace.confidence))
+            consecutiveGazeShiftCount++
 
-              // Auto-resume test if previously paused and single face is recognized
-              if (isExamPaused && strikes < 3) {
-                setIsExamPaused(false)
-                setPauseReason(null)
-                triggerProctorToast('✓ Single face verified. Exam resumed.', 'warn')
-              }
-
-              // Compute precise mirrored bounding box from cluster
-              const wPx = (c.maxGx - c.minGx + 1) * CELL_SIZE
-              const hPx = (c.maxGy - c.minGy + 1) * CELL_SIZE
-              const centerPxX = (c.minGx + (c.maxGx - c.minGx + 1) / 2) * CELL_SIZE
-              const centerPxY = (c.minGy + (c.maxGy - c.minGy + 1) / 2) * CELL_SIZE
-
-              const normW = Math.max(22, Math.min(75, ((wPx * 1.25) / 160) * 100))
-              const normH = Math.max(28, Math.min(85, ((hPx * 1.30) / 120) * 100))
-              const rawNormX = Math.max(0, Math.min(100 - normW, ((centerPxX - (wPx * 1.25) / 2) / 160) * 100))
-              const rawNormY = Math.max(0, Math.min(100 - normH, ((centerPxY - (hPx * 1.30) / 120) / 120) * 100))
-
-              // Mirrored X alignment for CSS -scale-x-100 video
-              const mirroredX = Math.max(2, Math.min(98 - normW, 100 - (rawNormX + normW)))
-              setFaceBox({ x: Math.round(mirroredX), y: Math.round(rawNormY), width: Math.round(normW), height: Math.round(normH) })
-
-              // Gaze Alignment Check
-              const centerX = mirroredX + normW / 2
-              const centerY = rawNormY + normH / 2
-              const isCentered = centerX >= 25 && centerX <= 75 && centerY >= 15 && centerY <= 85
-
-              if (!isCentered || avgMotion > 14) {
-                setGazeStatus('LOOKING_AWAY')
-                setFaceConfidence(68)
-                consecutiveGazeShiftCount++
-
-                if (consecutiveGazeShiftCount >= 3 && phase === 'IN_PROGRESS' && now - lastViolationLoggedAt > 8000) {
-                  lastViolationLoggedAt = now
-                  addViolation('RAPID_HEAD_MOVEMENT', `Gaze deviation or head movement detected (Δ Motion: ${computedMotionLevel}%)`, 8)
-                  triggerProctorToast('⚠️ GAZE SHIFT: Please keep your eyes centered on the screen.', 'warn')
-                }
-              } else {
-                setGazeStatus('CENTERED')
-                const calculatedConfidence = Math.min(99, Math.max(78, Math.round(75 + (c.cells / 50) * 15 + (primary.stdDev / 30) * 10)))
-                setFaceConfidence(calculatedConfidence)
-                consecutiveGazeShiftCount = 0
-              }
+            if (consecutiveGazeShiftCount >= 8 && phase === 'IN_PROGRESS' && now - lastViolationLoggedAt > 12000) {
+              lastViolationLoggedAt = now
+              addViolation('RAPID_HEAD_MOVEMENT', 'Prolonged gaze deviation / head turned away from screen', 8)
+              triggerProctorToast('⚠️ GAZE SHIFT: Please keep your face centered on screen.', 'warn')
             }
           }
         }
       } catch (err) {
-        // Frame analysis fallback
+        console.error('Proctor loop error:', err)
       }
-    }, 500)
+    }, 150)
 
     return () => clearInterval(interval)
-  }, [cameraActive, phase, addViolation, triggerProctorToast, isExamPaused, strikes, handleFinalizeSubmit])
+  }, [cameraActive, phase, addViolation, triggerProctorToast, isExamPaused, strikes, handleFinalizeSubmit, modelReady])
 
   // Start Assessment Flow with Lock & MediaRecorder
   const handleStartAssessment = async () => {
@@ -1040,6 +1002,24 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                         </div>
                       )}
 
+                      {/* Secondary Face Tracking Boxes */}
+                      {secondaryFaceBoxes.map((sBox, sIdx) => (
+                        <div
+                          key={sIdx}
+                          className="absolute border-2 border-dashed border-purple-500 rounded-lg pointer-events-none transition-all duration-200 shadow-[0_0_15px_rgba(168,85,247,0.5)] flex items-start justify-end p-1"
+                          style={{
+                            left: `${sBox.x}%`,
+                            top: `${sBox.y}%`,
+                            width: `${sBox.width}%`,
+                            height: `${sBox.height}%`,
+                          }}
+                        >
+                          <span className="text-[8px] font-mono font-bold text-purple-300 bg-black/90 px-1.5 py-0.5 rounded border border-purple-500/60">
+                            PERSON #{sIdx + 2}
+                          </span>
+                        </div>
+                      ))}
+
                       {/* "KEEP FACE IN FRAME" HUD Reticle Overlay */}
                       <div className={cn(
                         "absolute inset-5 border-2 border-dashed rounded-xl pointer-events-none flex flex-col justify-between p-3 transition-all duration-300",
@@ -1100,7 +1080,7 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                         <div className="flex justify-between items-end">
                           <div className="w-4 h-4 border-b-2 border-l-2 border-emerald-400 -mb-1 -ml-1" />
                           <div className="text-[9px] font-mono text-warm-ivory/80 bg-black/85 px-2 py-0.5 rounded border border-emerald-400/30">
-                            FOV: {fovCoverage}% [{fovQuality}] // MOTION: {motionEnergy}%
+                            FOV: {fovCoverage}% [{fovQuality}] // CONF: {faceConfidence}%
                           </div>
                           <div className="w-4 h-4 border-b-2 border-r-2 border-emerald-400 -mb-1 -mr-1" />
                         </div>
@@ -1147,10 +1127,10 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                     </div>
                     <div className="p-2 rounded bg-charcoal/80 border border-burgundy/30 text-center space-y-0.5">
                       <span className="text-warm-ivory/50 block text-[9px] uppercase flex items-center justify-center gap-1">
-                        <Activity size={10} /> Motion
+                        <Activity size={10} /> Confidence
                       </span>
-                      <span className={cn('font-bold block', motionEnergy > 20 ? 'text-amber-400' : 'text-emerald-400')}>
-                        {motionEnergy > 20 ? 'HIGH' : `${motionEnergy}%`}
+                      <span className={cn('font-bold block', faceConfidence >= 80 ? 'text-emerald-400' : 'text-amber-400')}>
+                        {faceConfidence}%
                       </span>
                     </div>
                   </div>
@@ -1432,6 +1412,20 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                     }}
                   />
                 )}
+
+                {/* Secondary Face Tracking Boxes */}
+                {secondaryFaceBoxes.map((sBox, sIdx) => (
+                  <div
+                    key={sIdx}
+                    className="absolute border border-dashed border-purple-400 rounded pointer-events-none transition-all duration-200 shadow-[0_0_8px_rgba(168,85,247,0.4)]"
+                    style={{
+                      left: `${sBox.x}%`,
+                      top: `${sBox.y}%`,
+                      width: `${sBox.width}%`,
+                      height: `${sBox.height}%`,
+                    }}
+                  />
+                ))}
 
                 {/* HUD Overlay in Active Exam */}
                 <div className="absolute inset-1 border border-dashed border-emerald-400/40 rounded pointer-events-none" />
@@ -1890,7 +1884,19 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                 <RefreshCw size={14} /> RETAKE WITH NEW ATTEMPT
               </button>
               <button
-                onClick={() => onNavigate?.('candidate-dossier')}
+                onClick={async () => {
+                  try {
+                    await api.candidate.applyAssessmentScore({
+                      score: result.totalMarks,
+                      percentage: result.percentage,
+                      trustScore: result.trustScore,
+                      integrityStatus: result.integrityStatus,
+                    })
+                  } catch {
+                    // Fallback
+                  }
+                  onNavigate?.('candidate-dossier')
+                }}
                 className="btn-primary text-xs font-mono py-2.5 px-6 flex items-center gap-2 shadow-glow-crimson"
               >
                 APPLY SCORE TO DOSSIER <ArrowRight size={14} />

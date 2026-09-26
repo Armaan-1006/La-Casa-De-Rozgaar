@@ -183,6 +183,25 @@ function AppContent() {
     )
   }
 
+  // Full-screen presentation for Secure Assessment — proctored lockdown environment with all navigation removed
+  if (currentPage === 'assessment') {
+    return (
+      <div
+        className={cn(
+          'min-h-screen overflow-y-auto relative transition-colors duration-300',
+          isHeist
+            ? 'bg-obsidian text-warm-ivory classified-grid'
+            : 'bg-[#F8F9FA] text-[#0F172A]'
+        )}
+      >
+        <ThemeTransitionOverlay />
+        <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
+          <SecureAssessment onNavigate={handleNavigation} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       className={cn(

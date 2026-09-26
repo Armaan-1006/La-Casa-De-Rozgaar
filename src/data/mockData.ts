@@ -383,6 +383,8 @@ export const mockMarketData = {
 // CANDIDATE PROFILE & VERIFIED SCORE
 // ----------------------------------------------------
 
+export type CandidateProfile = typeof mockCandidate
+
 export const mockCandidate = {
   id: 'CANDIDATE-001',
   codeName: 'PROFESSOR-042',

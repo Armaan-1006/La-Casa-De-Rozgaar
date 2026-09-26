@@ -58,8 +58,8 @@ export const SimulationVault: React.FC = () => {
         skillId: `skill_${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
         targetScore: score,
       }))
-      api.simulation.run('role_fullstack', skillChanges).catch((err) => {
-        console.warn('Backend simulation:', err)
+      api.simulation.run('role_fullstack', skillChanges).catch(() => {
+        // Fallback: local simulation operates without backend
       })
     }
 
