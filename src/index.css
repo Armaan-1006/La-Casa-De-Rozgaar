@@ -935,71 +935,84 @@ html.theme-professional .bg-gradient-crimson .text-emerald-400 {
 }
 
 /* ==========================================================================
-   SCENARIO PLANNING SLIDERS — RED & BLACK THEME
-   High Visibility and Crisp Tactile Feedback in All Modes
+   SCENARIO PLANNING SLIDERS — SLEEK THIN BLACK LINE WITH BLUE KNOB
+   Thin Black Track with Blue Thumb for All Visual Modes
    ========================================================================== */
 .scenario-slider {
-  -webkit-appearance: none;
-  appearance: none;
+  -webkit-appearance: none !important;
+  appearance: none !important;
   width: 100%;
-  height: 10px;
-  background: #18181B !important;
-  border-radius: 9999px;
-  border: 1.5px solid #000000 !important;
-  outline: none;
+  height: 4px !important;
+  border-radius: 9999px !important;
+  background: #000000 !important;
+  border: 1px solid #000000 !important;
+  outline: none !important;
   cursor: pointer;
 }
 
 .scenario-slider::-webkit-slider-runnable-track {
-  height: 10px;
-  border-radius: 9999px;
+  width: 100%;
+  height: 4px !important;
+  border-radius: 9999px !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 .scenario-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #DC2626 !important;
-  border: 2.5px solid #000000 !important;
-  cursor: pointer;
-  box-shadow: 0 0 8px rgba(220, 38, 38, 0.6);
-  margin-top: -4px;
-  transition: transform 0.15s ease, background-color 0.15s ease;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 15px !important;
+  height: 15px !important;
+  border-radius: 50% !important;
+  background-color: #2563EB !important;
+  border: 2px solid #000000 !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.7), 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+  margin-top: -5.5px !important;
+  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .scenario-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-  background: #EF4444 !important;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.9);
+  transform: scale(1.25) !important;
+  background-color: #3B82F6 !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.9), 0 2px 4px rgba(0, 0, 0, 0.6) !important;
 }
 
 .scenario-slider::-moz-range-track {
-  height: 10px;
-  border-radius: 9999px;
+  width: 100%;
+  height: 4px !important;
+  border-radius: 9999px !important;
+  background: #000000 !important;
+  border: 1px solid #000000 !important;
 }
 
 .scenario-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #DC2626 !important;
-  border: 2.5px solid #000000 !important;
-  cursor: pointer;
-  box-shadow: 0 0 8px rgba(220, 38, 38, 0.6);
+  width: 15px !important;
+  height: 15px !important;
+  border-radius: 50% !important;
+  background-color: #2563EB !important;
+  border: 2px solid #000000 !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.7) !important;
 }
 
 html[data-theme="professional"] .scenario-slider,
 html.theme-professional .scenario-slider {
-  background: #18181B !important;
-  border: 1.5px solid #000000 !important;
+  background: #000000 !important;
+  border: 1px solid #000000 !important;
 }
 
 html[data-theme="professional"] .scenario-slider::-webkit-slider-thumb,
 html.theme-professional .scenario-slider::-webkit-slider-thumb {
-  background: #DC2626 !important;
-  border: 2.5px solid #000000 !important;
+  background-color: #2563EB !important;
+  border: 2px solid #000000 !important;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.7), 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+html[data-theme="professional"] .scenario-slider::-moz-range-thumb,
+html.theme-professional .scenario-slider::-moz-range-thumb {
+  background-color: #2563EB !important;
+  border: 2px solid #000000 !important;
 }
 
 /* Professional Recharts Blue Color Overrides */
@@ -1106,86 +1119,6 @@ html.theme-professional .bg-gradient-crimson .text-emerald-400,
 html[data-theme="professional"] [class*="bg-blue-600"] .text-emerald-400,
 html.theme-professional [class*="bg-blue-600"] .text-emerald-400 {
   color: #86EFAC !important;
-}
-
-/* ==========================================================================
-   SCENARIO PLANNING SLIDERS — RED & BLACK THEME
-   High-Contrast Jet Black Track with Vibrant Crimson Thumb
-   ========================================================================== */
-.scenario-slider {
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  width: 100%;
-  height: 10px !important;
-  border-radius: 9999px !important;
-  border: 1.5px solid #000000 !important;
-  outline: none !important;
-  cursor: pointer;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8) !important;
-}
-
-.scenario-slider::-webkit-slider-runnable-track {
-  width: 100%;
-  height: 10px;
-  border-radius: 9999px;
-  border: none;
-}
-
-.scenario-slider::-webkit-slider-thumb {
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  width: 20px !important;
-  height: 20px !important;
-  border-radius: 50% !important;
-  background-color: #DC2626 !important;
-  border: 2.5px solid #000000 !important;
-  cursor: pointer !important;
-  box-shadow: 0 0 10px rgba(220, 38, 38, 0.7), 0 2px 4px rgba(0, 0, 0, 0.5) !important;
-  margin-top: -5px !important;
-  transition: transform 0.15s ease, background-color 0.15s ease;
-}
-
-.scenario-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.2) !important;
-  background-color: #EF4444 !important;
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.9), 0 2px 6px rgba(0, 0, 0, 0.6) !important;
-}
-
-.scenario-slider::-moz-range-track {
-  width: 100%;
-  height: 10px;
-  border-radius: 9999px;
-  border: 1.5px solid #000000;
-}
-
-.scenario-slider::-moz-range-thumb {
-  width: 20px !important;
-  height: 20px !important;
-  border-radius: 50% !important;
-  background-color: #DC2626 !important;
-  border: 2.5px solid #000000 !important;
-  cursor: pointer !important;
-  box-shadow: 0 0 10px rgba(220, 38, 38, 0.7) !important;
-}
-
-/* Explicit Enterprise Mode persistence for Red & Black Scenario Sliders */
-html[data-theme="professional"] .scenario-slider,
-html.theme-professional .scenario-slider {
-  border: 1.5px solid #000000 !important;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-}
-
-html[data-theme="professional"] .scenario-slider::-webkit-slider-thumb,
-html.theme-professional .scenario-slider::-webkit-slider-thumb {
-  background-color: #DC2626 !important;
-  border: 2.5px solid #000000 !important;
-  box-shadow: 0 0 10px rgba(220, 38, 38, 0.7), 0 2px 4px rgba(0, 0, 0, 0.5) !important;
-}
-
-html[data-theme="professional"] .scenario-slider::-moz-range-thumb,
-html.theme-professional .scenario-slider::-moz-range-thumb {
-  background-color: #DC2626 !important;
-  border: 2.5px solid #000000 !important;
 }
 
 /* Professional Form Controls */

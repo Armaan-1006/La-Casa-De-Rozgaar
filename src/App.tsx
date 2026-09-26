@@ -27,6 +27,7 @@ import { ResearchIntelligence } from './pages/ResearchIntelligence'
 import { IntelligenceFeed } from './pages/IntelligenceFeed'
 import { FloatingDossierField } from './components/FloatingDossierField'
 import { LoginPage } from './pages/LoginPage'
+import { SharedDossierPage } from './pages/SharedDossierPage'
 import { AuthProvider } from './hooks/useAuth'
 
 export type PageType =
@@ -38,6 +39,7 @@ export type PageType =
   | 'compensation'
   | 'forecast'
   | 'candidate-dossier'
+  | 'shared-dossier'
   | 'assessment'
   | 'skill-heist'
   | 'job-finder'
@@ -57,11 +59,12 @@ function AppContent() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
 
-  // Initialize from hash if present, e.g. #/job-finder
+  // Initialize from hash if present, e.g. #/job-finder or #/shared-dossier?id=123
   const getInitialPage = (): PageType => {
-    const hash = window.location.hash.replace('#/', '')
-    if (hash && isValidPage(hash)) {
-      return hash as PageType
+    const rawHash = window.location.hash.replace('#/', '').replace('#', '')
+    const pageKey = rawHash.split('?')[0].replace('shared/dossier', 'shared-dossier')
+    if (pageKey && isValidPage(pageKey)) {
+      return pageKey as PageType
     }
     return 'war-room'
   }
@@ -76,6 +79,7 @@ function AppContent() {
       'compensation',
       'forecast',
       'candidate-dossier',
+      'shared-dossier',
       'assessment',
       'skill-heist',
       'job-finder',
@@ -106,9 +110,10 @@ function AppContent() {
   // Listen to hash changes (back/forward navigation)
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#/', '')
-      if (hash && isValidPage(hash)) {
-        setCurrentPage(hash as PageType)
+      const rawHash = window.location.hash.replace('#/', '').replace('#', '')
+      const pageKey = rawHash.split('?')[0].replace('shared/dossier', 'shared-dossier')
+      if (pageKey && isValidPage(pageKey)) {
+        setCurrentPage(pageKey as PageType)
       }
     }
     window.addEventListener('hashchange', handleHashChange)
@@ -141,6 +146,8 @@ function AppContent() {
         return <FutureForecast onNavigate={handleNavigation} />
       case 'candidate-dossier':
         return <CandidateDossier onNavigate={handleNavigation} />
+      case 'shared-dossier':
+        return <SharedDossierPage onNavigate={handleNavigation} />
       case 'assessment':
         return <SecureAssessment onNavigate={handleNavigation} />
       case 'skill-heist':
@@ -179,6 +186,23 @@ function AppContent() {
       <div className="min-h-screen overflow-y-auto relative transition-colors duration-300 bg-obsidian text-warm-ivory classified-grid">
         <ThemeTransitionOverlay />
         <LoginPage onNavigate={handleNavigation} />
+      </div>
+    )
+  }
+
+  // Public / Shared Candidate Dossier presentation (Standalone with progressive access)
+  if (currentPage === 'shared-dossier') {
+    return (
+      <div
+        className={cn(
+          'min-h-screen overflow-y-auto relative transition-colors duration-300',
+          isHeist
+            ? 'bg-obsidian text-warm-ivory classified-grid'
+            : 'bg-[#F8FAFC] text-[#0F172A]'
+        )}
+      >
+        <ThemeTransitionOverlay />
+        <SharedDossierPage onNavigate={handleNavigation} />
       </div>
     )
   }

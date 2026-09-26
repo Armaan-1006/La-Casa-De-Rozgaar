@@ -1,10 +1,12 @@
 import { useState, useEffect, type FC } from 'react'
+import { createPortal } from 'react-dom'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Edit, Download, Share2, CheckCircle, ArrowRight, ShieldCheck, Award, Briefcase, GraduationCap, X, Check } from 'lucide-react'
 import { type CandidateProfile } from '../data/mockData'
 import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 import { api, getStoredCandidate } from '../services/api'
+import { DossierShareModal } from '../components/dossier/DossierShareModal'
 
 interface CandidateDossierProps {
   onNavigate?: (page: string) => void
@@ -17,6 +19,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
   const [candidate, setCandidate] = useState<CandidateProfile>(getStoredCandidate)
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'assessment' | 'experience'>('overview')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
 
@@ -40,6 +43,21 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
       window.removeEventListener('candidate-profile-updated', loadProfile)
     }
   }, [])
+
+  // Close edit modal on Escape & lock body scroll
+  useEffect(() => {
+    if (!isEditModalOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsEditModalOpen(false)
+    }
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isEditModalOpen])
 
   // Edit form state
   const [editName, setEditName] = useState(candidate.name)
@@ -67,8 +85,15 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
   }
 
   const handleShare = () => {
-    navigator.clipboard?.writeText?.(window.location.href)
+    const baseUrl = window.location.origin + window.location.pathname
+    const shareUrl = `${baseUrl}#/shared-dossier?id=${candidate.id || 'CAND-7842'}`
+    try {
+      navigator.clipboard?.writeText?.(shareUrl).catch(() => {})
+    } catch {
+      // Ignore focus errors
+    }
     setShareCopied(true)
+    setIsShareModalOpen(true)
     setTimeout(() => setShareCopied(false), 2500)
   }
 
@@ -398,65 +423,83 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
       )}
 
       {/* Edit Profile Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-slate-200 shadow-xl max-w-md w-full p-5 space-y-4">
+      {isEditModalOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsEditModalOpen(false)
+          }}
+          className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}
+        >
+          <div className="relative bg-white rounded-xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 my-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-semibold text-slate-900">Edit Candidate Profile</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={17} />
+              <h3 className="text-base font-bold text-slate-900">Edit Candidate Profile</h3>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3.5 text-xs">
               <div>
-                <label className="text-slate-600 block mb-1 font-medium">Full Name</label>
+                <label className="text-slate-700 block mb-1 font-semibold">Full Name</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-slate-900 outline-none focus:border-blue-600"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-colors"
                 />
               </div>
 
               <div>
-                <label className="text-slate-600 block mb-1 font-medium">Primary Target Role</label>
+                <label className="text-slate-700 block mb-1 font-semibold">Primary Target Role</label>
                 <input
                   type="text"
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-slate-900 outline-none focus:border-blue-600"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-colors"
                 />
               </div>
 
               <div>
-                <label className="text-slate-600 block mb-1 font-medium">Location</label>
+                <label className="text-slate-700 block mb-1 font-semibold">Location & Mobility</label>
                 <input
                   type="text"
                   value={editLoc}
                   onChange={(e) => setEditLoc(e.target.value)}
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-slate-900 outline-none focus:border-blue-600"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2 border-t border-slate-100">
+            <div className="flex gap-2 pt-3 border-t border-slate-100">
               <button
                 onClick={handleSaveProfile}
-                className="flex-1 py-2 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] rounded transition-colors"
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] rounded-lg transition-colors cursor-pointer shadow-sm"
               >
                 Save Changes
               </button>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors"
+                className="px-4 py-2.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
               >
                 Cancel
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
+      {/* Share Modal */}
+      <DossierShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        candidate={candidate}
+        onNavigate={onNavigate}
+      />
     </div>
   )
 }
@@ -468,6 +511,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const { isHeist } = useTheme()
   const [candidate, setCandidate] = useState<CandidateProfile>(getStoredCandidate)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
 
@@ -502,6 +546,20 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const [editRole, setEditRole] = useState(candidate.targetRole)
   const [editLoc, setEditLoc] = useState(candidate.location)
 
+  useEffect(() => {
+    if (!isEditModalOpen) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsEditModalOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isEditModalOpen])
+
   const handleSaveProfile = async () => {
     setCandidate((prev: CandidateProfile) => ({
       ...prev,
@@ -523,8 +581,15 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   }
 
   const handleShare = () => {
-    navigator.clipboard?.writeText?.(window.location.href)
+    const baseUrl = window.location.origin + window.location.pathname
+    const shareUrl = `${baseUrl}#/shared-dossier?id=${candidate.id || 'CAND-7842'}`
+    try {
+      navigator.clipboard?.writeText?.(shareUrl).catch(() => {})
+    } catch {
+      // Ignore focus errors
+    }
     setShareCopied(true)
+    setIsShareModalOpen(true)
     setTimeout(() => setShareCopied(false), 2500)
   }
 
@@ -800,65 +865,83 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
       </section>
 
       {/* Edit Profile Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="card max-w-md w-full p-6 space-y-4 bg-charcoal border-crimson/50 shadow-glow-crimson">
+      {isEditModalOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsEditModalOpen(false)
+          }}
+          className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}
+        >
+          <div className="relative card max-w-md w-full p-6 space-y-4 bg-charcoal border-crimson/50 shadow-glow-crimson my-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-burgundy/20 pb-3">
               <h3 className="heading-xs text-warm-ivory">EDIT OPERATIVE PROFILE</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-warm-ivory/50 hover:text-crimson">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-warm-ivory/50 hover:text-crimson p-1 rounded hover:bg-obsidian transition-colors cursor-pointer"
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs font-mono">
+            <div className="space-y-3.5 text-xs font-mono">
               <div>
-                <label className="text-warm-ivory/60 block mb-1">OPERATIVE FULL NAME</label>
+                <label className="text-warm-ivory/60 block mb-1 font-semibold">OPERATIVE FULL NAME</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson"
+                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson transition-colors"
                 />
               </div>
 
               <div>
-                <label className="text-warm-ivory/60 block mb-1">PRIMARY TARGET ROLE</label>
+                <label className="text-warm-ivory/60 block mb-1 font-semibold">PRIMARY TARGET ROLE</label>
                 <input
                   type="text"
                   value={editRole}
                   onChange={(e) => setEditRole(e.target.value)}
-                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson"
+                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson transition-colors"
                 />
               </div>
 
               <div>
-                <label className="text-warm-ivory/60 block mb-1">LOCATION & MOBILITY</label>
+                <label className="text-warm-ivory/60 block mb-1 font-semibold">LOCATION & MOBILITY</label>
                 <input
                   type="text"
                   value={editLoc}
                   onChange={(e) => setEditLoc(e.target.value)}
-                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson"
+                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-3 border-t border-burgundy/20">
               <button
                 onClick={handleSaveProfile}
-                className="flex-1 btn-primary text-xs font-mono py-2.5"
+                className="flex-1 btn-primary text-xs font-mono py-2.5 cursor-pointer shadow-sm"
               >
                 SAVE UPDATES
               </button>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="btn-secondary text-xs font-mono py-2.5 px-4"
+                className="btn-secondary text-xs font-mono py-2.5 px-4 cursor-pointer"
               >
                 CANCEL
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
+      {/* Share Intel Modal */}
+      <DossierShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        candidate={candidate}
+        onNavigate={onNavigate}
+      />
     </div>
   )
 }

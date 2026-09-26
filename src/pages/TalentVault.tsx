@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, Users, CheckCircle2, BookmarkPlus, BookmarkCheck, ArrowRight, X, Mail, Check } from 'lucide-react'
 import { mockTalentVaultCandidates, TalentCandidate } from '../data/mockData'
 import { useTheme } from '../hooks/useTheme'
@@ -20,6 +21,20 @@ const EnterpriseTalentDirectory: React.FC<TalentVaultProps> = ({ onNavigate }) =
   const [selectedCandidate, setSelectedCandidate] = useState<TalentCandidate | null>(null)
   const [shortlisted, setShortlisted] = useState<Record<string, boolean>>({ 'TAL-001': true })
   const [contacted, setContacted] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!selectedCandidate) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedCandidate(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedCandidate])
 
   useEffect(() => {
     let mounted = true
@@ -230,16 +245,22 @@ const EnterpriseTalentDirectory: React.FC<TalentVaultProps> = ({ onNavigate }) =
       </div>
 
       {/* 4. Candidate Detail Slide-Over Drawer */}
-      {selectedCandidate && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex justify-end">
-          <div className="w-full max-w-lg bg-white h-full shadow-2xl p-6 overflow-y-auto space-y-6 border-l border-slate-200">
+      {selectedCandidate && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedCandidate(null)
+          }}
+          className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] flex justify-end bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-200"
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}
+        >
+          <div className="w-full max-w-lg bg-white h-full shadow-2xl p-6 overflow-y-auto space-y-6 border-l border-slate-200 animate-in slide-in-from-right duration-200">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Candidate Profile
               </span>
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-slate-100"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -334,7 +355,7 @@ const EnterpriseTalentDirectory: React.FC<TalentVaultProps> = ({ onNavigate }) =
               <button
                 onClick={() => handleContact(selectedCandidate.id)}
                 className={cn(
-                  'flex-1 py-2 text-xs font-semibold rounded flex items-center justify-center gap-1.5 transition-colors',
+                  'flex-1 py-2 text-xs font-semibold rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer',
                   contacted[selectedCandidate.id]
                     ? 'bg-emerald-600 text-white'
                     : 'bg-[#1E3A8A] hover:bg-[#1E40AF] text-white'
@@ -351,14 +372,18 @@ const EnterpriseTalentDirectory: React.FC<TalentVaultProps> = ({ onNavigate }) =
                 )}
               </button>
               <button
-                onClick={() => onNavigate?.('candidate-dossier')}
-                className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors"
+                onClick={() => {
+                  setSelectedCandidate(null)
+                  onNavigate?.('candidate-dossier')
+                }}
+                className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors cursor-pointer"
               >
                 Full Profile
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -375,6 +400,20 @@ export const TalentVault: React.FC<TalentVaultProps> = ({ onNavigate }) => {
   const [selectedCandidate, setSelectedCandidate] = useState<TalentCandidate | null>(null)
   const [shortlisted, setShortlisted] = useState<Record<string, boolean>>({ 'TAL-001': true })
   const [contacted, setContacted] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    if (!selectedCandidate) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedCandidate(null)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedCandidate])
 
   // In Enterprise Mode: render the enterprise talent directory
   if (!isHeist) {
@@ -575,9 +614,15 @@ export const TalentVault: React.FC<TalentVaultProps> = ({ onNavigate }) => {
       </section>
 
       {/* Candidate Dossier Detail Modal */}
-      {selectedCandidate && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="card max-w-2xl w-full p-6 space-y-6 bg-charcoal border-crimson/50 shadow-glow-crimson max-h-[90vh] overflow-y-auto">
+      {selectedCandidate && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedCandidate(null)
+          }}
+          className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}
+        >
+          <div className="relative card max-w-2xl w-full p-6 space-y-6 bg-charcoal border-crimson/50 shadow-glow-crimson max-h-[90vh] overflow-y-auto my-auto animate-in zoom-in-95 duration-200">
             <div className="flex items-start justify-between border-b border-burgundy/20 pb-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -591,7 +636,7 @@ export const TalentVault: React.FC<TalentVaultProps> = ({ onNavigate }) => {
               </div>
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="text-warm-ivory/50 hover:text-crimson p-1 rounded-lg hover:bg-burgundy/20"
+                className="text-warm-ivory/50 hover:text-crimson p-1 rounded-lg hover:bg-burgundy/20 transition-colors cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -642,7 +687,7 @@ export const TalentVault: React.FC<TalentVaultProps> = ({ onNavigate }) => {
               <button
                 onClick={() => handleContact(selectedCandidate.id)}
                 className={cn(
-                  'flex-1 py-3 text-xs font-mono font-bold rounded-lg transition-all flex items-center justify-center gap-2',
+                  'flex-1 py-3 text-xs font-mono font-bold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer',
                   contacted[selectedCandidate.id]
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-default'
                     : 'btn-primary'
@@ -658,13 +703,14 @@ export const TalentVault: React.FC<TalentVaultProps> = ({ onNavigate }) => {
               </button>
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="btn-secondary text-xs font-mono py-3 px-5"
+                className="btn-secondary text-xs font-mono py-3 px-5 cursor-pointer"
               >
                 CLOSE DOSSIER
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

@@ -311,9 +311,9 @@ export const SimulationVault: React.FC = () => {
                           value={score}
                           onChange={(e) => updateSkillScore(selectedScenario, skill, parseFloat(e.target.value))}
                           style={{
-                            background: `linear-gradient(to right, #DC2626 0%, #DC2626 ${(score / 10) * 100}%, #18181B ${(score / 10) * 100}%, #18181B 100%)`,
+                            background: `linear-gradient(to right, #2563EB 0%, #2563EB ${(score / 10) * 100}%, #000000 ${(score / 10) * 100}%, #000000 100%)`,
                           }}
-                          className="flex-1 h-2.5 rounded-full appearance-none cursor-pointer scenario-slider border border-black/80"
+                          className="flex-1 h-1 rounded-full appearance-none cursor-pointer scenario-slider"
                         />
                         <span className="w-8 text-right font-mono text-xs text-warm-ivory/80 font-bold">
                           {score.toFixed(1)}
