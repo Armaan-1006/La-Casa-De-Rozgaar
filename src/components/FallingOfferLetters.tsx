@@ -89,13 +89,12 @@ const PHYSICS_CONFIG = {
   WIND_FREQUENCY: 0.12,
   WIND_STRENGTH: 16,
 
-  // Cursor air disturbance parameters
-  AIR_DISTURB_RADIUS: 130, // px influence zone
-  AIR_SPRING_K: 24, // restoring stiffness toward equilibrium
-  AIR_DAMPING_C: 7.5, // damping coefficient (settles smoothly ~0.76 damping ratio)
-  MAX_AIR_DISP_X: 3.5, // max displacement in px (1-4px)
-  MAX_AIR_DISP_Y: 2.5, // max displacement in px (1-3px)
-  MAX_AIR_ROT: 2.5, // max rotation perturbation in deg (0.5-3 deg)
+  // Physical hover impulse & spring tuning
+  AIR_DISTURB_RADIUS: 135, // px influence zone
+  MAX_AIR_DISP_X: 14.5, // 8-14px max displacement (+45% increase)
+  MAX_AIR_DISP_Y: 10.5, // 6-10px max displacement (+40% increase)
+  MAX_AIR_ROT: 8.5, // 3-8 deg max rotation (+42% increase)
+  HOVER_COOLDOWN_MS: 260, // min ms between strong impulses
 
   // Grab & dragging
   GRAB_SPRING: 0.28, // smooth physical lag factor per frame
@@ -161,6 +160,15 @@ interface PaperPhysicsItem {
   airDispVy: number
   airRotZ: number
   airRotVz: number
+
+  // Individuality & cooldown tracking
+  lastImpulseTime: number
+  wasDirectHover: boolean
+  wasInProximity: boolean
+  impulseMult: number
+  rotMult: number
+  springK: number
+  dampingC: number
 
   // Grab offset relative to center of paper
   grabOffsetX: number
@@ -228,6 +236,13 @@ function createPaperItem(
     airDispVy: 0,
     airRotZ: 0,
     airRotVz: 0,
+    lastImpulseTime: 0,
+    wasDirectHover: false,
+    wasInProximity: false,
+    impulseMult: 0.90 + Math.random() * 0.30, // 0.90x to 1.20x individual variation
+    rotMult: 0.90 + Math.random() * 0.30,
+    springK: 360 + (Math.random() - 0.5) * 50, // 335 to 385 (allows crisp 8-14px peak deflection)
+    dampingC: 11.8 + (Math.random() - 0.5) * 1.8, // 10.9 to 12.7 (under-damped ζ ≈ 0.31, 2-4 visible oscillations, settles in 400-650ms)
     grabOffsetX: 0,
     grabOffsetY: 0,
     width: 148,
@@ -261,6 +276,9 @@ function recyclePaper(item: PaperPhysicsItem, vw: number, _vh: number) {
   item.airDispVy = 0
   item.airRotZ = 0
   item.airRotVz = 0
+  item.lastImpulseTime = 0
+  item.wasDirectHover = false
+  item.wasInProximity = false
 }
 
 export const FallingOfferLetters: React.FC = () => {
@@ -315,6 +333,7 @@ export const FallingOfferLetters: React.FC = () => {
     item.airDispVy = 0
     item.airRotZ = 0
     item.airRotVz = 0
+    item.lastImpulseTime = performance.now()
     activeGrabbedIdRef.current = null
     item.targetScale = item.naturalScale
   }
@@ -650,7 +669,7 @@ export const FallingOfferLetters: React.FC = () => {
         item.rotY += (rollY - item.rotY) * 0.1
 
         // ============================================
-        // 3. CURSOR AIR DISTURBANCE (PHYSICAL DAMPED OSCILLATOR)
+        // 3. CURSOR AIR DISTURBANCE & HOVER JIGGLE IMPULSE
         // ============================================
         const paperCenterX = item.x + item.width / 2
         const paperCenterY = item.y + item.height / 2
@@ -658,75 +677,101 @@ export const FallingOfferLetters: React.FC = () => {
         const distY = paperCenterY - curY
         const dist = Math.hypot(distX, distY)
 
-        let extForceX = 0
-        let extForceY = 0
-        let extTorque = 0
+        // Check interaction zones:
+        // LEVEL 2 — DIRECT HOVER (cursor inside paper bounding box)
+        // LEVEL 1 — PROXIMITY (cursor within disturbance radius)
+        const isDirectHover =
+          Math.abs(distX) < (item.width * item.scale * 0.55) &&
+          Math.abs(distY) < (item.height * item.scale * 0.55)
+        const inProximity = dist < PHYSICS_CONFIG.AIR_DISTURB_RADIUS && dist > 1
 
-        if (dist < PHYSICS_CONFIG.AIR_DISTURB_RADIUS && dist > 1) {
-          // Smooth Hermite / cosine falloff: 0 at boundary, 1.0 at center
-          const normDist = dist / PHYSICS_CONFIG.AIR_DISTURB_RADIUS
-          const falloff = Math.cos(normDist * Math.PI * 0.5)
+        const cVx = cursorPos.current.vx
+        const cVy = cursorPos.current.vy
+        const cSpeed = Math.hypot(cVx, cVy)
+        const timeSinceLastImpulse = now - item.lastImpulseTime
 
-          // Normalized direction vector: CURSOR -> PAPER
-          const dirX = distX / dist
-          const dirY = distY / dist
+        if (isDirectHover) {
+          const justEnteredHover = !item.wasDirectHover
+          const significantMotion = cSpeed > 130 && timeSinceLastImpulse > 320
 
-          // Cursor velocity & speed
-          const cVx = cursorPos.current.vx
-          const cVy = cursorPos.current.vy
-          const cSpeed = Math.hypot(cVx, cVy)
+          if ((justEnteredHover && timeSinceLastImpulse > PHYSICS_CONFIG.HOVER_COOLDOWN_MS) || significantMotion) {
+            // Level 2: Direct Hover Impulse (produces 8–14px displacement, 3–8° tilt, 2–4 damped oscillations)
+            const baseImpulse = justEnteredHover ? 260 : 170
+            const speedComponent = Math.min(cSpeed, 550) * 0.42
+            const impulseMag = (baseImpulse + speedComponent) * item.impulseMult
 
-          // 1. Dynamic wake from cursor motion (hand dragging air)
-          const wakeX = cVx * 0.035
-          const wakeY = cVy * 0.030
+            // Direction from cursor movement or cursor-to-paper vector
+            let impDirX = distX !== 0 ? distX / (Math.abs(distX) + 1) : 1
+            let impDirY = distY !== 0 ? distY / (Math.abs(distY) + 1) : 0.4
+            if (cSpeed > 35) {
+              impDirX = cVx / cSpeed
+              impDirY = cVy / cSpeed
+            }
 
-          // 2. Air displacement from cursor proximity & velocity
-          // Clamped so rapid sweeps don't produce violent motion
-          const dispSpeed = Math.min(cSpeed, 350)
-          const pushMag = dispSpeed * 0.04
-          const pushX = dirX * pushMag
-          const pushY = dirY * pushMag * 0.65
+            // Apply velocity kick (impulse)
+            item.airDispVx += impDirX * impulseMag
+            item.airDispVy += impDirY * impulseMag * 0.65
+            item.airRotVz += (impDirX * 36 + (Math.random() - 0.5) * 14) * item.rotMult
 
-          // Combined physical air force
-          extForceX = (wakeX * 0.6 + pushX * 0.4) * falloff * 18
-          extForceY = (wakeY * 0.5 + pushY * 0.5) * falloff * 14
+            item.lastImpulseTime = now
+          }
+        } else if (inProximity) {
+          const justEnteredProximity = !item.wasInProximity
+          if (justEnteredProximity && timeSinceLastImpulse > 350) {
+            // Level 1: Proximity Disturbance (subtle 2–4px nudge)
+            const proxMag = (95 + Math.min(cSpeed, 380) * 0.24) * item.impulseMult
+            const dirX = distX / dist
+            const dirY = distY / dist
 
-          // 3. Subtle aerodynamic torque
-          const torqueMotion = (cVx * 0.015) * falloff * 10
-          const torquePush = (dirX * 0.8) * (dispSpeed * 0.015) * falloff * 8
-          extTorque = torqueMotion + torquePush
+            item.airDispVx += dirX * proxMag
+            item.airDispVy += dirY * proxMag * 0.6
+            item.airRotVz += dirX * 14.0 * item.rotMult
 
-          // Clamp forces to ensure subtle 1-4px displacement max
-          extForceX = Math.max(-50, Math.min(50, extForceX))
-          extForceY = Math.max(-40, Math.min(40, extForceY))
-          extTorque = Math.max(-30, Math.min(30, extTorque))
+            item.lastImpulseTime = now
+          }
         }
 
-        // Physical 2nd-order damped spring integration
-        // F = -k * x - c * v + extForce
-        const dtSpring = Math.min(dt, 0.033)
-        const springFx = -PHYSICS_CONFIG.AIR_SPRING_K * item.airDispX - PHYSICS_CONFIG.AIR_DAMPING_C * item.airDispVx
-        const springFy = -PHYSICS_CONFIG.AIR_SPRING_K * item.airDispY - PHYSICS_CONFIG.AIR_DAMPING_C * item.airDispVy
-        const springFrot = -PHYSICS_CONFIG.AIR_SPRING_K * item.airRotZ - PHYSICS_CONFIG.AIR_DAMPING_C * item.airRotVz
+        item.wasDirectHover = isDirectHover
+        item.wasInProximity = inProximity
 
-        item.airDispVx += (springFx + extForceX) * dtSpring
-        item.airDispVy += (springFy + extForceY) * dtSpring
-        item.airRotVz += (springFrot + extTorque) * dtSpring
+        // Symplectic Euler integration of 2nd-order damped harmonic oscillator
+        const dtSpring = Math.min(dt, 0.033)
+        const springAccX = -item.springK * item.airDispX - item.dampingC * item.airDispVx
+        const springAccY = -item.springK * item.airDispY - item.dampingC * item.airDispVy
+        const springAccRot = -item.springK * item.airRotZ - item.dampingC * item.airRotVz
+
+        item.airDispVx += springAccX * dtSpring
+        item.airDispVy += springAccY * dtSpring
+        item.airRotVz += springAccRot * dtSpring
 
         item.airDispX += item.airDispVx * dtSpring
         item.airDispY += item.airDispVy * dtSpring
         item.airRotZ += item.airRotVz * dtSpring
 
-        // Strict physical clamping to preserve subtle paper feel (1-4px, 0.5-3 deg)
+        // Strict physical clamping to preserve tasteful bounds (8–14px, 3–8 deg)
         item.airDispX = Math.max(-PHYSICS_CONFIG.MAX_AIR_DISP_X, Math.min(PHYSICS_CONFIG.MAX_AIR_DISP_X, item.airDispX))
         item.airDispY = Math.max(-PHYSICS_CONFIG.MAX_AIR_DISP_Y, Math.min(PHYSICS_CONFIG.MAX_AIR_DISP_Y, item.airDispY))
         item.airRotZ = Math.max(-PHYSICS_CONFIG.MAX_AIR_ROT, Math.min(PHYSICS_CONFIG.MAX_AIR_ROT, item.airRotZ))
+
+        // Settling threshold: when oscillation reaches microscopic levels, snap cleanly to rest
+        if (Math.abs(item.airDispX) < 0.05 && Math.abs(item.airDispVx) < 1.0) {
+          item.airDispX = 0
+          item.airDispVx = 0
+        }
+        if (Math.abs(item.airDispY) < 0.05 && Math.abs(item.airDispVy) < 1.0) {
+          item.airDispY = 0
+          item.airDispVy = 0
+        }
+        if (Math.abs(item.airRotZ) < 0.05 && Math.abs(item.airRotVz) < 1.0) {
+          item.airRotZ = 0
+          item.airRotVz = 0
+        }
 
         // Render transforms with subtle air disturbance and optional micro-skew
         const renderX = item.x + item.airDispX
         const renderY = item.y + item.airDispY
         const renderRotZ = item.rotZ + item.airRotZ
-        const skewX = Math.max(-0.75, Math.min(0.75, -item.airRotZ * 0.35))
+        const skewX = Math.max(-1.8, Math.min(1.8, -item.airRotZ * 0.35))
 
         el.style.transform = `translate3d(${renderX.toFixed(1)}px, ${renderY.toFixed(1)}px, 0) perspective(650px) rotateX(${item.rotX.toFixed(1)}deg) rotateY(${item.rotY.toFixed(1)}deg) rotateZ(${renderRotZ.toFixed(1)}deg) skewX(${skewX.toFixed(2)}deg) scale(${item.scale.toFixed(3)})`
         el.style.opacity = `${item.opacity.toFixed(2)}`

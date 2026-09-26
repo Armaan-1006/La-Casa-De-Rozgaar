@@ -86,7 +86,6 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
   const lastKeyTimeRef = useRef<number>(0)
   const streamRef = useRef<MediaStream | null>(null)
   const mediaPipeDetectorRef = useRef<FaceDetector | null>(null)
-  const lastVideoTimeRef = useRef<number>(-1)
 
   const questions = mockAssessmentQuestions
   const currentQ: AssessmentQuestion = questions[currentIndex] || questions[0]
@@ -318,12 +317,6 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
   // Real-time AI Vision Proctoring: MediaPipe Neural Vision + Robust Multi-Person Engine
   useEffect(() => {
     if (!cameraActive) return
-
-    // Off-screen canvas for real-time fallback frame processing
-    const sampleCanvas = document.createElement('canvas')
-    sampleCanvas.width = 160
-    sampleCanvas.height = 120
-    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true })
 
     // State tracking with debouncing
     let consecutiveAbsenceCount = 0
