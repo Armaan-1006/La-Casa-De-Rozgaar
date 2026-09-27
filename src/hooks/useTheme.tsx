@@ -14,6 +14,8 @@ export interface ThemeContextValue {
   toggleMode: () => void
   toggleTheme: () => void // backward compatibility
   completeTransition: () => void
+  applyRoleDefaultTheme: (role?: string | null) => VisualMode
+  resetThemeOnSignOut: () => void
 }
 
 const STORAGE_KEY = 'lcdr_visual_mode'
@@ -21,11 +23,44 @@ const LEGACY_STORAGE_KEY = 'theme'
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
+/**
+ * Centralized Role -> Default Theme Resolver.
+ * Sources of truth:
+ * - CANDIDATE -> HEIST MODE
+ * - RECRUITER (and enterprise roles) -> PROFESSIONAL MODE
+ * - Other roles / unauthenticated -> HEIST MODE
+ *
+ * Normalizes case and whitespace.
+ */
+export function resolveDefaultTheme(role?: string | null): VisualMode {
+  if (!role) return 'heist'
+  const normalized = role.trim().toLowerCase()
+  if (normalized === 'candidate') {
+    return 'heist'
+  }
+  if (
+    normalized === 'recruiter' ||
+    normalized === 'employer_admin' ||
+    normalized === 'employer' ||
+    normalized === 'workforce_planner' ||
+    normalized === 'planner'
+  ) {
+    return 'professional'
+  }
+  return 'heist'
+}
+
 export function isLoginRoute(): boolean {
   if (typeof window === 'undefined') return false
   const hash = window.location.hash || ''
   const pathname = window.location.pathname || ''
-  return hash.startsWith('#/login') || hash === '#login' || pathname.startsWith('/login')
+  const cleanHash = hash.replace('#/', '').replace('#', '').split('?')[0]
+  return (
+    cleanHash === 'login' ||
+    hash.startsWith('#/login') ||
+    hash === '#login' ||
+    pathname.startsWith('/login')
+  )
 }
 
 export function applyDomTheme(mode: VisualMode, forceHeistForLogin = isLoginRoute()) {
@@ -163,6 +198,61 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setMode(nextMode)
   }, [mode, setMode])
 
+  /**
+   * Applies the role-based default theme upon new successful login/registration.
+   * Resets any stale theme state from a previous user or role default.
+   */
+  const applyRoleDefaultTheme = useCallback((role?: string | null): VisualMode => {
+    const defaultTheme = resolveDefaultTheme(role)
+
+    // 1. Set mode state immediately
+    setModeState(defaultTheme)
+
+    // 2. Persist to storage for the authenticated session
+    try {
+      localStorage.setItem(STORAGE_KEY, defaultTheme)
+      localStorage.setItem(LEGACY_STORAGE_KEY, defaultTheme === 'heist' ? 'dark' : 'light')
+    } catch {
+      // Safe fallback
+    }
+
+    // 3. Reset any active transition animation so there is no animation sweep flash during login redirect
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current)
+      transitionTimeoutRef.current = null
+    }
+    setIsTransitioning(false)
+    setTransitionDirection(null)
+    setTargetMode(null)
+
+    return defaultTheme
+  }, [])
+
+  /**
+   * Cleans up authentication-specific theme state on sign out.
+   * Guarantees the login page returns strictly to Heist mode and prevents theme leakage to the next session.
+   */
+  const resetThemeOnSignOut = useCallback(() => {
+    setModeState('heist')
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(LEGACY_STORAGE_KEY)
+    } catch {
+      // Safe fallback
+    }
+
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current)
+      transitionTimeoutRef.current = null
+    }
+    setIsTransitioning(false)
+    setTransitionDirection(null)
+    setTargetMode(null)
+
+    // Ensure DOM root is immediately strictly set to Heist for the login page
+    applyDomTheme('heist', true)
+  }, [])
+
   const contextValue: ThemeContextValue = {
     mode,
     isHeist: mode === 'heist',
@@ -175,6 +265,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     toggleMode,
     toggleTheme: toggleMode,
     completeTransition,
+    applyRoleDefaultTheme,
+    resetThemeOnSignOut,
   }
 
   return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>
@@ -197,6 +289,8 @@ export const useTheme = () => {
       toggleMode: () => {},
       toggleTheme: () => {},
       completeTransition: () => {},
+      applyRoleDefaultTheme: (role?: string | null) => resolveDefaultTheme(role),
+      resetThemeOnSignOut: () => {},
     }
   }
   return context

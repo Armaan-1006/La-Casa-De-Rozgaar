@@ -14,7 +14,7 @@ import {
   Fingerprint
 } from 'lucide-react'
 import { useAuth, DEMO_PRESETS, type UserRole } from '../hooks/useAuth'
-import { applyDomTheme } from '../hooks/useTheme'
+import { applyDomTheme, resolveDefaultTheme } from '../hooks/useTheme'
 import { FallingOfferLetters } from '../components/FallingOfferLetters'
 import { cn } from '../lib/utils'
 
@@ -146,7 +146,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
     }
   }
 
-  const redirectByRole = (role?: UserRole) => {
+  const redirectByRole = (role?: UserRole | string) => {
+    const targetTheme = resolveDefaultTheme(role)
+    // Synchronously apply role-based default theme to DOM root before navigating away from login to avoid theme flash
+    applyDomTheme(targetTheme, false)
     switch (role) {
       case 'CANDIDATE':
         onNavigate('candidate-dossier')
