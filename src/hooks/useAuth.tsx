@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useTheme } from './useTheme'
 
 export type UserRole = 'CANDIDATE' | 'RECRUITER' | 'EMPLOYER_ADMIN' | 'WORKFORCE_PLANNER' | 'ADMIN'
 
@@ -91,6 +92,8 @@ export const DEMO_PRESETS: Record<string, { email: string; password: string; nam
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { applyRoleDefaultTheme, resetThemeOnSignOut } = useTheme()
+
   const [token, setToken] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null
     return localStorage.getItem(TOKEN_KEY)
@@ -174,6 +177,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setToken(authToken || 'jwt_simulated_token_' + Date.now())
       setUser(authUser)
+      // Automatically apply the authenticated user's role default theme (Candidate -> Heist, Recruiter -> Professional)
+      applyRoleDefaultTheme(authUser.role)
       setIsLoading(false)
 
       return { success: true, user: authUser }
@@ -196,6 +201,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const simToken = 'lcdr_jwt_' + Math.random().toString(36).substring(2)
         setToken(simToken)
         setUser(authUser)
+        applyRoleDefaultTheme(authUser.role)
         setIsLoading(false)
         return { success: true, user: authUser }
       }
@@ -206,7 +212,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         error: err.message || 'Unable to connect to intelligence authentication gateway.',
       }
     }
-  }, [])
+  }, [applyRoleDefaultTheme])
 
   const register = useCallback(async ({ email, password, name, role }: RegisterData): Promise<AuthResult> => {
     setIsLoading(true)
@@ -242,6 +248,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setToken(authToken || 'jwt_simulated_token_' + Date.now())
       setUser(authUser)
+      // Automatically apply the registered user's role default theme (Candidate -> Heist, Recruiter -> Professional)
+      applyRoleDefaultTheme(authUser.role)
       setIsLoading(false)
 
       return { success: true, user: authUser }
@@ -252,14 +260,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         error: err.message || 'Unable to reach registration server.',
       }
     }
-  }, [])
+  }, [applyRoleDefaultTheme])
 
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
-  }, [])
+    resetThemeOnSignOut()
+  }, [resetThemeOnSignOut])
 
   const quickLogin = useCallback(
     async (presetKey: 'candidate' | 'candidate_data' | 'recruiter' | 'planner' | 'admin'): Promise<AuthResult> => {

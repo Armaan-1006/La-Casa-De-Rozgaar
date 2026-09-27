@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Sidebar, Header } from './components/Layout'
 import { CommandPalette } from './components/CommandPalette'
 import { NotificationCenter } from './components/NotificationCenter'
-import { ThemeProvider, useTheme } from './hooks/useTheme'
+import { ThemeProvider, useTheme, applyDomTheme } from './hooks/useTheme'
 import { ThemeTransitionOverlay } from './components/ThemeTransitionOverlay'
 import { cn } from './lib/utils'
 
@@ -56,7 +56,7 @@ export type PageType =
   | 'feed'
 
 function AppContent() {
-  const { isHeist } = useTheme()
+  const { isHeist, mode } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -113,6 +113,11 @@ function AppContent() {
       return
     }
     if (isValidPage(page)) {
+      if (page === 'login') {
+        applyDomTheme('heist', true)
+      } else {
+        applyDomTheme(mode, false)
+      }
       setCurrentPage(page as PageType)
       window.location.hash = `#/${page}`
     }

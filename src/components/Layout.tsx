@@ -147,7 +147,6 @@ const enterpriseNavSections: EnterpriseNavSection[] = [
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, currentPage }) => {
   const { isHeist } = useTheme()
-  const { user, isAuthenticated, logout } = useAuth()
   const { width } = useWindowSize()
   const isDesktop = width >= 768
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null)
@@ -210,7 +209,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
           </div>
 
           {/* Enterprise Navigation List (Text + Hierarchy, No Icon Spam) */}
-          <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-4">
+          <nav className="flex-1 px-3 py-3 pb-6 overflow-y-auto space-y-4">
             {enterpriseNavSections.map((section) => (
               <div key={section.title} className="space-y-0.5">
                 <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
@@ -238,42 +237,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
               </div>
             ))}
           </nav>
-
-          {/* Enterprise Status & Switcher Footer */}
-          <div className="p-3 border-t border-slate-200 bg-slate-50 space-y-2.5">
-            {isAuthenticated && user ? (
-              <div className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-200 text-xs">
-                <div className="flex items-center gap-2 truncate">
-                  <div className="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                    {user.avatarInitials || 'OP'}
-                  </div>
-                  <div className="truncate">
-                    <div className="font-semibold text-slate-800 text-xs truncate">{user.name}</div>
-                    <div className="text-[10px] text-slate-500 truncate">{user.role}</div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    logout()
-                    handleNavClick('login')
-                  }}
-                  title="Sign out"
-                  className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  <LogOut size={13} />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => handleNavClick('login')}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
-              >
-                <User size={13} />
-                <span>Sign In / Register</span>
-              </button>
-            )}
-            <ThemeModeSwitch variant="sidebar" />
-          </div>
         </aside>
       </>
     )
@@ -301,7 +264,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
         animate={{ x: isDesktop ? 0 : isOpen ? 0 : -300 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
         className={cn(
-          'fixed md:static top-0 left-0 h-screen w-64 bg-gradient-obsidian border-r border-burgundy/25 overflow-y-auto z-50 md:z-auto shrink-0',
+          'fixed md:static top-0 left-0 h-screen w-64 bg-gradient-obsidian border-r border-burgundy/25 z-50 md:z-auto shrink-0',
           'flex flex-col select-none'
         )}
       >
@@ -335,7 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
         </div>
 
         {/* Navigation List */}
-        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-3 pb-6 space-y-1 overflow-y-auto">
           {heistNavigationItems.map((item) => {
             const isDirectActive = item.href === currentPage
             const isSubActive = item.submenu?.some((s) => s.href === currentPage)
@@ -416,47 +379,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
             )
           })}
         </nav>
-
-        {/* Status Console Panel */}
-        <div className="p-3 border-t border-burgundy/25 space-y-2.5 bg-charcoal/40 sidebar-status-console">
-          {isAuthenticated && user ? (
-            <div className="flex items-center justify-between p-2 rounded-lg bg-obsidian/80 border border-burgundy/40 text-xs font-mono">
-              <div className="flex items-center gap-2 truncate">
-                <div className="w-6 h-6 rounded-full bg-crimson text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-glow-crimson">
-                  {user.avatarInitials || 'OP'}
-                </div>
-                <div className="truncate">
-                  <div className="font-bold text-warm-ivory text-xs truncate flex items-center gap-1">
-                    <span>{user.name}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  </div>
-                  <div className="text-[9px] text-crimson truncate tracking-wider font-bold">[{user.role}]</div>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  logout()
-                  handleNavClick('login')
-                }}
-                title="Terminate clearance session"
-                className="p-1 text-warm-ivory/40 hover:text-crimson rounded hover:bg-burgundy/20 transition-colors cursor-pointer"
-              >
-                <LogOut size={13} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => handleNavClick('login')}
-              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-gradient-to-r from-crimson to-blood-red hover:brightness-110 text-white text-xs font-mono font-bold shadow-glow-crimson transition-all cursor-pointer"
-            >
-              <Shield size={13} />
-              <span>AUTHORIZE CLEARANCE</span>
-            </button>
-          )}
-
-          {/* Dual Visual Mode Switcher */}
-          <ThemeModeSwitch variant="sidebar" />
-        </div>
       </motion.aside>
     </>
   )
