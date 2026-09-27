@@ -12,7 +12,7 @@ export interface LandingAudioOptions {
 }
 
 // Ultra-subtle background volume capped at 1.5% (30% of previous 5%)
-const AMBIENT_BG_VOLUME = 0.015;
+const AMBIENT_BG_VOLUME = 0.5;
 
 /**
  * Audio manager for La Casa De Rozgaar landing experience.
