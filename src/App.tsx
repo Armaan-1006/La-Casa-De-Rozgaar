@@ -28,9 +28,11 @@ import { IntelligenceFeed } from './pages/IntelligenceFeed'
 import { FloatingDossierField } from './components/FloatingDossierField'
 import { LoginPage } from './pages/LoginPage'
 import { SharedDossierPage } from './pages/SharedDossierPage'
+import { LandingExperience } from './components/landing/LandingExperience'
 import { AuthProvider } from './hooks/useAuth'
 
 export type PageType =
+  | 'landing'
   | 'login'
   | 'war-room'
   | 'market-intelligence'
@@ -63,14 +65,18 @@ function AppContent() {
   const getInitialPage = (): PageType => {
     const rawHash = window.location.hash.replace('#/', '').replace('#', '')
     const pageKey = rawHash.split('?')[0].replace('shared/dossier', 'shared-dossier')
+    if (pageKey === '' || pageKey === 'landing' || pageKey === 'home') {
+      return 'landing'
+    }
     if (pageKey && isValidPage(pageKey)) {
       return pageKey as PageType
     }
-    return 'war-room'
+    return 'landing'
   }
 
   const isValidPage = (page: string): boolean => {
     const validPages: PageType[] = [
+      'landing',
       'login',
       'war-room',
       'market-intelligence',
@@ -99,6 +105,13 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage)
 
   const handleNavigation = (page: string) => {
+    if (page === '' || page === 'landing' || page === 'home') {
+      setCurrentPage('landing')
+      window.location.hash = '#/'
+      setSidebarOpen(false)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     if (isValidPage(page)) {
       if (page === 'login') {
         applyDomTheme('heist', true)
@@ -117,7 +130,9 @@ function AppContent() {
     const handleHashChange = () => {
       const rawHash = window.location.hash.replace('#/', '').replace('#', '')
       const pageKey = rawHash.split('?')[0].replace('shared/dossier', 'shared-dossier')
-      if (pageKey && isValidPage(pageKey)) {
+      if (pageKey === '' || pageKey === 'landing' || pageKey === 'home') {
+        setCurrentPage('landing')
+      } else if (pageKey && isValidPage(pageKey)) {
         setCurrentPage(pageKey as PageType)
       }
     }
@@ -179,10 +194,25 @@ function AppContent() {
         return <IntelligenceFeed onNavigate={handleNavigation} />
       case 'login':
         return <LoginPage onNavigate={handleNavigation} />
+      case 'landing':
+        return <LandingExperience loginUrl="#/login" onJoin={() => handleNavigation('login')} />
       case 'war-room':
       default:
         return <WarRoom onNavigate={handleNavigation} />
     }
+  }
+
+  // Full-screen presentation for 3D Cinematic Landing Experience (Root / Home Route)
+  if (currentPage === 'landing') {
+    return (
+      <div className="w-full relative bg-[#0d0b0b] text-white">
+        <ThemeTransitionOverlay />
+        <LandingExperience
+          loginUrl="#/login"
+          onJoin={() => handleNavigation('login')}
+        />
+      </div>
+    )
   }
 
   // Full-screen presentation for Authentication Gateway — always dedicated Heist presentation
