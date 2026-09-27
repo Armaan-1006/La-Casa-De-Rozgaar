@@ -1,0 +1,87 @@
+/*
+ * LA CASA DE ROZGAAR — Self-Contained Styles & Design System
+ * Bundles fonts, colors, grain, vignette, and utility fallbacks.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Oswald:wght@500;700;900&display=swap');
+
+:root {
+  --background: #0d0b0b;
+  --foreground: #f3efe6;
+  --crimson: #c9182b;
+  --crimson-glow: rgba(201, 24, 43, 0.45);
+  --crimson-deep: #8a1d27;
+  --maroon: #3e1216;
+  --paper-ink: #2b2219;
+  --paper-bg: #e5d5be;
+  --brass: #c89b43;
+
+  --font-display: "Oswald", "Arial Narrow", sans-serif;
+  --font-sans: "Barlow", system-ui, -apple-system, sans-serif;
+  --font-mono: "Courier Prime", ui-monospace, "Courier New", monospace;
+}
+
+/* Fallback font family utilities */
+.font-display {
+  font-family: var(--font-display) !important;
+}
+
+.font-mono {
+  font-family: var(--font-mono) !important;
+}
+
+.font-sans {
+  font-family: var(--font-sans) !important;
+}
+
+/* Fallback color utilities in case host project doesn't have custom Tailwind config */
+.text-crimson {
+  color: var(--crimson) !important;
+}
+
+.bg-crimson {
+  background-color: var(--crimson) !important;
+}
+
+.border-crimson {
+  border-color: var(--crimson) !important;
+}
+
+.text-paper-ink {
+  color: var(--paper-ink) !important;
+}
+
+.border-paper-ink {
+  border-color: var(--paper-ink) !important;
+}
+
+.bg-background {
+  background-color: var(--background) !important;
+}
+
+/* Fine film grain overlay */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none !important;
+  z-index: 5;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Cinematic vignette gradient */
+.vignette::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none !important;
+  z-index: 6;
+  background: radial-gradient(
+    ellipse at 50% 55%,
+    transparent 30%,
+    rgba(13, 11, 11, 0.55) 72%,
+    rgba(10, 8, 8, 0.95) 100%
+  );
+}

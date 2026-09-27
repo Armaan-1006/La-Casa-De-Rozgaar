@@ -9,8 +9,28 @@
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&family=Inter:wght@300..700&family=JetBrains+Mono:wght@300..700&display=swap');
     </style>
-    <script type="module" crossorigin src="/assets/index-2WYcve0n.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CL6jRQnt.css">
+    <script>
+      (function() {
+        var hash = window.location.hash || '';
+        var path = window.location.pathname || '';
+        if (hash.indexOf('login') !== -1 || path.indexOf('login') !== -1) {
+          document.documentElement.setAttribute('data-theme', 'heist');
+          document.documentElement.setAttribute('data-page', 'login');
+          document.documentElement.className = 'theme-heist dark';
+        } else {
+          var saved = localStorage.getItem('lcdr_visual_mode') || localStorage.getItem('theme');
+          if (saved === 'professional' || saved === 'light') {
+            document.documentElement.setAttribute('data-theme', 'professional');
+            document.documentElement.className = 'theme-professional light';
+          } else {
+            document.documentElement.setAttribute('data-theme', 'heist');
+            document.documentElement.className = 'theme-heist dark';
+          }
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-DwdsW-zY.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-8WZEkvRH.css">
   </head>
   <body>
     <div id="root"></div>
