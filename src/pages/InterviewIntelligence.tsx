@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { ShieldAlert, CheckCircle2, ChevronDown, ChevronUp, Search, Building2, Flame, ArrowRight } from 'lucide-react'
 import { mockInterviewQuestions } from '../data/mockData'
+import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 import { api } from '../services/api'
 
@@ -9,6 +11,10 @@ interface InterviewIntelligenceProps {
 }
 
 export const InterviewIntelligence: React.FC<InterviewIntelligenceProps> = ({ onNavigate }) => {
+  const { isHeist } = useTheme()
+  const { user } = useAuth()
+  const isEmployer = user?.role === 'RECRUITER' || user?.role === 'EMPLOYER_ADMIN'
+
   const [questionsList, setQuestionsList] = useState(mockInterviewQuestions)
   const [selectedTopic, setSelectedTopic] = useState<string>('ALL')
   const [expandedId, setExpandedId] = useState<string | null>('IQ-001')
@@ -45,20 +51,37 @@ export const InterviewIntelligence: React.FC<InterviewIntelligenceProps> = ({ on
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="stamp-live">TACTICAL INTELLIGENCE</span>
-              <span className="text-xs font-mono text-warm-ivory/60">OPERATION // INTERVIEW-INTEL-ARCHIVE</span>
+              <span className="stamp-live">
+                {isEmployer ? 'TECHNICAL EVALUATION STANDARDS' : 'TACTICAL INTELLIGENCE'}
+              </span>
+              <span className="text-xs font-mono text-warm-ivory/60">
+                {isEmployer ? 'RECRUITMENT // QUESTION-ARCHIVE' : 'OPERATION // INTERVIEW-INTEL-ARCHIVE'}
+              </span>
             </div>
-            <h1 className="heading-lg text-warm-ivory mb-1">INTERVIEW INTELLIGENCE SYSTEM</h1>
+            <h1 className="heading-lg text-warm-ivory mb-1">
+              {isEmployer ? 'INTERVIEW RUBRICS & TECHNICAL QUESTION ARCHIVE' : 'INTERVIEW INTELLIGENCE SYSTEM'}
+            </h1>
             <p className="text-xs md:text-sm text-warm-ivory/70 font-mono">
-              CURATED TECHNICAL INTERVIEW QUESTIONS, REPORTED TOPICS & SYSTEM DESIGN ARCHITECTURE BLUEPRINTS
+              {isEmployer
+                ? 'INDUSTRY TECHNICAL INTERVIEW RUBRICS, EVALUATION CRITERIA & REAL-WORLD PROBLEM SETS'
+                : 'CURATED TECHNICAL INTERVIEW QUESTIONS, REPORTED TOPICS & SYSTEM DESIGN ARCHITECTURE BLUEPRINTS'}
             </p>
           </div>
-          <button
-            onClick={() => onNavigate?.('assessment')}
-            className="btn-primary text-xs font-mono py-2.5 px-4 flex items-center gap-2"
-          >
-            TEST READINESS IN ASSESSMENT <ArrowRight size={14} />
-          </button>
+          {isEmployer ? (
+            <button
+              onClick={() => onNavigate?.('talent-vault')}
+              className="btn-primary text-xs font-mono py-2.5 px-4 flex items-center gap-2"
+            >
+              SOURCE IN TALENT VAULT <ArrowRight size={14} />
+            </button>
+          ) : (
+            <button
+              onClick={() => onNavigate?.('assessment')}
+              className="btn-primary text-xs font-mono py-2.5 px-4 flex items-center gap-2"
+            >
+              TEST READINESS IN ASSESSMENT <ArrowRight size={14} />
+            </button>
+          )}
         </div>
       </section>
 

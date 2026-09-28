@@ -305,11 +305,8 @@ class ApiService {
       return base
     },
 
-    updateProfile: async (data: {
-      name?: string
+    updateProfile: async (data: Partial<typeof mockCandidate> & {
       headline?: string
-      bio?: string
-      location?: string
       targetRoles?: string[]
       preferredLocations?: string[]
       employmentPreferences?: string[]
@@ -317,20 +314,43 @@ class ApiService {
     }) => {
       await this.ensureAuth()
       const current = getStoredCandidate()
-      const updated = {
+      const updated: typeof mockCandidate = {
         ...current,
+        ...data,
         name: data.name || current.name,
-        targetRole: (data.targetRoles && data.targetRoles[0]) || current.targetRole,
+        targetRole: (data.targetRoles && data.targetRoles[0]) || data.targetRole || current.targetRole,
         location: data.location || current.location,
+        avatarUrl: data.avatarUrl !== undefined ? data.avatarUrl : current.avatarUrl,
+        bio: data.bio !== undefined ? data.bio : current.bio,
+        phone: data.phone !== undefined ? data.phone : current.phone,
+        skills: data.skills || current.skills,
+        projects: data.projects || current.projects,
+        certifications: data.certifications || current.certifications,
+        education: data.education || current.education,
+        compensation: data.compensation || current.compensation,
+        socialLinks: data.socialLinks || current.socialLinks,
       }
       saveStoredCandidate(updated)
+
+      // Also update auth user cache if relevant
+      if (typeof window !== 'undefined') {
+        try {
+          const userStr = localStorage.getItem(USER_KEY)
+          if (userStr) {
+            const u = JSON.parse(userStr)
+            if (updated.name) u.name = updated.name
+            if (updated.title || updated.targetRole) u.headline = updated.title || updated.targetRole
+            localStorage.setItem(USER_KEY, JSON.stringify(u))
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       const res = await this.request<any>('/candidates/profile', {
         method: 'PUT',
         body: JSON.stringify(data),
       })
-      if (res.data) {
-        await api.candidate.getProfile()
-      }
       return res.data || updated
     },
 

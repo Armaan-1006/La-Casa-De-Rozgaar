@@ -1,12 +1,29 @@
 import { useState, useEffect, type FC } from 'react'
-import { createPortal } from 'react-dom'
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Edit, Download, Share2, CheckCircle, ArrowRight, ShieldCheck, Award, Briefcase, GraduationCap, X, Check } from 'lucide-react'
+import {
+  Edit,
+  Download,
+  Share2,
+  CheckCircle,
+  ArrowRight,
+  ShieldCheck,
+  Award,
+  Briefcase,
+  GraduationCap,
+  Check,
+  Globe,
+  Github,
+  Linkedin,
+  DollarSign,
+  Code2,
+  ExternalLink,
+} from 'lucide-react'
 import { type CandidateProfile } from '../data/mockData'
 import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 import { api, getStoredCandidate } from '../services/api'
 import { DossierShareModal } from '../components/dossier/DossierShareModal'
+import { CandidateProfileEditModal } from '../components/dossier/CandidateProfileEditModal'
 
 interface CandidateDossierProps {
   onNavigate?: (page: string) => void
@@ -17,23 +34,11 @@ interface CandidateDossierProps {
 // ============================================================================
 const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const [candidate, setCandidate] = useState<CandidateProfile>(getStoredCandidate)
-  const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'assessment' | 'experience'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'assessment' | 'experience' | 'compensation'>('overview')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
-
-  // Edit form state
-  const [editName, setEditName] = useState(candidate.name)
-  const [editRole, setEditRole] = useState(candidate.targetRole)
-  const [editLoc, setEditLoc] = useState(candidate.location)
-
-  const handleOpenEditModal = () => {
-    setEditName(candidate.name)
-    setEditRole(candidate.targetRole)
-    setEditLoc(candidate.location)
-    setIsEditModalOpen(true)
-  }
 
   // Fetch live candidate profile
   useEffect(() => {
@@ -42,11 +47,6 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
       api.candidate.getProfile().then((data) => {
         if (mounted && data) {
           setCandidate(data as CandidateProfile)
-          if (!isEditModalOpen) {
-            setEditName(data.name)
-            setEditRole(data.targetRole)
-            setEditLoc(data.location)
-          }
         }
       })
     }
@@ -58,36 +58,10 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
     }
   }, [])
 
-  // Close edit modal on Escape & lock body scroll
-  useEffect(() => {
-    if (!isEditModalOpen) return
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsEditModalOpen(false)
-    }
-    const originalOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.body.style.overflow = originalOverflow
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isEditModalOpen])
-
-  const handleSaveProfile = async () => {
-    setCandidate((prev: CandidateProfile) => ({
-      ...prev,
-      name: editName,
-      targetRole: editRole,
-      location: editLoc,
-    }))
-    setIsEditModalOpen(false)
-
+  const handleSaveProfile = async (updated: CandidateProfile) => {
+    setCandidate(updated)
     try {
-      await api.candidate.updateProfile({
-        name: editName,
-        targetRoles: [editRole],
-        location: editLoc,
-      })
+      await api.candidate.updateProfile(updated)
     } catch {
       // Offline fallback: state preserved in local state
     }
@@ -111,11 +85,11 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
     setTimeout(() => setExportNotice(false), 3000)
   }
 
-  const radarData = candidate.skills.map((skill: any) => ({
+  const radarData = candidate.skills?.map((skill: any) => ({
     skill: skill.name,
     current: skill.score,
     market: skill.market,
-  }))
+  })) || []
 
   const initials = (candidate.name || 'Candidate')
     .trim()
@@ -131,8 +105,12 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
       <div className="p-6 bg-white rounded-lg border border-slate-200 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-lg bg-[#1E3A8A] flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm">
-              {initials}
+            <div className="w-16 h-16 rounded-xl bg-[#1E3A8A] flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm overflow-hidden">
+              {candidate.avatarUrl ? (
+                <img src={candidate.avatarUrl} alt={candidate.name} className="w-full h-full object-cover" />
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -144,29 +122,35 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
               <p className="text-xs text-slate-600 font-medium mt-0.5">
                 {candidate.targetRole} • {candidate.location} • {candidate.experience} experience
               </p>
-              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                Candidate ID: {candidate.id} • Secondary: {candidate.secondaryRole}
-              </p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 font-mono mt-1">
+                <span>ID: {candidate.id}</span>
+                {candidate.secondaryRole && <span>• Secondary: {candidate.secondaryRole}</span>}
+                {candidate.compensation?.noticePeriod && (
+                  <span className="text-blue-700 font-sans font-medium">
+                    • Notice: {candidate.compensation.noticePeriod}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleOpenEditModal}
-              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center gap-1.5 transition-colors"
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] rounded flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
             >
               <Edit size={13} /> Edit Profile
             </button>
             <button
               onClick={handleExport}
-              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Download size={13} /> {exportNotice ? 'PDF Exported' : 'Export Profile'}
             </button>
             <button
               onClick={handleShare}
-              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               {shareCopied ? (
                 <>
@@ -182,18 +166,19 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-t border-slate-100 mt-6 pt-3 text-xs font-medium text-slate-500">
+        <div className="flex items-center gap-2 border-t border-slate-100 mt-6 pt-3 text-xs font-medium text-slate-500 overflow-x-auto">
           {[
-            { id: 'overview', label: 'Overview' },
+            { id: 'overview', label: 'Overview & Bio' },
             { id: 'skills', label: 'Skills & Competency Matrix' },
             { id: 'assessment', label: 'Standardized Assessment' },
             { id: 'experience', label: 'Projects & Credentials' },
+            { id: 'compensation', label: 'Compensation & Links' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={cn(
-                'px-3 py-1.5 rounded transition-colors',
+                'px-3 py-1.5 rounded transition-colors whitespace-nowrap cursor-pointer',
                 activeTab === tab.id
                   ? 'bg-blue-50 text-blue-700 font-semibold'
                   : 'hover:text-slate-900 hover:bg-slate-50'
@@ -237,6 +222,16 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
             </div>
           </div>
 
+          {/* Candidate Bio Narrative & Quick Info */}
+          {candidate.bio && (
+            <div className="p-5 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-2">
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                Professional Narrative & Executive Summary
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">{candidate.bio}</p>
+            </div>
+          )}
+
           {/* Quick Skill Matrix Table */}
           <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-5 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -245,14 +240,14 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
               </h3>
               <button
                 onClick={() => setActiveTab('skills')}
-                className="text-xs text-blue-700 hover:text-blue-900 font-semibold"
+                className="text-xs text-blue-700 hover:text-blue-900 font-semibold cursor-pointer"
               >
-                Inspect All Skills
+                Inspect All Skills →
               </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {candidate.skills.slice(0, 4).map((skill: any) => (
+              {candidate.skills?.slice(0, 4).map((skill: any) => (
                 <div key={skill.name} className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-slate-800">{skill.name}</span>
@@ -274,11 +269,19 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Skill List */}
           <div className="lg:col-span-7 bg-white rounded-lg border border-slate-200 shadow-2xs p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-slate-900 pb-2 border-b border-slate-100">
-              Validated Technical Skills
-            </h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Validated Technical Skills ({candidate.skills?.length || 0})
+              </h3>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="text-xs text-blue-700 hover:text-blue-900 font-semibold cursor-pointer flex items-center gap-1"
+              >
+                <Edit size={12} /> Adjust Skills
+              </button>
+            </div>
             <div className="space-y-3">
-              {candidate.skills.map((skill: any) => {
+              {candidate.skills?.map((skill: any) => {
                 const gap = skill.gap
                 const isReady = gap >= 0
                 return (
@@ -351,7 +354,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
             </div>
             <button
               onClick={() => onNavigate?.('assessment')}
-              className="px-3.5 py-2 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] rounded transition-colors self-start sm:self-auto"
+              className="px-3.5 py-2 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] rounded transition-colors self-start sm:self-auto cursor-pointer"
             >
               Take Assessment
             </button>
@@ -385,16 +388,36 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Projects */}
           <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-5 space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <Briefcase size={16} className="text-slate-600" />
-              <h3 className="text-sm font-semibold text-slate-900">Verified Technical Projects</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Briefcase size={16} className="text-slate-600" />
+                <h3 className="text-sm font-semibold text-slate-900">Verified Technical Projects</h3>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="text-xs text-blue-700 hover:text-blue-900 font-semibold cursor-pointer"
+              >
+                + Add Project
+              </button>
             </div>
             <div className="space-y-3">
-              {candidate.projects.map((proj: any) => (
-                <div key={proj.title} className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1.5 text-xs">
-                  <h4 className="font-semibold text-slate-900">{proj.title}</h4>
+              {candidate.projects?.map((proj: any) => (
+                <div key={proj.title} className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-slate-900">{proj.title}</h4>
+                    {proj.link && (
+                      <a
+                        href={proj.link.startsWith('http') ? proj.link : `https://${proj.link}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-slate-500 hover:text-blue-600 flex items-center gap-1 text-[11px]"
+                      >
+                        <Globe size={11} /> Link <ExternalLink size={10} />
+                      </a>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-1">
-                    {proj.tech.map((t: any) => (
+                    {proj.tech?.map((t: any) => (
                       <span key={t} className="px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded text-[10px]">
                         {t}
                       </span>
@@ -406,14 +429,22 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
             </div>
           </div>
 
-          {/* Credentials */}
+          {/* Credentials & Education */}
           <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-5 space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <Award size={16} className="text-slate-600" />
-              <h3 className="text-sm font-semibold text-slate-900">Certifications & Education</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Award size={16} className="text-slate-600" />
+                <h3 className="text-sm font-semibold text-slate-900">Certifications & Education</h3>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="text-xs text-blue-700 hover:text-blue-900 font-semibold cursor-pointer"
+              >
+                + Add Record
+              </button>
             </div>
             <div className="space-y-3">
-              {candidate.certifications.map((cert: any) => (
+              {candidate.certifications?.map((cert: any) => (
                 <div key={cert.name} className="p-3 bg-slate-50 rounded border border-slate-200 flex items-center justify-between text-xs">
                   <div>
                     <h4 className="font-semibold text-slate-900">{cert.name}</h4>
@@ -445,76 +476,111 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
         </div>
       )}
 
-      {/* Edit Profile Modal */}
-      {isEditModalOpen && typeof document !== 'undefined' && createPortal(
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsEditModalOpen(false)
-          }}
-          className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
-          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}
-        >
-          <div className="relative bg-white rounded-xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 my-auto animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Edit Candidate Profile</h3>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3.5 text-xs">
-              <div>
-                <label className="text-slate-700 block mb-1 font-semibold">Full Name</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-colors"
-                />
+      {activeTab === 'compensation' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Compensation & Offer Calibration */}
+          <div className="p-5 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-4">
+            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <DollarSign size={14} className="text-blue-700" /> Compensation & Deployment Parameters
+            </h3>
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
+                <span className="text-[11px] text-slate-500 font-medium">Current CTC</span>
+                <div className="text-base font-bold text-slate-900">
+                  {candidate.compensation?.currentCtc || '₹22 LPA'}
+                </div>
               </div>
-
-              <div>
-                <label className="text-slate-700 block mb-1 font-semibold">Primary Target Role</label>
-                <input
-                  type="text"
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-colors"
-                />
+              <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
+                <span className="text-[11px] text-slate-500 font-medium">Expected Target CTC</span>
+                <div className="text-base font-bold text-emerald-700">
+                  {candidate.compensation?.expectedCtc || '₹34 - 40 LPA'}
+                </div>
               </div>
-
-              <div>
-                <label className="text-slate-700 block mb-1 font-semibold">Location & Mobility</label>
-                <input
-                  type="text"
-                  value={editLoc}
-                  onChange={(e) => setEditLoc(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 outline-none focus:border-blue-600 focus:bg-white transition-colors"
-                />
+              <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
+                <span className="text-[11px] text-slate-500 font-medium">Notice Period</span>
+                <div className="text-sm font-semibold text-slate-800">
+                  {candidate.compensation?.noticePeriod || '30 Days'}
+                </div>
               </div>
-            </div>
-
-            <div className="flex gap-2 pt-3 border-t border-slate-100">
-              <button
-                onClick={handleSaveProfile}
-                className="flex-1 py-2.5 text-xs font-bold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] rounded-lg transition-colors cursor-pointer shadow-sm"
-              >
-                Save Changes
-              </button>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="px-4 py-2.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200 space-y-1">
+                <span className="text-[11px] text-slate-500 font-medium">Preferred Work Policy</span>
+                <div className="text-sm font-semibold text-slate-800">
+                  {candidate.compensation?.workPolicy || 'Remote / Hybrid'}
+                </div>
+              </div>
             </div>
           </div>
-        </div>,
-        document.body
+
+          {/* Social Links & Verified Repos */}
+          <div className="p-5 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-4">
+            <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <Globe size={14} className="text-blue-700" /> Public Code & Professional Links
+            </h3>
+            <div className="space-y-2.5 text-xs">
+              {candidate.socialLinks?.github && (
+                <a
+                  href={candidate.socialLinks.github}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 flex items-center justify-between text-slate-700 transition-colors"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <Github size={14} /> GitHub Profile
+                  </span>
+                  <ExternalLink size={12} className="text-slate-400" />
+                </a>
+              )}
+              {candidate.socialLinks?.linkedin && (
+                <a
+                  href={candidate.socialLinks.linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 flex items-center justify-between text-slate-700 transition-colors"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <Linkedin size={14} className="text-[#0A66C2]" /> LinkedIn Network
+                  </span>
+                  <ExternalLink size={12} className="text-slate-400" />
+                </a>
+              )}
+              {candidate.socialLinks?.website && (
+                <a
+                  href={candidate.socialLinks.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 flex items-center justify-between text-slate-700 transition-colors"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <Globe size={14} /> Personal Portfolio / Tech Blog
+                  </span>
+                  <ExternalLink size={12} className="text-slate-400" />
+                </a>
+              )}
+              {candidate.socialLinks?.leetcode && (
+                <a
+                  href={candidate.socialLinks.leetcode}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2.5 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 flex items-center justify-between text-slate-700 transition-colors"
+                >
+                  <span className="flex items-center gap-2 font-medium">
+                    <Code2 size={14} className="text-amber-600" /> Coding Platform (LeetCode)
+                  </span>
+                  <ExternalLink size={12} className="text-slate-400" />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* Comprehensive Candidate Profile Edit Modal */}
+      <CandidateProfileEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        candidate={candidate}
+        onSave={handleSaveProfile}
+      />
 
       {/* Share Modal */}
       <DossierShareModal
@@ -538,18 +604,6 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
 
-  // Edit form state
-  const [editName, setEditName] = useState(candidate.name)
-  const [editRole, setEditRole] = useState(candidate.targetRole)
-  const [editLoc, setEditLoc] = useState(candidate.location)
-
-  const handleOpenEditModal = () => {
-    setEditName(candidate.name)
-    setEditRole(candidate.targetRole)
-    setEditLoc(candidate.location)
-    setIsEditModalOpen(true)
-  }
-
   // Fetch live candidate profile
   useEffect(() => {
     let mounted = true
@@ -557,11 +611,6 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
       api.candidate.getProfile().then((data) => {
         if (mounted && data) {
           setCandidate(data as CandidateProfile)
-          if (!isEditModalOpen) {
-            setEditName(data.name)
-            setEditRole(data.targetRole)
-            setEditLoc(data.location)
-          }
         }
       })
     }
@@ -571,44 +620,19 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
       mounted = false
       window.removeEventListener('candidate-profile-updated', loadProfile)
     }
-  }, [isEditModalOpen])
-
-  useEffect(() => {
-    if (!isEditModalOpen) return
-    const originalOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsEditModalOpen(false)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.body.style.overflow = originalOverflow
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isEditModalOpen])
+  }, [])
 
   // In Enterprise Mode: render the enterprise candidate profile
   if (!isHeist) {
     return <EnterpriseCandidateProfile onNavigate={onNavigate} />
   }
 
-  const handleSaveProfile = async () => {
-    setCandidate((prev: CandidateProfile) => ({
-      ...prev,
-      name: editName,
-      targetRole: editRole,
-      location: editLoc,
-    }))
-    setIsEditModalOpen(false)
-
+  const handleSaveProfile = async (updated: CandidateProfile) => {
+    setCandidate(updated)
     try {
-      await api.candidate.updateProfile({
-        name: editName,
-        targetRoles: [editRole],
-        location: editLoc,
-      })
+      await api.candidate.updateProfile(updated)
     } catch {
-      // Offline fallback: state preserved in local state
+      // Offline fallback
     }
   }
 
@@ -651,9 +675,17 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-lg bg-gradient-crimson flex items-center justify-center text-warm-ivory font-bold shadow-glow-crimson font-mono text-lg shrink-0">
-                {initials}
-              </div>
+              {candidate.avatarUrl ? (
+                <img
+                  src={candidate.avatarUrl}
+                  alt={candidate.name}
+                  className="w-14 h-14 rounded-lg object-cover border-2 border-crimson shadow-glow-crimson shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-gradient-crimson flex items-center justify-center text-warm-ivory font-bold shadow-glow-crimson font-mono text-lg shrink-0">
+                  {initials}
+                </div>
+              )}
               <div>
                 <div className="flex items-center gap-2">
                   <span className="stamp-classified">CASE FILE // {candidate.codeName}</span>
@@ -662,28 +694,35 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
                 <h1 className="heading-lg text-warm-ivory mt-1">{candidate.name}</h1>
                 <p className="text-xs text-warm-ivory/60 font-mono">
                   CLEARANCE // {candidate.clearanceLevel} • ID: {candidate.id}
+                  {candidate.email && ` • ${candidate.email}`}
+                  {candidate.phone && ` • ${candidate.phone}`}
                 </p>
               </div>
             </div>
+            {candidate.bio && (
+              <p className="text-xs text-warm-ivory/70 font-mono mt-3 max-w-3xl leading-relaxed border-l-2 border-crimson pl-3">
+                {candidate.bio}
+              </p>
+            )}
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleOpenEditModal}
-              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3"
+              onClick={() => setIsEditModalOpen(true)}
+              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3 cursor-pointer"
             >
               <Edit size={14} /> EDIT PROFILE
             </button>
             <button
               onClick={handleExport}
-              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3"
+              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3 cursor-pointer"
             >
               <Download size={14} /> {exportNotice ? 'EXPORT COMPLETED' : 'EXPORT DOSSIER'}
             </button>
             <button
               onClick={handleShare}
-              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3"
+              className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3 cursor-pointer"
             >
               {shareCopied ? (
                 <>
@@ -716,7 +755,9 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
         <div className="card">
           <p className="text-xs text-warm-ivory/60 font-mono mb-1">STATION & MOBILITY</p>
           <p className="heading-sm text-warm-ivory truncate">{candidate.location}</p>
-          <p className="text-[11px] text-emerald-400 font-mono mt-1">Open to Remote / Hybrid</p>
+          <p className="text-[11px] text-emerald-400 font-mono mt-1">
+            {candidate.compensation?.workPolicy || 'Open to Remote / Hybrid'}
+          </p>
         </div>
 
         <div className="card">
@@ -731,15 +772,116 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
         </div>
       </section>
 
+      {/* Compensation & Social Links (if present) */}
+      {(candidate.compensation || candidate.socialLinks) && (
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {candidate.compensation && (
+            <div className="card space-y-3 font-mono text-xs">
+              <h3 className="heading-xs text-warm-ivory flex items-center gap-2">
+                <DollarSign size={14} className="text-crimson" /> COMPENSATION PARAMETERS
+              </h3>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="p-2.5 bg-burgundy/10 rounded border border-burgundy/20">
+                  <span className="text-warm-ivory/50 text-[10px] block">CURRENT CTC</span>
+                  <span className="text-warm-ivory font-bold">{candidate.compensation.currentCtc || '₹22 LPA'}</span>
+                </div>
+                <div className="p-2.5 bg-burgundy/10 rounded border border-burgundy/20">
+                  <span className="text-warm-ivory/50 text-[10px] block">EXPECTED TARGET</span>
+                  <span className="text-emerald-400 font-bold">{candidate.compensation.expectedCtc || '₹34 - 40 LPA'}</span>
+                </div>
+                <div className="p-2.5 bg-burgundy/10 rounded border border-burgundy/20">
+                  <span className="text-warm-ivory/50 text-[10px] block">NOTICE PERIOD</span>
+                  <span className="text-warm-ivory">{candidate.compensation.noticePeriod || '30 Days'}</span>
+                </div>
+                <div className="p-2.5 bg-burgundy/10 rounded border border-burgundy/20">
+                  <span className="text-warm-ivory/50 text-[10px] block">WORK POLICY</span>
+                  <span className="text-warm-ivory">{candidate.compensation.workPolicy || 'Remote'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {candidate.socialLinks && (
+            <div className="card space-y-3 font-mono text-xs">
+              <h3 className="heading-xs text-warm-ivory flex items-center gap-2">
+                <Globe size={14} className="text-muted-gold" /> NETWORK INTEL & REPOSITORIES
+              </h3>
+              <div className="space-y-2 pt-1">
+                {candidate.socialLinks.github && (
+                  <a
+                    href={candidate.socialLinks.github}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 bg-burgundy/10 hover:bg-burgundy/20 rounded border border-burgundy/20 flex items-center justify-between text-warm-ivory transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Github size={13} className="text-crimson" /> GitHub Repository
+                    </span>
+                    <ExternalLink size={12} className="text-warm-ivory/40" />
+                  </a>
+                )}
+                {candidate.socialLinks.linkedin && (
+                  <a
+                    href={candidate.socialLinks.linkedin}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 bg-burgundy/10 hover:bg-burgundy/20 rounded border border-burgundy/20 flex items-center justify-between text-warm-ivory transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Linkedin size={13} className="text-blue-400" /> LinkedIn Operative
+                    </span>
+                    <ExternalLink size={12} className="text-warm-ivory/40" />
+                  </a>
+                )}
+                {candidate.socialLinks.website && (
+                  <a
+                    href={candidate.socialLinks.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 bg-burgundy/10 hover:bg-burgundy/20 rounded border border-burgundy/20 flex items-center justify-between text-warm-ivory transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Globe size={13} className="text-muted-gold" /> Portfolio Blueprint
+                    </span>
+                    <ExternalLink size={12} className="text-warm-ivory/40" />
+                  </a>
+                )}
+                {candidate.socialLinks.leetcode && (
+                  <a
+                    href={candidate.socialLinks.leetcode}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 bg-burgundy/10 hover:bg-burgundy/20 rounded border border-burgundy/20 flex items-center justify-between text-warm-ivory transition-colors"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Code2 size={13} className="text-amber-400" /> LeetCode Platform
+                    </span>
+                    <ExternalLink size={12} className="text-warm-ivory/40" />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Main Grid: Skills Matrix & Verified Assessment */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Skill Profile Breakdown */}
         <div className="lg:col-span-2 card">
-          <h3 className="heading-sm text-warm-ivory mb-6 font-mono text-sm uppercase tracking-wider">
-            CERTIFIED SKILL PROFILE & MARKET EXPECTATIONS
-          </h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase tracking-wider">
+              CERTIFIED SKILL PROFILE & MARKET EXPECTATIONS ({candidate.skills?.length || 0})
+            </h3>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="text-xs font-mono text-crimson hover:text-crimson/80 flex items-center gap-1 cursor-pointer"
+            >
+              <Edit size={12} /> RECALIBRATE
+            </button>
+          </div>
           <div className="space-y-3.5">
-            {candidate.skills.map((skill: any) => {
+            {candidate.skills?.map((skill: any) => {
               const gap = skill.gap
               const isStrength = gap >= 0
               return (
@@ -814,7 +956,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
 
           <button
             onClick={() => onNavigate?.('assessment')}
-            className="w-full btn-primary text-xs font-mono py-3 flex items-center justify-center gap-2 mt-4"
+            className="w-full btn-primary text-xs font-mono py-3 flex items-center justify-center gap-2 mt-4 cursor-pointer"
           >
             TAKE NEW SKILL ASSESSMENT <ArrowRight size={14} />
           </button>
@@ -851,16 +993,36 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Audited Projects */}
         <div className="card space-y-4">
-          <div className="flex items-center gap-2">
-            <Briefcase size={18} className="text-crimson" />
-            <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">VERIFIED FIELD PROJECTS</h3>
+          <div className="flex items-center justify-between pb-2 border-b border-burgundy/20">
+            <div className="flex items-center gap-2">
+              <Briefcase size={18} className="text-crimson" />
+              <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">VERIFIED FIELD PROJECTS</h3>
+            </div>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="text-xs font-mono text-crimson hover:text-crimson/80 cursor-pointer"
+            >
+              + ADD BLUEPRINT
+            </button>
           </div>
           <div className="space-y-3">
-            {candidate.projects.map((proj: any) => (
-              <div key={proj.title} className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 space-y-1 text-xs font-mono">
-                <h4 className="font-bold text-warm-ivory">{proj.title}</h4>
+            {candidate.projects?.map((proj: any) => (
+              <div key={proj.title} className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 space-y-1.5 text-xs font-mono">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-warm-ivory">{proj.title}</h4>
+                  {proj.link && (
+                    <a
+                      href={proj.link.startsWith('http') ? proj.link : `https://${proj.link}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-warm-ivory/50 hover:text-crimson flex items-center gap-1 text-[11px]"
+                    >
+                      <Globe size={11} /> Link <ExternalLink size={10} />
+                    </a>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-1 my-1">
-                  {proj.tech.map((t: any) => (
+                  {proj.tech?.map((t: any) => (
                     <span key={t} className="px-1.5 py-0.5 bg-burgundy/20 rounded text-[10px] text-warm-ivory/80">
                       {t}
                     </span>
@@ -874,12 +1036,20 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
 
         {/* Certifications & Education */}
         <div className="card space-y-4">
-          <div className="flex items-center gap-2">
-            <Award size={18} className="text-muted-gold" />
-            <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">AUTHENTICATED CREDENTIALS</h3>
+          <div className="flex items-center justify-between pb-2 border-b border-burgundy/20">
+            <div className="flex items-center gap-2">
+              <Award size={18} className="text-muted-gold" />
+              <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">AUTHENTICATED CREDENTIALS</h3>
+            </div>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="text-xs font-mono text-crimson hover:text-crimson/80 cursor-pointer"
+            >
+              + ADD RECORD
+            </button>
           </div>
           <div className="space-y-3">
-            {candidate.certifications.map((cert: any) => (
+            {candidate.certifications?.map((cert: any) => (
               <div key={cert.name} className="p-3 bg-burgundy/10 rounded-lg border border-burgundy/20 flex items-center justify-between text-xs font-mono">
                 <div>
                   <h4 className="font-bold text-warm-ivory">{cert.name}</h4>
@@ -910,76 +1080,13 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* Edit Profile Modal */}
-      {isEditModalOpen && typeof document !== 'undefined' && createPortal(
-        <div
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsEditModalOpen(false)
-          }}
-          className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
-          style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', margin: 0 }}
-        >
-          <div className="relative card max-w-md w-full p-6 space-y-4 bg-charcoal border-crimson/50 shadow-glow-crimson my-auto animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-burgundy/20 pb-3">
-              <h3 className="heading-xs text-warm-ivory">EDIT OPERATIVE PROFILE</h3>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-warm-ivory/50 hover:text-crimson p-1 rounded hover:bg-obsidian transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3.5 text-xs font-mono">
-              <div>
-                <label className="text-warm-ivory/60 block mb-1 font-semibold">OPERATIVE FULL NAME</label>
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="text-warm-ivory/60 block mb-1 font-semibold">PRIMARY TARGET ROLE</label>
-                <input
-                  type="text"
-                  value={editRole}
-                  onChange={(e) => setEditRole(e.target.value)}
-                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="text-warm-ivory/60 block mb-1 font-semibold">LOCATION & MOBILITY</label>
-                <input
-                  type="text"
-                  value={editLoc}
-                  onChange={(e) => setEditLoc(e.target.value)}
-                  className="w-full p-2.5 bg-obsidian border border-burgundy/30 rounded text-warm-ivory outline-none focus:border-crimson transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-3 border-t border-burgundy/20">
-              <button
-                onClick={handleSaveProfile}
-                className="flex-1 btn-primary text-xs font-mono py-2.5 cursor-pointer shadow-sm"
-              >
-                SAVE UPDATES
-              </button>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="btn-secondary text-xs font-mono py-2.5 px-4 cursor-pointer"
-              >
-                CANCEL
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Comprehensive Candidate Profile Edit Modal */}
+      <CandidateProfileEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        candidate={candidate}
+        onSave={handleSaveProfile}
+      />
 
       {/* Share Intel Modal */}
       <DossierShareModal

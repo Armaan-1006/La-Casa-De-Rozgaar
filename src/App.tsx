@@ -21,6 +21,8 @@ import { SimulationVault } from './pages/SimulationVault'
 import { EmployerDashboard } from './pages/EmployerDashboard'
 import { TalentVault } from './pages/TalentVault'
 import { WorkforceGaps } from './pages/WorkforceGaps'
+import { WorkforceSimulator } from './pages/WorkforceSimulator'
+import { CompanyProfile } from './pages/CompanyProfile'
 import { ResistanceLearning } from './pages/ResistanceLearning'
 import { InterviewIntelligence } from './pages/InterviewIntelligence'
 import { ResearchIntelligence } from './pages/ResearchIntelligence'
@@ -29,7 +31,7 @@ import { FloatingDossierField } from './components/FloatingDossierField'
 import { LoginPage } from './pages/LoginPage'
 import { SharedDossierPage } from './pages/SharedDossierPage'
 import { LandingExperience } from './components/landing/LandingExperience'
-import { AuthProvider } from './hooks/useAuth'
+import { AuthProvider, useAuth } from './hooks/useAuth'
 
 export type PageType =
   | 'landing'
@@ -49,14 +51,48 @@ export type PageType =
   | 'simulation'
   | 'employer-dashboard'
   | 'talent-vault'
+  | 'workforce-simulator'
+  | 'company-profile'
   | 'workforce-gaps'
   | 'roadmap'
   | 'interviews'
   | 'research'
   | 'feed'
 
+const CANDIDATE_ONLY_PAGES: PageType[] = [
+  'candidate-dossier',
+  'assessment',
+  'skill-heist',
+  'job-finder',
+  'career-intelligence',
+  'simulation',
+]
+
+const EMPLOYER_ONLY_PAGES: PageType[] = [
+  'employer-dashboard',
+  'talent-vault',
+  'workforce-simulator',
+  'company-profile',
+  'workforce-gaps',
+]
+
+function isPageAllowedForRole(page: PageType, role?: string): boolean {
+  if (role === 'ADMIN') return true
+  const isCandidate = !role || role === 'CANDIDATE'
+  const isEmployer = role === 'RECRUITER' || role === 'EMPLOYER_ADMIN'
+
+  if (isCandidate && EMPLOYER_ONLY_PAGES.includes(page)) {
+    return false
+  }
+  if (isEmployer && CANDIDATE_ONLY_PAGES.includes(page)) {
+    return false
+  }
+  return true
+}
+
 function AppContent() {
   const { isHeist, mode } = useTheme()
+  const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -93,6 +129,8 @@ function AppContent() {
       'simulation',
       'employer-dashboard',
       'talent-vault',
+      'workforce-simulator',
+      'company-profile',
       'workforce-gaps',
       'roadmap',
       'interviews',
@@ -104,6 +142,14 @@ function AppContent() {
 
   const [currentPage, setCurrentPage] = useState<PageType>(getInitialPage)
 
+  // Auto-redirect if the current page is prohibited for the active user role
+  useEffect(() => {
+    if (currentPage !== 'landing' && currentPage !== 'login' && !isPageAllowedForRole(currentPage, user?.role)) {
+      setCurrentPage('war-room')
+      window.location.hash = '#/war-room'
+    }
+  }, [currentPage, user?.role])
+
   const handleNavigation = (page: string) => {
     if (page === '' || page === 'landing' || page === 'home') {
       setCurrentPage('landing')
@@ -113,13 +159,19 @@ function AppContent() {
       return
     }
     if (isValidPage(page)) {
-      if (page === 'login') {
-        applyDomTheme('heist', true)
+      const targetPage = page as PageType
+      if (!isPageAllowedForRole(targetPage, user?.role)) {
+        setCurrentPage('war-room')
+        window.location.hash = '#/war-room'
       } else {
-        applyDomTheme(mode, false)
+        if (targetPage === 'login') {
+          applyDomTheme('heist', true)
+        } else {
+          applyDomTheme(mode, false)
+        }
+        setCurrentPage(targetPage)
+        window.location.hash = `#/${targetPage}`
       }
-      setCurrentPage(page as PageType)
-      window.location.hash = `#/${page}`
     }
     setSidebarOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -133,12 +185,18 @@ function AppContent() {
       if (pageKey === '' || pageKey === 'landing' || pageKey === 'home') {
         setCurrentPage('landing')
       } else if (pageKey && isValidPage(pageKey)) {
-        setCurrentPage(pageKey as PageType)
+        const targetPage = pageKey as PageType
+        if (!isPageAllowedForRole(targetPage, user?.role)) {
+          setCurrentPage('war-room')
+          window.location.hash = '#/war-room'
+        } else {
+          setCurrentPage(targetPage)
+        }
       }
     }
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [])
+  }, [user?.role])
 
   // Global keybinding for Ctrl+K
   useEffect(() => {
@@ -153,6 +211,10 @@ function AppContent() {
   }, [])
 
   const renderPage = () => {
+    if (!isPageAllowedForRole(currentPage, user?.role)) {
+      return <WarRoom onNavigate={handleNavigation} />
+    }
+
     switch (currentPage) {
       case 'market-intelligence':
         return <MarketIntelligence onNavigate={handleNavigation} />
@@ -182,6 +244,10 @@ function AppContent() {
         return <EmployerDashboard onNavigate={handleNavigation} />
       case 'talent-vault':
         return <TalentVault onNavigate={handleNavigation} />
+      case 'workforce-simulator':
+        return <WorkforceSimulator onNavigate={handleNavigation} />
+      case 'company-profile':
+        return <CompanyProfile onNavigate={handleNavigation} />
       case 'workforce-gaps':
         return <WorkforceGaps onNavigate={handleNavigation} />
       case 'roadmap':

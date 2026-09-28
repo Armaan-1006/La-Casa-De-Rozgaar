@@ -73,6 +73,8 @@ const heistNavigationItems: NavGroup[] = [
     submenu: [
       { label: 'Mastermind HQ', href: 'employer-dashboard' },
       { label: 'Talent Vault', href: 'talent-vault' },
+      { label: 'Workforce Simulator', href: 'workforce-simulator' },
+      { label: 'Syndicate Dossier', href: 'company-profile' },
     ],
   },
   {
@@ -130,6 +132,8 @@ const enterpriseNavSections: EnterpriseNavSection[] = [
     items: [
       { label: 'Employer Dashboard', href: 'employer-dashboard' },
       { label: 'Talent Directory', href: 'talent-vault' },
+      { label: 'Workforce Simulator', href: 'workforce-simulator' },
+      { label: 'Company Profile & Settings', href: 'company-profile' },
     ],
   },
   {
@@ -455,6 +459,8 @@ export const Header: React.FC<HeaderProps> = ({
     'simulation': 'SIMULATION VAULT SCENARIO ENGINE',
     'employer-dashboard': 'EMPLOYER MASTERMIND HQ',
     'talent-vault': 'TALENT VAULT RECRUIT DISCOVERY',
+    'workforce-simulator': 'WORKFORCE SIMULATION SANDBOX',
+    'company-profile': 'MASTERMIND ENTITY DOSSIER',
     'workforce-gaps': 'WORKFORCE GAP ANALYSIS',
     'roadmap': 'RESISTANCE LEARNING SPRINT',
     'interviews': 'INTERVIEW INTELLIGENCE SYSTEM',
@@ -477,6 +483,8 @@ export const Header: React.FC<HeaderProps> = ({
     'simulation': 'Workforce Scenario Simulator',
     'employer-dashboard': 'Workforce Overview & Capability',
     'talent-vault': 'Talent Directory',
+    'workforce-simulator': 'Workforce Scenario Simulator & ROI Modeling',
+    'company-profile': 'Company Profile & Recruitment Settings',
     'workforce-gaps': 'Workforce Gap Analysis',
     'roadmap': 'Learning Paths & Curriculum',
     'interviews': 'Technical Interview Intelligence',
@@ -611,8 +619,20 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
                     >
                       <User size={13} />
-                      <span>{user.role === 'CANDIDATE' ? 'My Candidate Dossier' : 'My Workspace'}</span>
+                      <span>{user.role === 'CANDIDATE' ? 'My Candidate Dossier' : 'Employer Dashboard'}</span>
                     </button>
+                    {(user.role === 'RECRUITER' || user.role === 'EMPLOYER_ADMIN' || user.role === 'ADMIN') && (
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          onNavigate('company-profile')
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
+                      >
+                        <Building2 size={13} />
+                        <span>Company Profile & Settings</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setUserMenuOpen(false)
@@ -763,6 +783,18 @@ export const Header: React.FC<HeaderProps> = ({
                     <User size={13} className="text-crimson" />
                     <span>{user.role === 'CANDIDATE' ? 'Candidate Dossier' : 'Mastermind Console'}</span>
                   </button>
+                  {(user.role === 'RECRUITER' || user.role === 'EMPLOYER_ADMIN' || user.role === 'ADMIN') && (
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false)
+                        onNavigate('company-profile')
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-burgundy/20 text-warm-ivory flex items-center gap-2 cursor-pointer"
+                    >
+                      <Building2 size={13} className="text-crimson" />
+                      <span>Syndicate Dossier & Settings</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setUserMenuOpen(false)

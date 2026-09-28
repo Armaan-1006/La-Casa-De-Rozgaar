@@ -389,8 +389,11 @@ export const mockCandidate = {
   id: 'CANDIDATE-001',
   codeName: 'OPERATIVE-RAHUL',
   name: 'Rahul Sharma',
+  avatarUrl: '',
   title: 'Lead Full Stack Architect & Tech Lead',
+  bio: 'Staff/Principal level engineer specialized in distributed systems, real-time reactive architectures, and cloud-native scalable microservices. Passionate about system latency, developer ergonomics, and high-concurrency event loops.',
   email: 'rahul@example.com',
+  phone: '+91 98765 43210',
   profileStatus: 'VERIFIED',
   clearanceLevel: 'LEVEL 4 // SENIOR FULL STACK',
   targetRole: 'Full Stack Developer',
@@ -399,6 +402,21 @@ export const mockCandidate = {
   location: 'Bangalore, India (Open to Remote)',
   lastAssessment: '2026-09-24',
   roleReadiness: 84,
+
+  compensation: {
+    currentCtc: '₹22 LPA',
+    expectedCtc: '₹34 - 40 LPA',
+    noticePeriod: '30 Days',
+    workPolicy: 'Remote / Hybrid',
+    currency: 'INR',
+  },
+
+  socialLinks: {
+    github: 'https://github.com/rahulsharma',
+    linkedin: 'https://linkedin.com/in/rahulsharma-dev',
+    website: 'https://rahulsharma.dev',
+    leetcode: 'https://leetcode.com/rahul_code',
+  },
 
   assessment: {
     score: 8.4,
@@ -460,8 +478,11 @@ export const mockCandidatePriya = {
   id: 'CANDIDATE-002',
   codeName: 'OPERATIVE-PRIYA',
   name: 'Priya Patel',
+  avatarUrl: '',
   title: 'Data Scientist | ML Engineer',
+  bio: 'Applied AI researcher and Machine Learning engineer focusing on LLM latency distillation, deep neural networks, and scalable feature stores for fintech telemetry.',
   email: 'priya@example.com',
+  phone: '+91 91234 56789',
   profileStatus: 'VERIFIED',
   clearanceLevel: 'LEVEL 4 // APPLIED AI SPECIALIST',
   targetRole: 'Data Scientist & ML Engineer',
@@ -470,6 +491,21 @@ export const mockCandidatePriya = {
   location: 'Mumbai, India (Open to Remote)',
   lastAssessment: '2026-09-24',
   roleReadiness: 88,
+
+  compensation: {
+    currentCtc: '₹20 LPA',
+    expectedCtc: '₹30 - 36 LPA',
+    noticePeriod: '15 Days (Immediate)',
+    workPolicy: 'Remote / Hybrid',
+    currency: 'INR',
+  },
+
+  socialLinks: {
+    github: 'https://github.com/priyapatel-ai',
+    linkedin: 'https://linkedin.com/in/priyapatel-ml',
+    website: 'https://priyapatel.ai',
+    leetcode: 'https://leetcode.com/priya_ml',
+  },
 
   assessment: {
     score: 8.8,

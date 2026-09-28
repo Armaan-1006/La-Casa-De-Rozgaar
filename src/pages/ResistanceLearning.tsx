@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { CheckCircle2, Clock, ArrowRight, ExternalLink, Check } from 'lucide-react'
+import { CheckCircle2, Clock, ArrowRight, ExternalLink, Check, BookOpen, Layers } from 'lucide-react'
 import { mockLearningRoadmap, mockLearningResources, LearningModule } from '../data/mockData'
+import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
 import { api } from '../services/api'
 
@@ -9,6 +11,10 @@ interface ResistanceLearningProps {
 }
 
 export const ResistanceLearning: React.FC<ResistanceLearningProps> = ({ onNavigate }) => {
+  const { isHeist } = useTheme()
+  const { user } = useAuth()
+  const isEmployer = user?.role === 'RECRUITER' || user?.role === 'EMPLOYER_ADMIN'
+
   const [modules, setModules] = useState<LearningModule[]>(mockLearningRoadmap)
   const [completedItems, setCompletedItems] = useState<Record<string, boolean>>({
     'TypeScript Advanced Metaprogramming & ASTs-0': true,
@@ -35,20 +41,37 @@ export const ResistanceLearning: React.FC<ResistanceLearningProps> = ({ onNaviga
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="stamp-live">GAP-DRIVEN CURRICULUM</span>
-              <span className="text-xs font-mono text-warm-ivory/60">OPERATION // RESISTANCE-LEARNING-SPRINTS</span>
+              <span className="stamp-live">
+                {isEmployer ? 'ENTERPRISE CURRICULUM BENCHMARK' : 'GAP-DRIVEN CURRICULUM'}
+              </span>
+              <span className="text-xs font-mono text-warm-ivory/60">
+                {isEmployer ? 'WORKFORCE // UPSKILLING-STANDARDS' : 'OPERATION // RESISTANCE-LEARNING-SPRINTS'}
+              </span>
             </div>
-            <h1 className="heading-lg text-warm-ivory mb-1">RESISTANCE LEARNING SYSTEM</h1>
+            <h1 className="heading-lg text-warm-ivory mb-1">
+              {isEmployer ? 'WORKFORCE LEARNING & CAPABILITY CURRICULUM' : 'RESISTANCE LEARNING SYSTEM'}
+            </h1>
             <p className="text-xs md:text-sm text-warm-ivory/70 font-mono">
-              PERSONALIZED UPSKILLING ROADMAP ENGINEERED TO ELIMINATE REVEALED MARKET DEFICITS
+              {isEmployer
+                ? 'STANDARDIZED TRAINING MODULES & CAPABILITY ACCELERATION TRACKS FOR TECHNICAL COHORTS'
+                : 'PERSONALIZED UPSKILLING ROADMAP ENGINEERED TO ELIMINATE REVEALED MARKET DEFICITS'}
             </p>
           </div>
-          <button
-            onClick={() => onNavigate?.('skill-heist')}
-            className="btn-primary text-xs font-mono py-2.5 px-4 flex items-center gap-2"
-          >
-            RECHECK SKILL GAPS <ArrowRight size={14} />
-          </button>
+          {isEmployer ? (
+            <button
+              onClick={() => onNavigate?.('workforce-simulator')}
+              className="btn-primary text-xs font-mono py-2.5 px-4 flex items-center gap-2"
+            >
+              SIMULATE WORKFORCE PLAN <ArrowRight size={14} />
+            </button>
+          ) : (
+            <button
+              onClick={() => onNavigate?.('skill-heist')}
+              className="btn-primary text-xs font-mono py-2.5 px-4 flex items-center gap-2"
+            >
+              RECHECK SKILL GAPS <ArrowRight size={14} />
+            </button>
+          )}
         </div>
       </section>
 

@@ -5,6 +5,7 @@ import { mockMarketData } from '../data/mockData'
 import { formatNumber, getTrendColor } from '../lib/utils'
 import { cn } from '../lib/utils'
 import { useTheme } from '../hooks/useTheme'
+import { useAuth } from '../hooks/useAuth'
 
 interface WarRoomProps {
   onNavigate?: (page: string) => void
@@ -540,7 +541,7 @@ const EnterpriseOverview: React.FC<{ onNavigate?: (page: string) => void }> = ({
 // ============================================================================
 export const WarRoom: React.FC<WarRoomProps> = ({ onNavigate }) => {
   const { isHeist } = useTheme()
-  const [perspective, setPerspective] = useState<'CANDIDATE' | 'EMPLOYER'>('CANDIDATE')
+  const { user } = useAuth()
   const [selectedRoleIdx, setSelectedRoleIdx] = useState(0)
 
   // In Enterprise Mode: render the executive enterprise dashboard
@@ -548,49 +549,15 @@ export const WarRoom: React.FC<WarRoomProps> = ({ onNavigate }) => {
     return <EnterpriseOverview onNavigate={onNavigate} />
   }
 
+  // Derive perspective strictly and automatically from authenticated user role
+  const isCandidate = !user || user.role === 'CANDIDATE'
+  const perspective: 'CANDIDATE' | 'EMPLOYER' = isCandidate ? 'CANDIDATE' : 'EMPLOYER'
+
   // In Heist Mode: render the consumer / candidate Money Heist command center
   const activeRole = mockMarketData.topRoles[selectedRoleIdx] || mockMarketData.topRoles[0]
 
   return (
     <div className="space-y-8">
-      {/* Perspective Toggle & Demo Data Notice */}
-      <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 bg-burgundy/15 rounded-lg border border-burgundy/30">
-        <div className="flex items-center gap-2">
-          <span className="stamp-classified">SIMULATED INTELLIGENCE</span>
-          <span className="text-[11px] font-mono text-warm-ivory/60">
-            DEMO STREAM // CONTINUOUS INGESTION FROM GLOBAL PORTALS
-          </span>
-        </div>
-
-        {/* Perspective Switch */}
-        <div className="flex items-center gap-2 bg-charcoal p-1 rounded-lg border border-burgundy/25 self-start sm:self-auto">
-          <button
-            onClick={() => setPerspective('CANDIDATE')}
-            className={cn(
-              'px-3 py-1 text-xs font-mono rounded flex items-center gap-1.5 transition-all',
-              perspective === 'CANDIDATE'
-                ? 'bg-gradient-crimson text-warm-ivory font-bold shadow-glow-crimson'
-                : 'text-warm-ivory/60 hover:text-warm-ivory'
-            )}
-          >
-            <User size={12} />
-            <span>CANDIDATE VIEW</span>
-          </button>
-          <button
-            onClick={() => setPerspective('EMPLOYER')}
-            className={cn(
-              'px-3 py-1 text-xs font-mono rounded flex items-center gap-1.5 transition-all',
-              perspective === 'EMPLOYER'
-                ? 'bg-gradient-crimson text-warm-ivory font-bold shadow-glow-crimson'
-                : 'text-warm-ivory/60 hover:text-warm-ivory'
-            )}
-          >
-            <Brain size={12} />
-            <span>EMPLOYER VIEW</span>
-          </button>
-        </div>
-      </section>
-
       {/* Hero Command Section */}
       <section className="relative overflow-hidden rounded-xl border border-crimson/30 bg-gradient-obsidian p-6 md:p-8 shadow-glow-crimson">
         <div className="max-w-3xl space-y-4">

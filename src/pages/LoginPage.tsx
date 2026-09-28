@@ -154,19 +154,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
     const targetTheme = resolveDefaultTheme(role)
     // Synchronously apply role-based default theme to DOM root before navigating away from login to avoid theme flash
     applyDomTheme(targetTheme, false)
-    switch (role) {
-      case 'CANDIDATE':
-        onNavigate('candidate-dossier')
-        break
-      case 'RECRUITER':
-      case 'EMPLOYER_ADMIN':
-        onNavigate('employer-dashboard')
-        break
-      case 'ADMIN':
-      default:
-        onNavigate('war-room')
-        break
-    }
+    onNavigate('war-room')
   }
 
   return (

@@ -80,6 +80,8 @@ export const CommandPalette: FC<CommandPaletteProps> = ({ isOpen, onClose, onNav
       { id: 'p-12', title: 'Simulation Vault', subtitle: 'Interactive What-If Skill Sandbox', category: 'NAVIGATION', pageTarget: 'simulation', icon: <User size={14} className="text-emerald-400" />, roleScope: 'candidate' },
       { id: 'p-13', title: isHeist ? 'Employer Mastermind HQ' : 'Employer Workforce HQ', subtitle: 'Workforce Planning & Capability', category: 'NAVIGATION', pageTarget: 'employer-dashboard', icon: <Briefcase size={14} className="text-muted-gold" />, roleScope: 'employer' },
       { id: 'p-14', title: 'Talent Vault Discovery', subtitle: 'Recruiter Candidate Search', category: 'NAVIGATION', pageTarget: 'talent-vault', icon: <Briefcase size={14} className="text-muted-gold" />, roleScope: 'employer' },
+      { id: 'p-15', title: isHeist ? 'Workforce Simulation Sandbox' : 'Workforce Scenario Simulator', subtitle: 'Model Hire vs Upskill Strategy & ROI', category: 'NAVIGATION', pageTarget: 'workforce-simulator', icon: <Briefcase size={14} className="text-muted-gold" />, roleScope: 'employer' },
+      { id: 'p-15b', title: isHeist ? 'Mastermind Syndicate Profile' : 'Company Profile & Settings', subtitle: 'Recruitment Settings & Organization Identity', category: 'NAVIGATION', pageTarget: 'company-profile', icon: <Briefcase size={14} className="text-muted-gold" />, roleScope: 'employer' },
       { id: 'p-16', title: isHeist ? 'Resistance Learning Sprints' : 'Structured Learning Curriculum', subtitle: 'Gap-Driven Curriculum', category: 'NAVIGATION', pageTarget: 'roadmap', icon: <FileText size={14} className="text-amber-400" /> },
       { id: 'p-17', title: 'Interview Intelligence', subtitle: 'Reported Technical Questions', category: 'NAVIGATION', pageTarget: 'interviews', icon: <FileText size={14} className="text-amber-400" /> },
       { id: 'p-18', title: 'Research Intelligence', subtitle: 'Foundational AI Papers', category: 'NAVIGATION', pageTarget: 'research', icon: <FileText size={14} className="text-amber-400" /> },
@@ -120,7 +122,7 @@ export const CommandPalette: FC<CommandPaletteProps> = ({ isOpen, onClose, onNav
     }))
 
     return [...themeCommands, ...pages, ...jobs, ...candidates, ...skills]
-  }, [isHeist])
+  }, [isHeist, isCandidate, isEmployer, isAdmin, user?.role])
 
   const filtered = useMemo(() => {
     if (!query.trim()) return allItems.slice(0, 8)
