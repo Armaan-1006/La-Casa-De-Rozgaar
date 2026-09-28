@@ -3,6 +3,7 @@ export declare const config: {
     readonly host: string;
     readonly nodeEnv: string;
     readonly database: {
+        readonly url: string;
         readonly path: string;
     };
     readonly jwt: {

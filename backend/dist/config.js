@@ -26,6 +26,7 @@ export const config = {
     host: process.env.HOST || '0.0.0.0',
     nodeEnv: process.env.NODE_ENV || 'development',
     database: {
+        url: process.env.DATABASE_URL || '',
         path: process.env.DATABASE_PATH || (process.env.VERCEL ? '/tmp/module2.db' : './data/module2.db'),
     },
     jwt: {
