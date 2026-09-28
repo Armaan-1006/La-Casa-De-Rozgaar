@@ -9,8 +9,8 @@ let employerToken: string;
 let orgId = 'org_techcorp';
 
 beforeAll(async () => {
-  runMigrations();
-  seedDatabase();
+  await runMigrations();
+  await seedDatabase();
 
   const loginRes = await request(app)
     .post('/api/v1/auth/login')

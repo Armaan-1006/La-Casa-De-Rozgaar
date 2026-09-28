@@ -121,7 +121,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
     }
   }
 
-  const handleQuickLogin = async (presetKey: 'candidate' | 'candidate_data' | 'recruiter' | 'planner' | 'admin') => {
+  const handleQuickLogin = async (presetKey: 'candidate' | 'candidate_data' | 'recruiter' | 'admin') => {
     setAuthError(null)
     setActivePresetLoading(presetKey)
     setAuthStage('authenticating')
@@ -160,10 +160,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
         break
       case 'RECRUITER':
       case 'EMPLOYER_ADMIN':
-        onNavigate('talent-vault')
-        break
-      case 'WORKFORCE_PLANNER':
-        onNavigate('workforce-gaps')
+        onNavigate('employer-dashboard')
         break
       case 'ADMIN':
       default:
@@ -490,10 +487,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   )}
                 </button>
 
-                {/* 4. Ananya Deshmukh (Workforce Planner) */}
+                {/* 4. System Administrator (Admin) */}
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('planner')}
+                  onClick={() => handleQuickLogin('admin')}
                   disabled={isLoading}
                   className={cn(
                     'w-full flex items-center justify-between p-2.5 rounded-lg border text-left transition-all group cursor-pointer',
@@ -504,21 +501,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-crimson/20 text-crimson border border-crimson/40 flex items-center justify-center font-bold text-xs">
-                      AD
+                      SA
                     </div>
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
-                        <span>Ananya Deshmukh</span>
+                        <span>System Admin</span>
                         <span className="text-[10px] px-1 py-0.2 rounded bg-crimson/15 text-crimson font-mono">
-                          PLANNER
+                          ADMIN
                         </span>
                       </div>
                       <div className={cn('text-[11px] truncate', isHeist ? 'text-warm-ivory/50' : 'text-slate-500')}>
-                        Workforce Gap Strategist
+                        Master Command & System Architect
                       </div>
                     </div>
                   </div>
-                  {activePresetLoading === 'planner' ? (
+                  {activePresetLoading === 'admin' ? (
                     <span className="w-3.5 h-3.5 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />

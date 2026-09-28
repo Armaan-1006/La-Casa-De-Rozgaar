@@ -4,10 +4,10 @@ import { getDb } from './connection.js';
  * Run all database migrations.
  * Idempotent — safe to re-run.
  */
-export function runMigrations(): void {
+export async function runMigrations(): Promise<void> {
   const db = getDb();
 
-  db.exec(`
+  await db.exec(`
     -- ============================================================
     -- USERS & AUTH
     -- ============================================================

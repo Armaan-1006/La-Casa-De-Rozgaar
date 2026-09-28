@@ -8,8 +8,8 @@ const app = createApp();
 let candidateToken: string;
 
 beforeAll(async () => {
-  runMigrations();
-  seedDatabase();
+  await runMigrations();
+  await seedDatabase();
 
   const loginRes = await request(app)
     .post('/api/v1/auth/login')

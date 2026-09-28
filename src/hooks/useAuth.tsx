@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, typ
 import { useTheme } from './useTheme'
 import { API_BASE, api } from '../services/api'
 
-export type UserRole = 'CANDIDATE' | 'RECRUITER' | 'EMPLOYER_ADMIN' | 'WORKFORCE_PLANNER' | 'ADMIN'
+export type UserRole = 'CANDIDATE' | 'RECRUITER' | 'EMPLOYER_ADMIN' | 'ADMIN'
 
 export interface AuthUser {
   id: string
@@ -40,7 +40,7 @@ export interface AuthContextValue {
   login: (credentials: LoginCredentials) => Promise<AuthResult>
   register: (data: RegisterData) => Promise<AuthResult>
   logout: () => void
-  quickLogin: (preset: 'candidate' | 'candidate_data' | 'recruiter' | 'planner' | 'admin') => Promise<AuthResult>
+  quickLogin: (preset: 'candidate' | 'candidate_data' | 'recruiter' | 'admin') => Promise<AuthResult>
 }
 
 const TOKEN_KEY = 'lcdr_auth_token'
@@ -70,14 +70,6 @@ export const DEMO_PRESETS: Record<string, { email: string; password: string; nam
     name: 'Vikram Malhotra',
     role: 'RECRUITER',
     headline: 'Talent Acquisition & Technical Recruiting Lead',
-    organization: 'TechCorp India',
-  },
-  planner: {
-    email: 'planner@techcorp.in',
-    password: 'password123',
-    name: 'Ananya Deshmukh',
-    role: 'WORKFORCE_PLANNER',
-    headline: 'Chief Workforce Strategist & Gap Analyst',
     organization: 'TechCorp India',
   },
   admin: {
@@ -319,7 +311,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [resetThemeOnSignOut])
 
   const quickLogin = useCallback(
-    async (presetKey: 'candidate' | 'candidate_data' | 'recruiter' | 'planner' | 'admin'): Promise<AuthResult> => {
+    async (presetKey: 'candidate' | 'candidate_data' | 'recruiter' | 'admin'): Promise<AuthResult> => {
       const preset = DEMO_PRESETS[presetKey]
       if (!preset) return { success: false, error: 'Invalid preset' }
       return login({ email: preset.email, password: preset.password })

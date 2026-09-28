@@ -73,7 +73,6 @@ const heistNavigationItems: NavGroup[] = [
     submenu: [
       { label: 'Mastermind HQ', href: 'employer-dashboard' },
       { label: 'Talent Vault', href: 'talent-vault' },
-      { label: 'Workforce Gaps', href: 'workforce-gaps' },
     ],
   },
   {
@@ -116,22 +115,21 @@ const enterpriseNavSections: EnterpriseNavSection[] = [
     ],
   },
   {
-    title: 'TALENT',
+    title: 'CANDIDATE SUITE',
     items: [
-      { label: 'Talent Directory', href: 'talent-vault' },
-      { label: 'Candidate Profiles', href: 'candidate-dossier' },
-      { label: 'Skill Assessments', href: 'assessment' },
-      { label: 'Candidate Matching', href: 'job-finder' },
+      { label: 'Candidate Profile', href: 'candidate-dossier' },
+      { label: 'Skill Assessment', href: 'assessment' },
+      { label: 'Skill Development', href: 'skill-heist' },
+      { label: 'Job Matching', href: 'job-finder' },
       { label: 'Career Pathways', href: 'career-intelligence' },
+      { label: 'Scenario Simulator', href: 'simulation' },
     ],
   },
   {
-    title: 'WORKFORCE',
+    title: 'EMPLOYER SUITE',
     items: [
-      { label: 'Workforce Overview', href: 'employer-dashboard' },
-      { label: 'Capability Gaps', href: 'workforce-gaps' },
-      { label: 'Scenario Planning', href: 'simulation' },
-      { label: 'Skill Development', href: 'skill-heist' },
+      { label: 'Employer Dashboard', href: 'employer-dashboard' },
+      { label: 'Talent Directory', href: 'talent-vault' },
     ],
   },
   {
@@ -147,9 +145,36 @@ const enterpriseNavSections: EnterpriseNavSection[] = [
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, currentPage }) => {
   const { isHeist } = useTheme()
+  const { user } = useAuth()
   const { width } = useWindowSize()
   const isDesktop = width >= 768
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null)
+
+  const isCandidate = user?.role === 'CANDIDATE'
+  const isEmployer = user?.role === 'RECRUITER' || user?.role === 'EMPLOYER_ADMIN'
+  const isAdmin = user?.role === 'ADMIN'
+
+  // Filter Heist Navigation Items based on Role (Candidate only sees Candidate, Employer only sees Employer)
+  const filteredHeistNavItems = heistNavigationItems.filter((item) => {
+    if (item.label === 'CANDIDATE') {
+      return isCandidate || isAdmin
+    }
+    if (item.label === 'EMPLOYER') {
+      return isEmployer || isAdmin
+    }
+    return true
+  })
+
+  // Filter Enterprise Nav Sections based on Role
+  const filteredEnterpriseNavSections = enterpriseNavSections.filter((section) => {
+    if (section.title === 'CANDIDATE SUITE') {
+      return isCandidate || isAdmin
+    }
+    if (section.title === 'EMPLOYER SUITE') {
+      return isEmployer || isAdmin
+    }
+    return true
+  })
 
   const handleNavClick = (href: string) => {
     if (href && onNavigate) {
@@ -214,7 +239,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
 
           {/* Enterprise Navigation List (Text + Hierarchy, No Icon Spam) */}
           <nav className="flex-1 px-3 py-3 pb-6 overflow-y-auto space-y-4">
-            {enterpriseNavSections.map((section) => (
+            {filteredEnterpriseNavSections.map((section) => (
               <div key={section.title} className="space-y-0.5">
                 <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
                   {section.title}
@@ -307,7 +332,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
 
         {/* Navigation List */}
         <nav className="flex-1 px-3 py-3 pb-6 space-y-1 overflow-y-auto">
-          {heistNavigationItems.map((item) => {
+          {filteredHeistNavItems.map((item) => {
             const isDirectActive = item.href === currentPage
             const isSubActive = item.submenu?.some((s) => s.href === currentPage)
             const isExpanded = expandedMenu === item.label || isSubActive

@@ -41,9 +41,7 @@ export function resolveDefaultTheme(role?: string | null): VisualMode {
   if (
     normalized === 'recruiter' ||
     normalized === 'employer_admin' ||
-    normalized === 'employer' ||
-    normalized === 'workforce_planner' ||
-    normalized === 'planner'
+    normalized === 'employer'
   ) {
     return 'professional'
   }

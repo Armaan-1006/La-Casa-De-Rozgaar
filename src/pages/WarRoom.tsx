@@ -84,8 +84,8 @@ const EnterpriseOverview: React.FC<{ onNavigate?: (page: string) => void }> = ({
       gap: -2.2,
       priority: 'High',
       cohort: 18,
-      action: 'Analyze Gap',
-      targetPage: 'workforce-gaps',
+      action: 'Skill Telemetry',
+      targetPage: 'skill-intelligence',
     },
     {
       skill: 'Distributed Systems',
@@ -244,10 +244,10 @@ const EnterpriseOverview: React.FC<{ onNavigate?: (page: string) => void }> = ({
               </p>
             </div>
             <button
-              onClick={() => onNavigate?.('workforce-gaps')}
+              onClick={() => onNavigate?.('skill-intelligence')}
               className="text-xs font-semibold text-blue-700 hover:text-blue-900 inline-flex items-center gap-1 self-start transition-colors"
             >
-              View Gap Analysis <ArrowRight size={13} />
+              Skill Intelligence <ArrowRight size={13} />
             </button>
           </div>
 
@@ -403,10 +403,10 @@ const EnterpriseOverview: React.FC<{ onNavigate?: (page: string) => void }> = ({
             </p>
           </div>
           <button
-            onClick={() => onNavigate?.('workforce-gaps')}
+            onClick={() => onNavigate?.('skill-intelligence')}
             className="text-xs font-semibold text-blue-700 hover:text-blue-900 flex items-center gap-1 self-start sm:self-auto"
           >
-            Open Full Gap Matrix <ArrowRight size={13} />
+            Open Skill Intelligence <ArrowRight size={13} />
           </button>
         </div>
 
@@ -646,10 +646,10 @@ export const WarRoom: React.FC<WarRoomProps> = ({ onNavigate }) => {
                   DISCOVER VERIFIED TALENT <ArrowRight size={14} />
                 </button>
                 <button
-                  onClick={() => onNavigate?.('workforce-gaps')}
+                  onClick={() => onNavigate?.('skill-intelligence')}
                   className="btn-secondary text-xs font-mono py-2.5 px-4"
                 >
-                  DIAGNOSE WORKFORCE GAPS
+                  SKILL INTELLIGENCE RADAR
                 </button>
                 <button
                   onClick={() => onNavigate?.('forecast')}

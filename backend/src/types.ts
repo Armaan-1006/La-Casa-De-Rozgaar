@@ -3,7 +3,7 @@
 // ============================================================
 
 // ---- Roles & Auth ----
-export type UserRole = 'CANDIDATE' | 'RECRUITER' | 'EMPLOYER_ADMIN' | 'WORKFORCE_PLANNER' | 'ADMIN';
+export type UserRole = 'CANDIDATE' | 'RECRUITER' | 'EMPLOYER_ADMIN' | 'ADMIN';
 
 export interface AuthTokenPayload {
   userId: string;
@@ -428,7 +428,7 @@ export interface ResearchItem {
 }
 
 // ---- Employer / Organization ----
-export type OrganizationRole = 'ADMIN' | 'RECRUITER' | 'WORKFORCE_PLANNER' | 'VIEWER';
+export type OrganizationRole = 'ADMIN' | 'RECRUITER' | 'VIEWER';
 
 export interface Organization {
   id: string;

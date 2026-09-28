@@ -3,13 +3,13 @@ import { generateId } from './connection.js';
 import { runMigrations } from './migrate.js';
 import bcrypt from 'bcryptjs';
 
-export function seedDatabase(): void {
+export async function seedDatabase(): Promise<void> {
   const db = getDb();
-  runMigrations();
+  await runMigrations();
 
   // Check if already seeded
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-  if (userCount.count > 0) {
+  const userCount = await db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number | string } | undefined;
+  if (userCount && Number(userCount.count) > 0) {
     console.log('[SEED] Database already seeded, skipping');
     return;
   }

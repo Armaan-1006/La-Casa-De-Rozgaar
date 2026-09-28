@@ -25,7 +25,7 @@ router.post('/register', async (req: Request, res: Response) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const userId = generateId();
     const resolvedName = name || email.split('@')[0];
-    const userRole: UserRole = (role?.toUpperCase() === 'RECRUITER' || role?.toUpperCase() === 'EMPLOYER_ADMIN' || role?.toUpperCase() === 'WORKFORCE_PLANNER' || role?.toUpperCase() === 'ADMIN') ? role.toUpperCase() as UserRole : 'CANDIDATE';
+    const userRole: UserRole = (role?.toUpperCase() === 'RECRUITER' || role?.toUpperCase() === 'EMPLOYER_ADMIN' || role?.toUpperCase() === 'ADMIN') ? role.toUpperCase() as UserRole : 'CANDIDATE';
 
     await db.prepare('INSERT INTO users (id, email, password_hash, name, role) VALUES (?, ?, ?, ?, ?)').run(userId, email, passwordHash, resolvedName, userRole);
 

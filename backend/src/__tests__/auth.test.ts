@@ -6,9 +6,9 @@ import { seedDatabase } from '../database/seed.js';
 
 const app = createApp();
 
-beforeAll(() => {
-  runMigrations();
-  seedDatabase();
+beforeAll(async () => {
+  await runMigrations();
+  await seedDatabase();
 });
 
 describe('Authentication & User Management', () => {

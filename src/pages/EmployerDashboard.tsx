@@ -42,10 +42,10 @@ const EnterpriseWorkforceOverview: React.FC<EmployerDashboardProps> = ({ onNavig
         </div>
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => onNavigate?.('workforce-gaps')}
+            onClick={() => onNavigate?.('talent-vault')}
             className="px-3.5 py-1.5 text-xs font-semibold text-white bg-[#1E3A8A] hover:bg-[#1E40AF] rounded transition-colors flex items-center gap-1.5"
           >
-            Diagnose Skill Gaps <ArrowRight size={13} />
+            Discover Talent Vault <ArrowRight size={13} />
           </button>
         </div>
       </div>
@@ -91,10 +91,10 @@ const EnterpriseWorkforceOverview: React.FC<EmployerDashboardProps> = ({ onNavig
               </p>
             </div>
             <button
-              onClick={() => onNavigate?.('workforce-gaps')}
+              onClick={() => onNavigate?.('talent-vault')}
               className="text-xs font-semibold text-blue-700 hover:text-blue-900"
             >
-              Gap Analysis →
+              Discover Talent →
             </button>
           </div>
 
@@ -320,10 +320,10 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onNavigate
           <div className="flex items-center justify-between border-b border-burgundy/20 pb-3">
             <h3 className="heading-sm text-warm-ivory font-mono text-sm uppercase">INTERNAL CAPABILITY BENCHMARK</h3>
             <button
-              onClick={() => onNavigate?.('workforce-gaps')}
+              onClick={() => onNavigate?.('skill-intelligence')}
               className="text-xs font-mono text-crimson hover:underline"
             >
-              Full Gap Audit →
+              Skill Radar →
             </button>
           </div>
 
@@ -446,12 +446,12 @@ export const EmployerDashboard: React.FC<EmployerDashboardProps> = ({ onNavigate
         </button>
 
         <button
-          onClick={() => onNavigate?.('workforce-gaps')}
+          onClick={() => onNavigate?.('skill-intelligence')}
           className="card-hover p-5 text-left border border-burgundy/30 rounded-lg group"
         >
-          <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">WORKFORCE GAPS MATRIX →</h4>
+          <h4 className="heading-xs text-crimson mb-1 group-hover:text-crimson-light">SKILL INTELLIGENCE →</h4>
           <p className="text-warm-ivory/70 text-xs font-mono">
-            Execute current vs strategic capability gap diagnostics and allocate training cohorts.
+            Execute current vs market capability benchmarking and skill demand telemetry.
           </p>
         </button>
 

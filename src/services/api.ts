@@ -593,6 +593,26 @@ class ApiService {
         body: JSON.stringify({ targetRoleId, skillChanges })
       })
       return res.data
+    },
+    listScenarios: async () => {
+      await this.ensureAuth()
+      const res = await this.request<any[]>('/simulation/scenarios')
+      return res.data || []
+    },
+    saveScenario: async (scenario: any) => {
+      await this.ensureAuth()
+      const res = await this.request<any>('/simulation/scenarios', {
+        method: 'POST',
+        body: JSON.stringify(scenario)
+      })
+      return res.data
+    },
+    deleteScenario: async (id: string) => {
+      await this.ensureAuth()
+      const res = await this.request<any>(`/simulation/scenarios/${id}`, {
+        method: 'DELETE'
+      })
+      return res.data
     }
   }
 

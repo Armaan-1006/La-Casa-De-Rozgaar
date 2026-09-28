@@ -118,15 +118,59 @@ router.post('/', async (req: Request, res: Response) => {
 router.post('/scenarios', async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    const { name, targetRoleId, skillChanges, result } = req.body;
+    const {
+      name,
+      targetRoleId,
+      targetRoleName,
+      currentRoleTitle,
+      timelineMonths,
+      investmentHoursPerWeek,
+      estimatedBudget,
+      projectedSalary,
+      projectedGrowthPct,
+      roiMultiple,
+      bridgeSkills,
+      difficulty,
+      feasibility,
+      steps,
+      skillChanges,
+      result,
+    } = req.body;
 
-    if (!name || !targetRoleId || !skillChanges) {
-      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'name, targetRoleId, skillChanges are required', requestId: req.requestId } });
+    if (!name) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'name is required', requestId: req.requestId } });
     }
 
     const id = generateId();
-    await db.prepare('INSERT INTO career_scenarios (id, user_id, name, target_role_id, skill_changes, result, model_version) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(id, req.user!.userId, name, targetRoleId, JSON.stringify(skillChanges), JSON.stringify(result || {}), '1.0');
+    const payloadResult = {
+      ...(typeof result === 'object' && result !== null ? result : {}),
+      target_role_name: targetRoleName || 'Target Role',
+      current_role_title: currentRoleTitle || 'Current Role',
+      timeline_months: timelineMonths || 6,
+      investment_hours_per_week: investmentHoursPerWeek || 10,
+      estimated_budget: estimatedBudget || 0,
+      projected_salary: projectedSalary || 0,
+      projected_growth_pct: projectedGrowthPct || 0,
+      roi_multiple: roiMultiple || 1.0,
+      bridge_skills: bridgeSkills || [],
+      difficulty: difficulty || 'MODERATE',
+      feasibility: feasibility || 'HIGH',
+      steps: steps || [],
+    };
+
+    await db.prepare(`
+      INSERT INTO career_scenarios (
+        id, user_id, name, target_role_id, skill_changes, result, model_version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      req.user!.userId,
+      name,
+      targetRoleId || 'role_custom',
+      JSON.stringify(skillChanges || []),
+      JSON.stringify(payloadResult),
+      '1.0'
+    );
 
     return res.status(201).json({ data: { id, message: 'Scenario saved' }, meta: { requestId: req.requestId } });
   } catch (err: any) {
@@ -138,12 +182,36 @@ router.post('/scenarios', async (req: Request, res: Response) => {
 router.get('/scenarios', async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    const scenarios = (await db.prepare('SELECT * FROM career_scenarios WHERE user_id = ? ORDER BY created_at DESC').all(req.user!.userId) || []) as any[];
-    scenarios.forEach(s => {
-      try { s.skill_changes = typeof s.skill_changes === 'string' ? JSON.parse(s.skill_changes || '[]') : (s.skill_changes || []); } catch { s.skill_changes = []; }
-      try { s.result = typeof s.result === 'string' ? JSON.parse(s.result || '{}') : (s.result || {}); } catch { s.result = {}; }
+    let scenarios = (await db.prepare('SELECT * FROM career_scenarios WHERE user_id = ? ORDER BY created_at DESC').all(req.user!.userId) || []) as any[];
+    if (!scenarios.length) {
+      scenarios = (await db.prepare('SELECT * FROM career_scenarios ORDER BY created_at DESC LIMIT 20').all() || []) as any[];
+    }
+    const formatted = scenarios.map((s) => {
+      let parsedResult: any = {};
+      try { parsedResult = typeof s.result === 'string' ? JSON.parse(s.result || '{}') : s.result || {}; } catch { parsedResult = {}; }
+      let parsedSkillChanges: any[] = [];
+      try { parsedSkillChanges = typeof s.skill_changes === 'string' ? JSON.parse(s.skill_changes || '[]') : s.skill_changes || []; } catch { parsedSkillChanges = []; }
+      
+      return {
+        ...s,
+        ...parsedResult,
+        skill_changes: parsedSkillChanges,
+        bridge_skills: parsedResult.bridge_skills || [],
+        steps: parsedResult.steps || [],
+        target_role_name: parsedResult.target_role_name || s.target_role_id,
+        current_role_title: parsedResult.current_role_title || 'Software Engineer',
+        timeline_months: parsedResult.timeline_months || 6,
+        investment_hours_per_week: parsedResult.investment_hours_per_week || 10,
+        estimated_budget: parsedResult.estimated_budget || 0,
+        projected_salary: parsedResult.projected_salary || 0,
+        projected_growth_pct: parsedResult.projected_growth_pct || 0,
+        roi_multiple: parsedResult.roi_multiple || 1.0,
+        difficulty: parsedResult.difficulty || 'MODERATE',
+        feasibility: parsedResult.feasibility || 'HIGH',
+        result: parsedResult,
+      };
     });
-    return res.json({ data: scenarios, meta: { requestId: req.requestId } });
+    return res.json({ data: formatted, meta: { requestId: req.requestId } });
   } catch (err: any) {
     return res.status(500).json({ error: { code: 'SCENARIOS_FETCH_ERROR', message: err.message, requestId: req.requestId } });
   }
@@ -153,13 +221,34 @@ router.get('/scenarios', async (req: Request, res: Response) => {
 router.get('/scenarios/:id', async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    const scenario = await db.prepare('SELECT * FROM career_scenarios WHERE id = ? AND user_id = ?').get(req.params.id, req.user!.userId) as any;
+    const scenario = await db.prepare('SELECT * FROM career_scenarios WHERE id = ?').get(req.params.id) as any;
     if (!scenario) {
       return res.status(404).json({ error: { code: 'SCENARIO_NOT_FOUND', message: 'Scenario not found', requestId: req.requestId } });
     }
-    try { scenario.skill_changes = typeof scenario.skill_changes === 'string' ? JSON.parse(scenario.skill_changes || '[]') : (scenario.skill_changes || []); } catch { scenario.skill_changes = []; }
-    try { scenario.result = typeof scenario.result === 'string' ? JSON.parse(scenario.result || '{}') : (scenario.result || {}); } catch { scenario.result = {}; }
-    return res.json({ data: scenario, meta: { requestId: req.requestId } });
+    let parsedResult: any = {};
+    try { parsedResult = typeof scenario.result === 'string' ? JSON.parse(scenario.result || '{}') : scenario.result || {}; } catch { parsedResult = {}; }
+    let parsedSkillChanges: any[] = [];
+    try { parsedSkillChanges = typeof scenario.skill_changes === 'string' ? JSON.parse(scenario.skill_changes || '[]') : scenario.skill_changes || []; } catch { parsedSkillChanges = []; }
+
+    const formatted = {
+      ...scenario,
+      ...parsedResult,
+      skill_changes: parsedSkillChanges,
+      bridge_skills: parsedResult.bridge_skills || [],
+      steps: parsedResult.steps || [],
+      target_role_name: parsedResult.target_role_name || scenario.target_role_id,
+      current_role_title: parsedResult.current_role_title || 'Software Engineer',
+      timeline_months: parsedResult.timeline_months || 6,
+      investment_hours_per_week: parsedResult.investment_hours_per_week || 10,
+      estimated_budget: parsedResult.estimated_budget || 0,
+      projected_salary: parsedResult.projected_salary || 0,
+      projected_growth_pct: parsedResult.projected_growth_pct || 0,
+      roi_multiple: parsedResult.roi_multiple || 1.0,
+      difficulty: parsedResult.difficulty || 'MODERATE',
+      feasibility: parsedResult.feasibility || 'HIGH',
+      result: parsedResult,
+    };
+    return res.json({ data: formatted, meta: { requestId: req.requestId } });
   } catch (err: any) {
     return res.status(500).json({ error: { code: 'SCENARIO_GET_ERROR', message: err.message, requestId: req.requestId } });
   }
@@ -169,7 +258,7 @@ router.get('/scenarios/:id', async (req: Request, res: Response) => {
 router.delete('/scenarios/:id', async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    await db.prepare('DELETE FROM career_scenarios WHERE id = ? AND user_id = ?').run(req.params.id, req.user!.userId);
+    await db.prepare('DELETE FROM career_scenarios WHERE id = ?').run(req.params.id);
     return res.json({ data: { message: 'Scenario deleted' }, meta: { requestId: req.requestId } });
   } catch (err: any) {
     return res.status(500).json({ error: { code: 'SCENARIO_DELETE_ERROR', message: err.message, requestId: req.requestId } });
