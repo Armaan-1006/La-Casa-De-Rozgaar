@@ -80,6 +80,14 @@ export const DEMO_PRESETS: Record<string, { email: string; password: string; nam
     headline: 'Chief Workforce Strategist & Gap Analyst',
     organization: 'TechCorp India',
   },
+  admin: {
+    email: 'admin@rozgaar.in',
+    password: 'password123',
+    name: 'System Administrator',
+    role: 'ADMIN',
+    headline: 'Master Command & System Architect',
+    organization: 'La Casa De Rozgaar',
+  },
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -133,6 +141,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = useCallback(async ({ email, password }: LoginCredentials): Promise<AuthResult> => {
     setIsLoading(true)
+    const matchingPreset = Object.values(DEMO_PRESETS).find(
+      (p) => p.email.toLowerCase() === email.trim().toLowerCase()
+    )
+
     try {
       const loginUrl = API_BASE.startsWith('http') ? `${API_BASE}/auth/login` : '/api/v1/auth/login'
       const res = await fetch(loginUrl, {
@@ -141,55 +153,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         body: JSON.stringify({ email: email.trim(), password }),
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        setIsLoading(false)
-        return {
-          success: false,
-          error: data.error?.message || 'Authentication failed. Please verify credentials.',
-        }
+      const contentType = res.headers.get('content-type') || ''
+      let data: any = null
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json()
+        } catch {}
       }
 
-      const returnedUser = data.data?.user || data.data
-      const authToken = data.data?.token || data.data?.accessToken
+      if (res.ok && data?.data) {
+        const returnedUser = data.data.user || data.data
+        const authToken = data.data.token || data.data.accessToken
 
-      // Find matching preset details if available for rich persona
-      const matchingPreset = Object.values(DEMO_PRESETS).find(
-        (p) => p.email.toLowerCase() === email.trim().toLowerCase()
-      )
-
-      const authUser: AuthUser = {
-        id: returnedUser.id || data.data?.userId || 'usr_' + Date.now(),
-        email: email.trim(),
-        role: (returnedUser.role?.toUpperCase() || 'CANDIDATE') as UserRole,
-        name: returnedUser.name || matchingPreset?.name || email.split('@')[0],
-        headline: matchingPreset?.headline || 'Intelligence Operative',
-        organization: matchingPreset?.organization || 'La Casa De Rozgaar',
-        avatarInitials: getInitials(returnedUser.name || matchingPreset?.name || email.split('@')[0]),
-      }
-
-      setToken(authToken || 'jwt_simulated_token_' + Date.now())
-      setUser(authUser)
-      api.setToken(authToken || null, authUser)
-      try {
-        localStorage.removeItem('lcdr_candidate_profile')
-        window.dispatchEvent(new Event('candidate-profile-updated'))
-      } catch {}
-      // Automatically apply the authenticated user's role default theme (Candidate -> Heist, Recruiter -> Professional)
-      applyRoleDefaultTheme(authUser.role)
-      setIsLoading(false)
-
-      return { success: true, user: authUser }
-    } catch (err: any) {
-      // Graceful offline fallback for demo/prototyping if network fails
-      const matchingPreset = Object.values(DEMO_PRESETS).find(
-        (p) => p.email.toLowerCase() === email.trim().toLowerCase()
-      )
-
-      if (matchingPreset && password === 'password123') {
         const authUser: AuthUser = {
-          id: 'sim_' + Date.now(),
+          id: returnedUser.id || data.data.userId || 'usr_' + Date.now(),
+          email: email.trim(),
+          role: (returnedUser.role?.toUpperCase() || matchingPreset?.role || 'CANDIDATE') as UserRole,
+          name: returnedUser.name || matchingPreset?.name || email.split('@')[0],
+          headline: matchingPreset?.headline || 'Intelligence Operative',
+          organization: matchingPreset?.organization || 'La Casa De Rozgaar',
+          avatarInitials: getInitials(returnedUser.name || matchingPreset?.name || email.split('@')[0]),
+        }
+
+        setToken(authToken || 'jwt_simulated_token_' + Date.now())
+        setUser(authUser)
+        api.setToken(authToken || null, authUser)
+        try {
+          localStorage.removeItem('lcdr_candidate_profile')
+          window.dispatchEvent(new Event('candidate-profile-updated'))
+        } catch {}
+        applyRoleDefaultTheme(authUser.role)
+        setIsLoading(false)
+
+        return { success: true, user: authUser }
+      }
+
+      // If network response was not successful (e.g. 401, 404, HTML on Vercel deployment),
+      // but user is authenticating with a valid demo preset or demo password
+      if (matchingPreset && (password === 'password123' || password === matchingPreset.password)) {
+        const authUser: AuthUser = {
+          id: 'usr_' + matchingPreset.email.split('@')[0],
           email: matchingPreset.email,
           role: matchingPreset.role,
           name: matchingPreset.name,
@@ -197,7 +200,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           organization: matchingPreset.organization,
           avatarInitials: getInitials(matchingPreset.name),
         }
-        const simToken = 'lcdr_jwt_' + Math.random().toString(36).substring(2)
+        const simToken = 'lcdr_demo_jwt_' + Math.random().toString(36).substring(2)
+        setToken(simToken)
+        setUser(authUser)
+        api.setToken(simToken, authUser)
+        try {
+          localStorage.removeItem('lcdr_candidate_profile')
+          window.dispatchEvent(new Event('candidate-profile-updated'))
+        } catch {}
+        applyRoleDefaultTheme(authUser.role)
+        setIsLoading(false)
+        return { success: true, user: authUser }
+      }
+
+      setIsLoading(false)
+      return {
+        success: false,
+        error: data?.error?.message || 'Authentication failed. Please verify credentials.',
+      }
+    } catch (err: any) {
+      // Graceful offline fallback for demo/prototyping if network fails
+      if (matchingPreset && (password === 'password123' || password === matchingPreset.password)) {
+        const authUser: AuthUser = {
+          id: 'usr_' + matchingPreset.email.split('@')[0],
+          email: matchingPreset.email,
+          role: matchingPreset.role,
+          name: matchingPreset.name,
+          headline: matchingPreset.headline,
+          organization: matchingPreset.organization,
+          avatarInitials: getInitials(matchingPreset.name),
+        }
+        const simToken = 'lcdr_demo_jwt_' + Math.random().toString(36).substring(2)
         setToken(simToken)
         setUser(authUser)
         api.setToken(simToken, authUser)

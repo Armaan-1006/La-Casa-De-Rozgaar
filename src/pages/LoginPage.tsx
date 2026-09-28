@@ -127,19 +127,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
     setAuthStage('authenticating')
 
     const preset = DEMO_PRESETS[presetKey]
-    setLoginEmail(preset.email)
-    setLoginPassword(preset.password)
+    if (preset) {
+      setLoginEmail(preset.email)
+      setLoginPassword(preset.password)
+    }
 
     const result = await quickLogin(presetKey)
     setActivePresetLoading(null)
 
     if (result.success) {
       setAuthStage('success')
-      setAuthSuccess(`Clearance Bypassed: Authorized as ${preset.name} (${preset.role}).`)
+      const effectiveRole = result.user?.role || preset?.role || 'CANDIDATE'
+      const effectiveName = result.user?.name || preset?.name || 'Operative'
+      setAuthSuccess(`Clearance Bypassed: Authorized as ${effectiveName} (${effectiveRole}).`)
       setTimeout(() => {
         if (onSuccess) onSuccess()
-        redirectByRole(result.user?.role)
-      }, 900)
+        redirectByRole(effectiveRole)
+      }, 700)
     } else {
       setAuthStage('idle')
       setAuthError(result.error || 'Failed to authenticate preset persona.')

@@ -24,14 +24,15 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const userId = generateId();
+    const resolvedName = name || email.split('@')[0];
     const userRole: UserRole = (role?.toUpperCase() === 'RECRUITER' || role?.toUpperCase() === 'EMPLOYER_ADMIN' || role?.toUpperCase() === 'WORKFORCE_PLANNER' || role?.toUpperCase() === 'ADMIN') ? role.toUpperCase() as UserRole : 'CANDIDATE';
 
-    await db.prepare('INSERT INTO users (id, email, password_hash, role) VALUES (?, ?, ?, ?)').run(userId, email, passwordHash, userRole);
+    await db.prepare('INSERT INTO users (id, email, password_hash, name, role) VALUES (?, ?, ?, ?, ?)').run(userId, email, passwordHash, resolvedName, userRole);
 
     // Auto-create candidate profile if CANDIDATE role
     if (userRole === 'CANDIDATE') {
       const profileId = generateId();
-      await db.prepare('INSERT INTO candidate_profiles (id, user_id, name) VALUES (?, ?, ?)').run(profileId, userId, name || email.split('@')[0]);
+      await db.prepare('INSERT INTO candidate_profiles (id, user_id, name) VALUES (?, ?, ?)').run(profileId, userId, resolvedName);
     }
 
     // Generate token
