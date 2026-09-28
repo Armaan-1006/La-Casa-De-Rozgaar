@@ -26,11 +26,8 @@ export async function seedPgDatabase(connectionString?: string): Promise<void> {
 
   const client = await pool.connect();
   try {
-    const userRes = await client.query('SELECT COUNT(*)::int as count FROM users');
-    if (userRes.rows[0].count > 0) {
-      console.log('[PG-SEED] Database already has users in Neon PostgreSQL, skipping user seed.');
-      return;
-    }
+    // Clear previous demo accounts to ensure clean state
+    await client.query('TRUNCATE users, candidate_profiles, organizations, assessments CASCADE');
 
     console.log('[PG-SEED] Seeding demo accounts and candidate profiles into Neon PostgreSQL...');
 
@@ -44,13 +41,13 @@ export async function seedPgDatabase(connectionString?: string): Promise<void> {
     const employerAdminId = generateId();
     const workforcePlannerId = generateId();
 
-    const insertUserSql = `INSERT INTO users (id, email, password_hash, role, email_verified) VALUES ($1, $2, $3, $4, 1)`;
-    await client.query(insertUserSql, [adminId, 'admin@rozgaar.in', passwordHash, 'ADMIN']);
-    await client.query(insertUserSql, [candidateId, 'rahul@example.com', passwordHash, 'CANDIDATE']);
-    await client.query(insertUserSql, [candidate2Id, 'priya@example.com', passwordHash, 'CANDIDATE']);
-    await client.query(insertUserSql, [recruiterId, 'recruiter@techcorp.in', passwordHash, 'RECRUITER']);
-    await client.query(insertUserSql, [employerAdminId, 'hr@techcorp.in', passwordHash, 'EMPLOYER_ADMIN']);
-    await client.query(insertUserSql, [workforcePlannerId, 'planner@techcorp.in', passwordHash, 'WORKFORCE_PLANNER']);
+    const insertUserSql = `INSERT INTO users (id, email, password_hash, name, role, email_verified) VALUES ($1, $2, $3, $4, $5, 1)`;
+    await client.query(insertUserSql, [adminId, 'admin@rozgaar.in', passwordHash, 'System Administrator', 'ADMIN']);
+    await client.query(insertUserSql, [candidateId, 'rahul@example.com', passwordHash, 'Rahul Sharma', 'CANDIDATE']);
+    await client.query(insertUserSql, [candidate2Id, 'priya@example.com', passwordHash, 'Priya Patel', 'CANDIDATE']);
+    await client.query(insertUserSql, [recruiterId, 'recruiter@techcorp.in', passwordHash, 'Vikram Malhotra', 'RECRUITER']);
+    await client.query(insertUserSql, [employerAdminId, 'hr@techcorp.in', passwordHash, 'TechCorp HR Admin', 'EMPLOYER_ADMIN']);
+    await client.query(insertUserSql, [workforcePlannerId, 'planner@techcorp.in', passwordHash, 'Ananya Deshmukh', 'WORKFORCE_PLANNER']);
 
     // ---- Candidate Profiles ----
     const profileId = generateId();

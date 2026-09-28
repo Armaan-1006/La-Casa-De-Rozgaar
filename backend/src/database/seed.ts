@@ -26,13 +26,13 @@ export function seedDatabase(): void {
   const employerAdminId = generateId();
   const workforcePlannerId = generateId();
 
-  const insertUser = db.prepare(`INSERT INTO users (id, email, password_hash, role, email_verified) VALUES (?, ?, ?, ?, 1)`);
-  insertUser.run(adminId, 'admin@rozgaar.in', passwordHash, 'ADMIN');
-  insertUser.run(candidateId, 'rahul@example.com', passwordHash, 'CANDIDATE');
-  insertUser.run(candidate2Id, 'priya@example.com', passwordHash, 'CANDIDATE');
-  insertUser.run(recruiterId, 'recruiter@techcorp.in', passwordHash, 'RECRUITER');
-  insertUser.run(employerAdminId, 'hr@techcorp.in', passwordHash, 'EMPLOYER_ADMIN');
-  insertUser.run(workforcePlannerId, 'planner@techcorp.in', passwordHash, 'WORKFORCE_PLANNER');
+  const insertUser = db.prepare(`INSERT INTO users (id, email, password_hash, name, role, email_verified) VALUES (?, ?, ?, ?, ?, 1)`);
+  insertUser.run(adminId, 'admin@rozgaar.in', passwordHash, 'System Administrator', 'ADMIN');
+  insertUser.run(candidateId, 'rahul@example.com', passwordHash, 'Rahul Sharma', 'CANDIDATE');
+  insertUser.run(candidate2Id, 'priya@example.com', passwordHash, 'Priya Patel', 'CANDIDATE');
+  insertUser.run(recruiterId, 'recruiter@techcorp.in', passwordHash, 'Vikram Malhotra', 'RECRUITER');
+  insertUser.run(employerAdminId, 'hr@techcorp.in', passwordHash, 'TechCorp HR Admin', 'EMPLOYER_ADMIN');
+  insertUser.run(workforcePlannerId, 'planner@techcorp.in', passwordHash, 'Ananya Deshmukh', 'WORKFORCE_PLANNER');
 
   // ---- Candidate Profiles ----
   const profileId = generateId();

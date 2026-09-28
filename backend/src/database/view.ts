@@ -13,7 +13,7 @@ async function viewDatabase() {
     console.log(`📡 Connected to: Neon PostgreSQL (Cloud)\n`);
     const pool = new pg.Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
     try {
-      const users = await pool.query(`SELECT id, email, role, email_verified, created_at FROM users ORDER BY created_at ASC`);
+      const users = await pool.query(`SELECT id, email, name, role, email_verified, created_at FROM users ORDER BY created_at ASC`);
       console.log('📌 USERS TABLE (Neon Postgres):');
       console.table(users.rows);
 
@@ -46,7 +46,7 @@ async function viewDatabase() {
     console.log(`📁 Connected to: Local SQLite (${config.database.path})\n`);
     const db = getDb();
     try {
-      const users = db.prepare(`SELECT id, email, role, email_verified, created_at FROM users ORDER BY created_at ASC`).all();
+      const users = db.prepare(`SELECT id, email, name, role, email_verified, created_at FROM users ORDER BY created_at ASC`).all();
       console.log('📌 USERS TABLE (SQLite):');
       console.table(users);
 

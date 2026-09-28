@@ -26,6 +26,7 @@ export async function runPgMigrations(connectionString?: string): Promise<void> 
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        name TEXT,
         role TEXT NOT NULL DEFAULT 'CANDIDATE',
         email_verified INTEGER NOT NULL DEFAULT 0,
         is_active INTEGER NOT NULL DEFAULT 1,

@@ -722,8 +722,8 @@ export const mockTalentVaultCandidates: TalentCandidate[] = [
   },
   {
     id: 'TAL-002',
-    codeName: 'OPERATIVE-ELENA',
-    name: 'Elena Rostova',
+    codeName: 'OPERATIVE-ANANYA',
+    name: 'Ananya Deshmukh',
     targetRole: 'Cloud Solutions Architect',
     experience: '5.0 yrs',
     location: 'Hyderabad, India',
@@ -741,8 +741,8 @@ export const mockTalentVaultCandidates: TalentCandidate[] = [
   },
   {
     id: 'TAL-003',
-    codeName: 'OPERATIVE-MARCUS',
-    name: 'Marcus Chen',
+    codeName: 'OPERATIVE-VIKRAM',
+    name: 'Vikram Malhotra',
     targetRole: 'AI & Data Systems Engineer',
     experience: '4.0 yrs',
     location: 'Remote // India',

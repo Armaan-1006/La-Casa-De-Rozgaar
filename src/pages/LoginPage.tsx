@@ -447,7 +447,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   )}
                 </button>
 
-                {/* 3. Marcus (Recruiter) */}
+                {/* 3. Vikram Malhotra (Recruiter) */}
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('recruiter')}
@@ -461,11 +461,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-crimson/20 text-crimson border border-crimson/40 flex items-center justify-center font-bold text-xs">
-                      MV
+                      VM
                     </div>
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
-                        <span>Marcus Vance</span>
+                        <span>Vikram Malhotra</span>
                         <span className="text-[10px] px-1 py-0.2 rounded bg-crimson/15 text-crimson font-mono">
                           RECRUITER
                         </span>
@@ -482,7 +482,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                   )}
                 </button>
 
-                {/* 4. Elena (Workforce Planner) */}
+                {/* 4. Ananya Deshmukh (Workforce Planner) */}
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('planner')}
@@ -496,11 +496,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-crimson/20 text-crimson border border-crimson/40 flex items-center justify-center font-bold text-xs">
-                      ER
+                      AD
                     </div>
                     <div>
                       <div className="text-xs font-semibold flex items-center gap-1.5">
-                        <span>Elena Rostova</span>
+                        <span>Ananya Deshmukh</span>
                         <span className="text-[10px] px-1 py-0.2 rounded bg-crimson/15 text-crimson font-mono">
                           PLANNER
                         </span>
@@ -514,41 +514,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                     <span className="w-3.5 h-3.5 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <ChevronRight size={15} className="text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  )}
-                </button>
-
-                {/* 5. The Professor (Admin) */}
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('admin')}
-                  disabled={isLoading}
-                  className={cn(
-                    'w-full flex items-center justify-between p-2.5 rounded-lg border text-left transition-all group cursor-pointer',
-                    isHeist
-                      ? 'bg-crimson/15 border-crimson/40 hover:border-crimson hover:bg-crimson/25 shadow-glow-crimson'
-                      : 'bg-slate-100 border-slate-300 hover:border-slate-400 hover:bg-slate-200'
-                  )}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-crimson text-white flex items-center justify-center font-bold text-xs">
-                      PR
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold flex items-center gap-1.5">
-                        <span className="font-bold text-crimson">The Professor</span>
-                        <span className="text-[10px] px-1 py-0.2 rounded bg-crimson/20 text-crimson font-mono font-bold">
-                          ADMIN ROOT
-                        </span>
-                      </div>
-                      <div className={cn('text-[11px]', isHeist ? 'text-warm-ivory/60' : 'text-slate-600')}>
-                        Full Command Center Clearance
-                      </div>
-                    </div>
-                  </div>
-                  {activePresetLoading === 'admin' ? (
-                    <span className="w-3.5 h-3.5 border-2 border-crimson border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <ChevronRight size={15} className="text-crimson group-hover:translate-x-0.5 transition-transform" />
                   )}
                 </button>
               </div>

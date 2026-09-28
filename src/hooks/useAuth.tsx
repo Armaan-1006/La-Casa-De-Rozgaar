@@ -54,7 +54,7 @@ export const DEMO_PRESETS: Record<string, { email: string; password: string; nam
     name: 'Rahul Sharma',
     role: 'CANDIDATE',
     headline: 'Full Stack Engineer // React & Node.js',
-    organization: 'Independent Operative',
+    organization: 'Independent Talent',
   },
   candidate_data: {
     email: 'priya@example.com',
@@ -67,26 +67,18 @@ export const DEMO_PRESETS: Record<string, { email: string; password: string; nam
   recruiter: {
     email: 'recruiter@techcorp.in',
     password: 'password123',
-    name: 'Marcus Vance',
+    name: 'Vikram Malhotra',
     role: 'RECRUITER',
-    headline: 'Talent Acquisition & Heist Scout Lead',
-    organization: 'TechCorp International',
+    headline: 'Talent Acquisition & Technical Recruiting Lead',
+    organization: 'TechCorp India',
   },
   planner: {
     email: 'planner@techcorp.in',
     password: 'password123',
-    name: 'Elena Rostova',
+    name: 'Ananya Deshmukh',
     role: 'WORKFORCE_PLANNER',
-    headline: 'Chief Workforce Strategist',
-    organization: 'Workforce Intelligence Unit',
-  },
-  admin: {
-    email: 'admin@rozgaar.in',
-    password: 'password123',
-    name: 'The Professor',
-    role: 'ADMIN',
-    headline: 'Mastermind // Supreme Command',
-    organization: 'La Casa De Rozgaar HQ',
+    headline: 'Chief Workforce Strategist & Gap Analyst',
+    organization: 'TechCorp India',
   },
 }
 
