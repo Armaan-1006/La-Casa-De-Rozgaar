@@ -387,25 +387,25 @@ export type CandidateProfile = typeof mockCandidate
 
 export const mockCandidate = {
   id: 'CANDIDATE-001',
-  codeName: 'PROFESSOR-042',
-  name: 'Alex Rivera',
-  title: 'Full Stack & Cloud Systems Engineer',
-  email: 'alex.rivera@resistance.io',
+  codeName: 'OPERATIVE-RAHUL',
+  name: 'Rahul Sharma',
+  title: 'Lead Full Stack Architect & Tech Lead',
+  email: 'rahul@example.com',
   profileStatus: 'VERIFIED',
-  clearanceLevel: 'LEVEL 4 // STRATEGIC TALENT',
+  clearanceLevel: 'LEVEL 4 // SENIOR FULL STACK',
   targetRole: 'Full Stack Developer',
   secondaryRole: 'Cloud Solutions Architect',
-  experience: '3.5 years',
+  experience: '4.0 years',
   location: 'Bangalore, India (Open to Remote)',
-  lastAssessment: '2026-09-21',
-  roleReadiness: 76,
+  lastAssessment: '2026-09-24',
+  roleReadiness: 84,
 
   assessment: {
-    score: 7.6,
-    category: 'STRONG CANDIDATE',
-    completedAt: '2026-09-21',
+    score: 8.4,
+    category: 'EXCEPTIONAL OPERATIVE',
+    completedAt: '2026-09-24',
     integrity: 'VERIFIED // ZERO ANOMALIES',
-    percentile: 'Top 14% of Market',
+    percentile: 'Top 5% of Market',
     proctorSignals: {
       tabSwitches: 0,
       focusRate: '99.8%',
@@ -415,13 +415,13 @@ export const mockCandidate = {
 
   skills: [
     { name: 'JavaScript', score: 8.4, market: 9.0, gap: -0.6, tier: 'strength' },
-    { name: 'React', score: 8.1, market: 8.5, gap: -0.4, tier: 'strength' },
+    { name: 'React', score: 7.8, market: 8.5, gap: -0.7, tier: 'high' },
+    { name: 'SQL', score: 8.9, market: 8.0, gap: 0.9, tier: 'strength' },
     { name: 'Node.js', score: 7.2, market: 8.0, gap: -0.8, tier: 'high' },
-    { name: 'SQL', score: 7.8, market: 8.0, gap: -0.2, tier: 'strength' },
+    { name: 'Rust', score: 7.5, market: 7.0, gap: 0.5, tier: 'strength' },
     { name: 'TypeScript', score: 6.5, market: 8.2, gap: -1.7, tier: 'critical' },
-    { name: 'Docker', score: 5.3, market: 7.0, gap: -1.7, tier: 'critical' },
-    { name: 'AWS', score: 4.8, market: 7.5, gap: -2.7, tier: 'critical' },
-    { name: 'Git', score: 8.6, market: 8.5, gap: 0.1, tier: 'strength' },
+    { name: 'Docker', score: 4.5, market: 7.0, gap: -2.5, tier: 'critical' },
+    { name: 'AWS', score: 3.5, market: 7.5, gap: -4.0, tier: 'critical' },
   ],
 
   projects: [
@@ -429,30 +429,98 @@ export const mockCandidate = {
       title: 'Distributed Real-Time Task Mesh',
       tech: ['React', 'Node.js', 'Socket.io', 'Redis'],
       metric: 'Handled 50K concurrent state updates with <35ms latency',
-      link: 'github.com/alexrivera/task-mesh',
+      link: 'github.com/rahul/task-mesh',
     },
     {
       title: 'High-Throughput Order Ingestion API',
       tech: ['TypeScript', 'Express', 'PostgreSQL', 'Docker'],
       metric: 'Passed ACID stress-test at 12,000 req/sec',
-      link: 'github.com/alexrivera/order-pipeline',
+      link: 'github.com/rahul/order-pipeline',
     },
     {
       title: 'Autonomous Telemetry Anomaly Guard',
-      tech: ['Python', 'FastAPI', 'AWS Lambda'],
+      tech: ['Node.js', 'Fastify', 'AWS Lambda'],
       metric: 'Decreased production incident triage time by 44%',
-      link: 'github.com/alexrivera/anomaly-guard',
+      link: 'github.com/rahul/anomaly-guard',
     },
   ],
 
   certifications: [
-    { name: 'AWS Certified Cloud Practitioner', issuer: 'Amazon Web Services', date: '2025-11', status: 'ACTIVE' },
+    { name: 'AWS Certified Solutions Architect', issuer: 'Amazon Web Services', date: '2025-11', status: 'ACTIVE' },
     { name: 'Meta Advanced React Architecture', issuer: 'Meta / Coursera', date: '2025-06', status: 'VERIFIED' },
     { name: 'Docker Container Systems Specialist', issuer: 'Linux Foundation', date: '2025-01', status: 'VERIFIED' },
   ],
 
   education: [
-    { degree: 'B.Tech in Computer Science & Engineering', school: 'National Institute of Technology', year: '2023', gpa: '8.8 / 10' },
+    { degree: 'B.Tech in Computer Science & Engineering', school: 'Chandigarh University', year: '2021', gpa: '8.5 / 10' },
+  ],
+}
+
+export const mockCandidatePriya = {
+  id: 'CANDIDATE-002',
+  codeName: 'OPERATIVE-PRIYA',
+  name: 'Priya Patel',
+  title: 'Data Scientist | ML Engineer',
+  email: 'priya@example.com',
+  profileStatus: 'VERIFIED',
+  clearanceLevel: 'LEVEL 4 // APPLIED AI SPECIALIST',
+  targetRole: 'Data Scientist & ML Engineer',
+  secondaryRole: 'AI Research Engineer',
+  experience: '3.5 years',
+  location: 'Mumbai, India (Open to Remote)',
+  lastAssessment: '2026-09-24',
+  roleReadiness: 88,
+
+  assessment: {
+    score: 8.8,
+    category: 'EXCEPTIONAL OPERATIVE',
+    completedAt: '2026-09-24',
+    integrity: 'VERIFIED // ZERO ANOMALIES',
+    percentile: 'Top 3% of Market',
+    proctorSignals: {
+      tabSwitches: 0,
+      focusRate: '100%',
+      cameraSession: 'CONSENTED // CONFIRMED',
+    },
+  },
+
+  skills: [
+    { name: 'Python', score: 9.2, market: 9.0, gap: 0.2, tier: 'strength' },
+    { name: 'Machine Learning', score: 8.1, market: 8.5, gap: -0.4, tier: 'high' },
+    { name: 'SQL', score: 7.8, market: 8.0, gap: -0.2, tier: 'strength' },
+    { name: 'TensorFlow', score: 7.0, market: 7.5, gap: -0.5, tier: 'high' },
+    { name: 'PyTorch', score: 8.4, market: 8.0, gap: 0.4, tier: 'strength' },
+    { name: 'FastAPI', score: 7.6, market: 7.5, gap: 0.1, tier: 'strength' },
+  ],
+
+  projects: [
+    {
+      title: 'Neural Transformer Latency Optimization',
+      tech: ['Python', 'PyTorch', 'TensorFlow', 'CUDA'],
+      metric: 'Reduced inference latency by 62% on edge GPUs',
+      link: 'github.com/priya/neural-opt',
+    },
+    {
+      title: 'Real-Time Fraud Telemetry Classifier',
+      tech: ['Python', 'FastAPI', 'PostgreSQL', 'Scikit-learn'],
+      metric: 'Achieved 99.4% ROC-AUC across 1M transactions/day',
+      link: 'github.com/priya/fraud-detect',
+    },
+    {
+      title: 'Labor Economics Predictive Model',
+      tech: ['Python', 'Pandas', 'XGBoost', 'Docker'],
+      metric: 'Forecasting skill shortage anomalies with 91% accuracy',
+      link: 'github.com/priya/labor-forecast',
+    },
+  ],
+
+  certifications: [
+    { name: 'Deep Learning Specialization', issuer: 'DeepLearning.AI', date: '2025-08', status: 'VERIFIED' },
+    { name: 'TensorFlow Developer Certificate', issuer: 'Google', date: '2025-02', status: 'VERIFIED' },
+  ],
+
+  education: [
+    { degree: 'M.Sc. in Data Science & Artificial Intelligence', school: 'University of Mumbai', year: '2022', gpa: '9.0 / 10' },
   ],
 }
 

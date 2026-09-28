@@ -1,5 +1,6 @@
 import {
   mockCandidate,
+  mockCandidatePriya,
   mockJobs,
   mockMarketData,
   mockRoleDossiers,
@@ -33,16 +34,35 @@ const USER_KEY = 'lcdr_auth_user'
 const CANDIDATE_STORAGE_KEY = 'lcdr_candidate_profile'
 
 export function getStoredCandidate() {
-  if (typeof window === 'undefined') return mockCandidate
-  try {
-    const raw = localStorage.getItem(CANDIDATE_STORAGE_KEY)
-    if (raw) {
-      return { ...mockCandidate, ...JSON.parse(raw) }
+  let baseTemplate = mockCandidate
+  if (typeof window !== 'undefined') {
+    try {
+      const userStr = localStorage.getItem(USER_KEY)
+      if (userStr) {
+        const u = JSON.parse(userStr)
+        if (u.email?.includes('priya') || u.name?.includes('Priya')) {
+          baseTemplate = mockCandidatePriya
+        }
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // fallback
+
+    try {
+      const raw = localStorage.getItem(CANDIDATE_STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        const userStr = localStorage.getItem(USER_KEY)
+        const u = userStr ? JSON.parse(userStr) : null
+        if (!u || !parsed.email || parsed.email === u.email || parsed.name === u.name) {
+          return { ...baseTemplate, ...parsed }
+        }
+      }
+    } catch {
+      // fallback
+    }
   }
-  return mockCandidate
+  return baseTemplate
 }
 
 export function saveStoredCandidate(candidate: typeof mockCandidate) {
@@ -214,31 +234,55 @@ class ApiService {
   public candidate = {
     getProfile: async () => {
       await this.ensureAuth()
-      const stored = getStoredCandidate()
+      const base = getStoredCandidate()
       const res = await this.request<any>('/candidates/profile')
       if (res.data) {
+        const rawSkills = res.data.skills || []
+        const parsedSkills = rawSkills.length
+          ? rawSkills.map((s: any) => {
+              const score = Number(s.verified_score || s.assessment_score || s.self_reported_score || 7.0)
+              const market = 8.5
+              return {
+                name: s.skill_name || s.name,
+                score: score,
+                market: market,
+                gap: Math.round((score - market) * 10) / 10,
+                tier: score >= 8 ? 'strength' : score >= 6 ? 'high' : 'critical'
+              }
+            })
+          : base.skills
+
+        const avgScore = parsedSkills.reduce((acc: number, cur: any) => acc + (cur.score || 0), 0) / (parsedSkills.length || 1)
+        const readiness = Math.min(99, Math.round((avgScore / 10) * 100))
+        const firstName = (res.data.name || base.name || 'Candidate').trim().split(/\s+/)[0]
+
         // Merge with rich UI format
         const merged = {
-          ...stored,
+          ...base,
           ...res.data,
-          name: res.data.name || stored.name,
-          targetRole: (res.data.target_roles && res.data.target_roles[0]) || stored.targetRole,
-          location: res.data.location || stored.location,
+          id: res.data.id || base.id,
+          codeName: `OPERATIVE-${firstName.toUpperCase()}`,
+          name: res.data.name || base.name,
+          title: res.data.headline || base.title,
+          targetRole: (res.data.target_roles && res.data.target_roles[0]) ? res.data.target_roles[0].replace(/^role_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : base.targetRole,
+          secondaryRole: (res.data.target_roles && res.data.target_roles[1]) ? res.data.target_roles[1].replace(/^role_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : base.secondaryRole,
+          location: res.data.location || base.location,
           experience: `${res.data.total_experience_years || 4} years`,
-          skills: res.data.skills?.length
-            ? res.data.skills.map((s: any) => ({
-                name: s.skill_name || s.name,
-                score: s.verified_score || s.assessment_score || s.self_reported_score || 7.0,
-                market: 8.5,
-                gap: Math.round(((s.verified_score || s.assessment_score || 7.0) - 8.5) * 10) / 10,
-                tier: (s.verified_score || s.assessment_score || 7.0) >= 8 ? 'strength' : (s.verified_score || s.assessment_score || 7.0) >= 6 ? 'high' : 'critical'
+          roleReadiness: readiness,
+          skills: parsedSkills,
+          education: (res.data.education && res.data.education.length)
+            ? res.data.education.map((e: any) => ({
+                degree: e.degree + (e.field ? ` in ${e.field}` : ''),
+                school: e.institution || 'University',
+                year: e.end_date || e.start_date || '2021',
+                gpa: e.grade || '8.5 / 10'
               }))
-            : stored.skills
+            : base.education,
         }
         saveStoredCandidate(merged)
         return merged
       }
-      return stored
+      return base
     },
 
     updateProfile: async (data: {

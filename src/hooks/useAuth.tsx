@@ -171,6 +171,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setToken(authToken || 'jwt_simulated_token_' + Date.now())
       setUser(authUser)
+      try {
+        localStorage.removeItem('lcdr_candidate_profile')
+        window.dispatchEvent(new Event('candidate-profile-updated'))
+      } catch {}
       // Automatically apply the authenticated user's role default theme (Candidate -> Heist, Recruiter -> Professional)
       applyRoleDefaultTheme(authUser.role)
       setIsLoading(false)
@@ -195,6 +199,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const simToken = 'lcdr_jwt_' + Math.random().toString(36).substring(2)
         setToken(simToken)
         setUser(authUser)
+        try {
+          localStorage.removeItem('lcdr_candidate_profile')
+          window.dispatchEvent(new Event('candidate-profile-updated'))
+        } catch {}
         applyRoleDefaultTheme(authUser.role)
         setIsLoading(false)
         return { success: true, user: authUser }
@@ -243,6 +251,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setToken(authToken || 'jwt_simulated_token_' + Date.now())
       setUser(authUser)
+      try {
+        localStorage.removeItem('lcdr_candidate_profile')
+        window.dispatchEvent(new Event('candidate-profile-updated'))
+      } catch {}
       // Automatically apply the registered user's role default theme (Candidate -> Heist, Recruiter -> Professional)
       applyRoleDefaultTheme(authUser.role)
       setIsLoading(false)
@@ -260,8 +272,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
+    try {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(USER_KEY)
+      localStorage.removeItem('lcdr_candidate_profile')
+      window.dispatchEvent(new Event('candidate-profile-updated'))
+    } catch {}
     resetThemeOnSignOut()
   }, [resetThemeOnSignOut])
 

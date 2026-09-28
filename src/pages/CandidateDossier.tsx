@@ -23,6 +23,11 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
 
+  // Edit form state
+  const [editName, setEditName] = useState(candidate.name)
+  const [editRole, setEditRole] = useState(candidate.targetRole)
+  const [editLoc, setEditLoc] = useState(candidate.location)
+
   // Fetch live candidate profile
   useEffect(() => {
     let mounted = true
@@ -58,11 +63,6 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isEditModalOpen])
-
-  // Edit form state
-  const [editName, setEditName] = useState(candidate.name)
-  const [editRole, setEditRole] = useState(candidate.targetRole)
-  const [editLoc, setEditLoc] = useState(candidate.location)
 
   const handleSaveProfile = async () => {
     setCandidate((prev: CandidateProfile) => ({
@@ -108,6 +108,14 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
     market: skill.market,
   }))
 
+  const initials = (candidate.name || 'Candidate')
+    .trim()
+    .split(/\s+/)
+    .map((n: string) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
   return (
     <div className="space-y-6">
       {/* 1. Enterprise Profile Header */}
@@ -115,7 +123,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-lg bg-[#1E3A8A] flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm">
-              AR
+              {initials}
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -408,15 +416,21 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
                 </div>
               ))}
 
-              <div className="pt-2 border-t border-slate-100 space-y-1 text-xs">
-                <div className="flex items-center gap-2 text-slate-600">
-                  <GraduationCap size={15} />
-                  <span className="font-semibold text-slate-900">{candidate.education[0].degree}</span>
+              {candidate.education && candidate.education.length > 0 && (
+                <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
+                  {candidate.education.map((edu: any, idx: number) => (
+                    <div key={idx} className="space-y-0.5">
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <GraduationCap size={15} />
+                        <span className="font-semibold text-slate-900">{edu.degree}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 pl-5">
+                        {edu.school} {edu.year ? `• Class of ${edu.year}` : ''} {edu.gpa ? `(GPA: ${edu.gpa})` : ''}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-[11px] text-slate-500 pl-5">
-                  {candidate.education[0].school} • Class of {candidate.education[0].year}
-                </p>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -515,6 +529,11 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const [shareCopied, setShareCopied] = useState(false)
   const [exportNotice, setExportNotice] = useState(false)
 
+  // Edit form state
+  const [editName, setEditName] = useState(candidate.name)
+  const [editRole, setEditRole] = useState(candidate.targetRole)
+  const [editLoc, setEditLoc] = useState(candidate.location)
+
   // Fetch live candidate profile
   useEffect(() => {
     let mounted = true
@@ -536,16 +555,6 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
     }
   }, [])
 
-  // In Enterprise Mode: render the enterprise candidate profile
-  if (!isHeist) {
-    return <EnterpriseCandidateProfile onNavigate={onNavigate} />
-  }
-
-  // Edit form state
-  const [editName, setEditName] = useState(candidate.name)
-  const [editRole, setEditRole] = useState(candidate.targetRole)
-  const [editLoc, setEditLoc] = useState(candidate.location)
-
   useEffect(() => {
     if (!isEditModalOpen) return
     const originalOverflow = document.body.style.overflow
@@ -559,6 +568,11 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isEditModalOpen])
+
+  // In Enterprise Mode: render the enterprise candidate profile
+  if (!isHeist) {
+    return <EnterpriseCandidateProfile onNavigate={onNavigate} />
+  }
 
   const handleSaveProfile = async () => {
     setCandidate((prev: CandidateProfile) => ({
@@ -604,6 +618,14 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
     market: skill.market,
   }))
 
+  const initials = (candidate.name || 'Candidate')
+    .trim()
+    .split(/\s+/)
+    .map((n: string) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -612,7 +634,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <div className="w-12 h-12 rounded-lg bg-gradient-crimson flex items-center justify-center text-warm-ivory font-bold shadow-glow-crimson font-mono text-lg shrink-0">
-                AR
+                {initials}
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -851,15 +873,21 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
               </div>
             ))}
 
-            <div className="pt-2 border-t border-burgundy/20 space-y-1 text-xs font-mono">
-              <div className="flex items-center gap-2 text-warm-ivory/60">
-                <GraduationCap size={16} className="text-crimson" />
-                <span className="font-bold text-warm-ivory">{candidate.education[0].degree}</span>
+            {candidate.education && candidate.education.length > 0 && (
+              <div className="pt-2 border-t border-burgundy/20 space-y-2 text-xs font-mono">
+                {candidate.education.map((edu: any, idx: number) => (
+                  <div key={idx} className="space-y-0.5">
+                    <div className="flex items-center gap-2 text-warm-ivory/60">
+                      <GraduationCap size={16} className="text-crimson" />
+                      <span className="font-bold text-warm-ivory">{edu.degree}</span>
+                    </div>
+                    <p className="text-[11px] text-warm-ivory/50 pl-6">
+                      {edu.school} {edu.year ? `• Class of ${edu.year}` : ''} {edu.gpa ? `(GPA: ${edu.gpa})` : ''}
+                    </p>
+                  </div>
+                ))}
               </div>
-              <p className="text-[11px] text-warm-ivory/50 pl-6">
-                {candidate.education[0].school} • Class of {candidate.education[0].year} (GPA: {candidate.education[0].gpa})
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </section>
