@@ -260,13 +260,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              'w-9 h-9 rounded-lg flex items-center justify-center font-heading font-bold text-lg shadow-md transition-colors',
+              'w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center shadow-md transition-colors shrink-0',
               isHeist
-                ? 'bg-gradient-to-br from-crimson to-blood-red text-white border border-crimson/60 shadow-glow-crimson'
-                : 'bg-blue-600 text-white shadow-blue-500/20'
+                ? 'bg-black/90 border border-crimson/50 shadow-glow-crimson'
+                : 'bg-slate-900 border border-slate-200 shadow-blue-500/10'
             )}
           >
-            R
+            <img
+              src="/images/la-casa-de-rozgaar-logo.png"
+              alt="La Casa De Rozgaar"
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">
