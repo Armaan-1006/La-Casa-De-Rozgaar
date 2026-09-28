@@ -106,13 +106,17 @@ export const SharedDossierPage: React.FC<SharedDossierPageProps> = ({ onNavigate
             >
               <div
                 className={cn(
-                  'w-9 h-9 rounded-lg flex items-center justify-center font-mono font-bold text-sm shadow-md transition-transform group-hover:scale-105',
+                  'w-9 h-9 sm:w-10 sm:h-10 rounded-lg overflow-hidden flex items-center justify-center shadow-md transition-transform group-hover:scale-105 shrink-0',
                   isHeist
-                    ? 'bg-gradient-crimson text-warm-ivory shadow-glow-crimson'
-                    : 'bg-[#1E3A8A] text-white'
+                    ? 'bg-black/90 border border-crimson/40 shadow-glow-crimson'
+                    : 'bg-slate-950 border border-slate-200'
                 )}
               >
-                LR
+                <img
+                  src="/images/la-casa-de-rozgaar-logo.png"
+                  alt="La Casa De Rozgaar"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <h1

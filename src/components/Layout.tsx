@@ -187,15 +187,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
                 onClick={() => handleNavClick('war-room')}
                 className="text-left group flex items-center gap-2.5"
               >
-                <div className="w-8 h-8 rounded bg-[#1E3A8A] flex items-center justify-center text-white font-semibold text-xs tracking-wider shrink-0 shadow-sm">
-                  LR
+                <div className="w-8 h-8 rounded-md overflow-hidden bg-slate-950 border border-slate-200/80 flex items-center justify-center shrink-0 shadow-2xs">
+                  <img
+                    src="/images/la-casa-de-rozgaar-logo.png"
+                    alt="La Casa De Rozgaar"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <div>
                   <h1 className="text-sm font-bold text-slate-900 leading-tight tracking-tight">
                     La Casa De Rozgaar
                   </h1>
                   <p className="text-[10px] font-medium text-slate-500 tracking-normal">
-                    Enterprise Talent Intelligence
+                    The House of Employment
                   </p>
                 </div>
               </button>
@@ -276,8 +280,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
               className="text-left group transition-transform duration-200 hover:scale-[1.01]"
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-gradient-crimson flex items-center justify-center text-warm-ivory font-bold shadow-glow-crimson font-mono text-sm shrink-0">
-                  LC
+                <div className="w-9 h-9 rounded-lg overflow-hidden bg-black/90 border border-burgundy/40 shadow-glow-crimson flex items-center justify-center shrink-0">
+                  <img
+                    src="/images/la-casa-de-rozgaar-logo.png"
+                    alt="La Casa De Rozgaar"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <div>
                   <h1 className="heading-sm text-crimson leading-tight group-hover:text-crimson-light">LA CASA</h1>
