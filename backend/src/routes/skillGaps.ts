@@ -18,7 +18,7 @@ router.post('/calculate', async (req: Request, res: Response) => {
       return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'roleId or targetRoleId is required', requestId: req.requestId } });
     }
 
-    const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
     if (!profile) {
       return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Candidate profile not found', requestId: req.requestId } });
     }
@@ -30,7 +30,7 @@ router.post('/calculate', async (req: Request, res: Response) => {
     }
 
     // Get candidate skills
-    const candidateSkills = db.prepare('SELECT skill_id, skill_name, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) as any[];
+    const candidateSkills = (await db.prepare('SELECT skill_id, skill_name, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) || []) as any[];
     const skillMap = new Map(candidateSkills.map(s => [s.skill_id, s]));
 
     // Calculate gaps
@@ -72,10 +72,10 @@ router.post('/calculate', async (req: Request, res: Response) => {
     gaps.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
     // Store in database
-    db.prepare('DELETE FROM skill_gaps WHERE candidate_id = ? AND role_id = ?').run(profile.id, roleId);
+    await db.prepare('DELETE FROM skill_gaps WHERE candidate_id = ? AND role_id = ?').run(profile.id, roleId);
     const insertGap = db.prepare('INSERT INTO skill_gaps (id, candidate_id, role_id, skill_id, skill_name, current_score, required_score, gap, priority, market_demand, reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     for (const gap of gaps) {
-      insertGap.run(generateId(), profile.id, roleId, gap.skillId, gap.skillName, gap.currentScore, gap.requiredScore, gap.gap, gap.priority, gap.marketDemand, gap.reason);
+      await insertGap.run(generateId(), profile.id, roleId, gap.skillId, gap.skillName, gap.currentScore, gap.requiredScore, gap.gap, gap.priority, gap.marketDemand, gap.reason);
     }
 
     // Calculate role readiness
@@ -98,22 +98,26 @@ router.post('/calculate', async (req: Request, res: Response) => {
 });
 
 // ---- GET STORED GAPS ----
-router.get('/', (req: Request, res: Response) => {
-  const db = getDb();
-  const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
-  if (!profile) {
-    return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
-  }
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    if (!profile) {
+      return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
+    }
 
-  const roleId = req.query.roleId as string;
-  let gaps;
-  if (roleId) {
-    gaps = db.prepare('SELECT * FROM skill_gaps WHERE candidate_id = ? AND role_id = ? ORDER BY calculated_at DESC').all(profile.id, roleId);
-  } else {
-    gaps = db.prepare('SELECT * FROM skill_gaps WHERE candidate_id = ? ORDER BY calculated_at DESC').all(profile.id);
-  }
+    const roleId = req.query.roleId as string;
+    let gaps;
+    if (roleId) {
+      gaps = await db.prepare('SELECT * FROM skill_gaps WHERE candidate_id = ? AND role_id = ? ORDER BY calculated_at DESC').all(profile.id, roleId);
+    } else {
+      gaps = await db.prepare('SELECT * FROM skill_gaps WHERE candidate_id = ? ORDER BY calculated_at DESC').all(profile.id);
+    }
 
-  return res.json({ data: gaps, meta: { requestId: req.requestId } });
+    return res.json({ data: gaps || [], meta: { requestId: req.requestId } });
+  } catch (err: any) {
+    return res.status(500).json({ error: { code: 'SKILL_GAP_FETCH_ERROR', message: err.message, requestId: req.requestId } });
+  }
 });
 
 function importanceWeight(importance: string): number {

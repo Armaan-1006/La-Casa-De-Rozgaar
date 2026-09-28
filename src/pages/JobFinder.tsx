@@ -31,11 +31,18 @@ export const JobFinder: React.FC<JobFinderProps> = ({ onNavigate }) => {
 
   const toggleBookmark = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    setBookmarkedJobs((prev) => ({ ...prev, [id]: !prev[id] }))
+    const nextState = !bookmarkedJobs[id]
+    setBookmarkedJobs((prev) => ({ ...prev, [id]: nextState }))
+    if (nextState) {
+      api.matching.saveJob(id).catch(() => {})
+    } else {
+      api.matching.unsaveJob(id).catch(() => {})
+    }
   }
 
   const handleApply = (id: string) => {
     setAppliedJobs((prev) => ({ ...prev, [id]: true }))
+    api.matching.saveJob(id).catch(() => {})
   }
 
   const filteredJobs = useMemo(() => {

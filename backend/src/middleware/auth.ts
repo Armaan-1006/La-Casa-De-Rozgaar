@@ -25,7 +25,7 @@ export function requestIdMiddleware(req: Request, _res: Response, next: NextFunc
 /**
  * Authenticate via Bearer token.
  */
-export function authenticate(req: Request, res: Response, next: NextFunction): void {
+export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
     res.status(401).json({
@@ -38,8 +38,8 @@ export function authenticate(req: Request, res: Response, next: NextFunction): v
     const payload = jwt.verify(token, config.jwt.secret) as AuthTokenPayload;
     // Verify session not revoked
     const db = getDb();
-    const session = db.prepare('SELECT revoked FROM sessions WHERE token = ?').get(token) as { revoked: number } | undefined;
-    if (!session || session.revoked) {
+    const session = await db.prepare('SELECT revoked FROM sessions WHERE token = ?').get(token) as { revoked: number | boolean } | undefined;
+    if (session && (session.revoked === 1 || session.revoked === true)) {
       res.status(401).json({
         error: { code: 'SESSION_REVOKED', message: 'Session has been revoked', requestId: req.requestId }
       });
@@ -78,7 +78,7 @@ export function authorize(...roles: UserRole[]) {
 /**
  * Verify organization membership (for employer endpoints).
  */
-export function requireOrganization(req: Request, res: Response, next: NextFunction): void {
+export async function requireOrganization(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.user) {
     res.status(401).json({
       error: { code: 'UNAUTHORIZED', message: 'Not authenticated', requestId: req.requestId }
@@ -89,7 +89,7 @@ export function requireOrganization(req: Request, res: Response, next: NextFunct
   const db = getDb();
   let orgId = req.params.orgId || req.body?.organizationId || req.query?.organizationId;
   if (!orgId) {
-    const userOrg = db.prepare('SELECT organization_id FROM organization_users WHERE user_id = ?').get(req.user.userId) as { organization_id: string } | undefined;
+    const userOrg = await db.prepare('SELECT organization_id FROM organization_users WHERE user_id = ?').get(req.user.userId) as { organization_id: string } | undefined;
     if (userOrg) {
       orgId = userOrg.organization_id;
     }
@@ -103,7 +103,7 @@ export function requireOrganization(req: Request, res: Response, next: NextFunct
   }
 
   if (orgId) {
-    const membership = db.prepare(
+    const membership = await db.prepare(
       'SELECT role FROM organization_users WHERE organization_id = ? AND user_id = ?'
     ).get(orgId, req.user.userId) as { role: string } | undefined;
 
@@ -137,8 +137,16 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
  * Audit logging helper.
  */
 export function auditLog(userId: string, action: string, entityType: string, entityId: string, metadata?: Record<string, unknown>, ipAddress?: string): void {
-  const db = getDb();
-  db.prepare(
-    `INSERT INTO audit_log (id, user_id, action, entity_type, entity_id, metadata, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(generateId(), userId, action, entityType, entityId, metadata ? JSON.stringify(metadata) : null, ipAddress || null);
+  try {
+    const db = getDb();
+    Promise.resolve(
+      db.prepare(
+        `INSERT INTO audit_log (id, user_id, action, entity_type, entity_id, metadata, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).run(generateId(), userId, action, entityType, entityId, metadata ? JSON.stringify(metadata) : null, ipAddress || null)
+    ).catch((err: any) => {
+      console.warn('Audit log write error:', err.message);
+    });
+  } catch (err) {
+    console.warn('Audit log failed:', err);
+  }
 }

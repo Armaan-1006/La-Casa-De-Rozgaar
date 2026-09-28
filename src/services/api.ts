@@ -106,8 +106,11 @@ class ApiService {
 
   // ---- Token & Auth State ----
   public getToken(): string | null {
-    if (!this.token && typeof window !== 'undefined') {
-      this.token = localStorage.getItem(TOKEN_KEY)
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(TOKEN_KEY)
+      if (stored) {
+        this.token = stored
+      }
     }
     return this.token
   }
@@ -132,7 +135,10 @@ class ApiService {
 
   // Helper to ensure authenticated state (auto-login with demo candidate if no token)
   public async ensureAuth(): Promise<string | null> {
-    if (this.getToken()) return this.token
+    const currentToken = this.getToken()
+    if (currentToken && !currentToken.startsWith('jwt_simulated_token_') && !currentToken.startsWith('lcdr_jwt_')) {
+      return currentToken
+    }
     try {
       // Attempt auto-login with default demo account
       const res = await this.auth.login('rahul@example.com', 'password123')
@@ -156,16 +162,30 @@ class ApiService {
       ...(options.headers as Record<string, string> || {}),
     }
 
-    const token = this.getToken()
+    let token = this.getToken()
     if (token && !headers['Authorization']) {
       headers['Authorization'] = `Bearer ${token}`
     }
 
     try {
-      const res = await fetch(url, {
+      let res = await fetch(url, {
         ...options,
         headers,
       })
+
+      if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/auth/register')) {
+        // Token might be expired or simulated; re-authenticate
+        localStorage.removeItem(TOKEN_KEY)
+        this.token = null
+        const freshToken = await this.ensureAuth()
+        if (freshToken) {
+          headers['Authorization'] = `Bearer ${freshToken}`
+          res = await fetch(url, {
+            ...options,
+            headers,
+          })
+        }
+      }
 
       this.isOnline = true
       const json = await res.json().catch(() => ({}))
@@ -308,6 +328,9 @@ class ApiService {
         method: 'PUT',
         body: JSON.stringify(data),
       })
+      if (res.data) {
+        await api.candidate.getProfile()
+      }
       return res.data || updated
     },
 
@@ -327,7 +350,7 @@ class ApiService {
       return res.data
     },
 
-    applyAssessmentScore: (data: {
+    applyAssessmentScore: async (data: {
       score: number
       percentage: number
       correctCount?: number
@@ -416,6 +439,17 @@ class ApiService {
       }
 
       saveStoredCandidate(updatedCandidate)
+
+      // Post to backend database
+      try {
+        await this.request<any>('/assessments/submit-direct', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        })
+      } catch {
+        // Fallback recorded in storage
+      }
+
       return updatedCandidate
     },
   }
@@ -535,6 +569,16 @@ class ApiService {
         body: JSON.stringify({ targetRoleId })
       })
       return res.data
+    },
+
+    saveJob: async (jobId: string) => {
+      await this.ensureAuth()
+      return this.request<any>(`/matching/saved/${jobId}`, { method: 'POST' })
+    },
+
+    unsaveJob: async (jobId: string) => {
+      await this.ensureAuth()
+      return this.request<any>(`/matching/saved/${jobId}`, { method: 'DELETE' })
     }
   }
 

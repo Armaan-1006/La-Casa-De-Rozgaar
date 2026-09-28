@@ -74,10 +74,10 @@ export function createApp(): Express {
   app.use(requestIdMiddleware);
 
   // Health check handler
-  const healthHandler = (_req: Request, res: Response) => {
+  const healthHandler = async (_req: Request, res: Response) => {
     try {
       const db = getDb();
-      db.prepare('SELECT 1').get();
+      await db.prepare('SELECT 1').get();
       res.json({
         status: 'ok',
         timestamp: new Date().toISOString(),

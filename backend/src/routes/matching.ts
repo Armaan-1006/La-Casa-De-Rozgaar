@@ -13,9 +13,13 @@ router.post('/jobs/:jobId', async (req: Request, res: Response) => {
     const db = getDb();
     const intel = getIntelligenceProvider();
 
-    const profile = db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as any;
+    let profile = await db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as any;
     if (!profile) {
-      return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
+      const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.user!.userId) as any;
+      const newProfileId = generateId();
+      const defaultName = user?.name || (user?.email ? user.email.split('@')[0] : 'Candidate');
+      await db.prepare('INSERT INTO candidate_profiles (id, user_id, name) VALUES (?, ?, ?)').run(newProfileId, req.user!.userId, defaultName);
+      profile = await db.prepare('SELECT * FROM candidate_profiles WHERE id = ?').get(newProfileId) as any;
     }
 
     const job = await intel.getJob(req.params.jobId);
@@ -23,13 +27,17 @@ router.post('/jobs/:jobId', async (req: Request, res: Response) => {
       return res.status(404).json({ error: { code: 'JOB_NOT_FOUND', message: 'Job not found', requestId: req.requestId } });
     }
 
-    const candidateSkills = db.prepare('SELECT skill_id, skill_name, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) as any[];
-    const experience = db.prepare('SELECT * FROM candidate_experience WHERE candidate_id = ?').all(profile.id) as any[];
+    const candidateSkills = (await db.prepare('SELECT skill_id, skill_name, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) || []) as any[];
+    const experience = (await db.prepare('SELECT * FROM candidate_experience WHERE candidate_id = ?').all(profile.id) || []) as any[];
 
     const match = await calculateJobMatch(profile, candidateSkills, experience, job, intel);
 
-    // Store match
-    db.prepare(`INSERT OR REPLACE INTO job_matches (id, candidate_id, job_id, overall_match, skill_match, experience_match, role_match, location_match, matched_skills, missing_skills, explanation)
+    // Delete existing match if any then insert
+    try {
+      await db.prepare('DELETE FROM job_matches WHERE candidate_id = ? AND job_id = ?').run(profile.id, job.id);
+    } catch {}
+
+    await db.prepare(`INSERT INTO job_matches (id, candidate_id, job_id, overall_match, skill_match, experience_match, role_match, location_match, matched_skills, missing_skills, explanation)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
       generateId(), profile.id, job.id, match.overallMatch, match.skillMatch, match.experienceMatch,
       match.roleMatch, match.locationMatch, JSON.stringify(match.matchedSkills),
@@ -48,15 +56,19 @@ router.get('/jobs/recommended', async (req: Request, res: Response) => {
     const db = getDb();
     const intel = getIntelligenceProvider();
 
-    const profile = db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as any;
+    let profile = await db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as any;
     if (!profile) {
-      return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
+      const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.user!.userId) as any;
+      const newProfileId = generateId();
+      const defaultName = user?.name || (user?.email ? user.email.split('@')[0] : 'Candidate');
+      await db.prepare('INSERT INTO candidate_profiles (id, user_id, name) VALUES (?, ?, ?)').run(newProfileId, req.user!.userId, defaultName);
+      profile = await db.prepare('SELECT * FROM candidate_profiles WHERE id = ?').get(newProfileId) as any;
     }
-    profile.target_roles = JSON.parse(profile.target_roles || '[]');
-    profile.preferred_locations = JSON.parse(profile.preferred_locations || '[]');
+    try { profile.target_roles = typeof profile.target_roles === 'string' ? JSON.parse(profile.target_roles || '[]') : (profile.target_roles || []); } catch { profile.target_roles = []; }
+    try { profile.preferred_locations = typeof profile.preferred_locations === 'string' ? JSON.parse(profile.preferred_locations || '[]') : (profile.preferred_locations || []); } catch { profile.preferred_locations = []; }
 
-    const candidateSkills = db.prepare('SELECT skill_id, skill_name, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) as any[];
-    const experience = db.prepare('SELECT * FROM candidate_experience WHERE candidate_id = ?').all(profile.id) as any[];
+    const candidateSkills = (await db.prepare('SELECT skill_id, skill_name, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) || []) as any[];
+    const experience = (await db.prepare('SELECT * FROM candidate_experience WHERE candidate_id = ?').all(profile.id) || []) as any[];
 
     // Search jobs matching candidate's skills
     const skillIds = candidateSkills.map((s: any) => s.skill_id);
@@ -88,37 +100,53 @@ router.get('/jobs/recommended', async (req: Request, res: Response) => {
 });
 
 // ---- SAVED JOBS ----
-router.get('/saved', (req: Request, res: Response) => {
-  const db = getDb();
-  const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
-  if (!profile) return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
-
-  const saved = db.prepare('SELECT * FROM saved_jobs WHERE candidate_id = ? ORDER BY saved_at DESC').all(profile.id);
-  return res.json({ data: saved, meta: { requestId: req.requestId } });
-});
-
-router.post('/saved/:jobId', (req: Request, res: Response) => {
-  const db = getDb();
-  const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
-  if (!profile) return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
-
+router.get('/saved', async (req: Request, res: Response) => {
   try {
-    db.prepare('INSERT INTO saved_jobs (id, candidate_id, job_id, notes) VALUES (?, ?, ?, ?)').run(
-      generateId(), profile.id, req.params.jobId, req.body.notes || null
-    );
-    return res.status(201).json({ data: { message: 'Job saved' }, meta: { requestId: req.requestId } });
-  } catch {
-    return res.json({ data: { message: 'Job already saved' }, meta: { requestId: req.requestId } });
+    const db = getDb();
+    const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    if (!profile) return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
+
+    const saved = (await db.prepare('SELECT * FROM saved_jobs WHERE candidate_id = ? ORDER BY saved_at DESC').all(profile.id) || []) as any[];
+    return res.json({ data: saved, meta: { requestId: req.requestId } });
+  } catch (err: any) {
+    return res.status(500).json({ error: { code: 'SAVED_JOBS_ERROR', message: err.message, requestId: req.requestId } });
   }
 });
 
-router.delete('/saved/:jobId', (req: Request, res: Response) => {
-  const db = getDb();
-  const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
-  if (!profile) return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
+router.post('/saved/:jobId', async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    let profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    if (!profile) {
+      const newProfileId = generateId();
+      await db.prepare('INSERT INTO candidate_profiles (id, user_id, name) VALUES (?, ?, ?)').run(newProfileId, req.user!.userId, 'Candidate');
+      profile = { id: newProfileId };
+    }
 
-  db.prepare('DELETE FROM saved_jobs WHERE candidate_id = ? AND job_id = ?').run(profile.id, req.params.jobId);
-  return res.json({ data: { message: 'Job removed from saved' }, meta: { requestId: req.requestId } });
+    try {
+      await db.prepare('INSERT INTO saved_jobs (id, candidate_id, job_id, notes) VALUES (?, ?, ?, ?)').run(
+        generateId(), profile.id, req.params.jobId, req.body.notes || null
+      );
+      return res.status(201).json({ data: { message: 'Job saved' }, meta: { requestId: req.requestId } });
+    } catch {
+      return res.json({ data: { message: 'Job already saved' }, meta: { requestId: req.requestId } });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ error: { code: 'SAVE_JOB_ERROR', message: err.message, requestId: req.requestId } });
+  }
+});
+
+router.delete('/saved/:jobId', async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    if (!profile) return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
+
+    await db.prepare('DELETE FROM saved_jobs WHERE candidate_id = ? AND job_id = ?').run(profile.id, req.params.jobId);
+    return res.json({ data: { message: 'Job removed from saved' }, meta: { requestId: req.requestId } });
+  } catch (err: any) {
+    return res.status(500).json({ error: { code: 'DELETE_SAVED_JOB_ERROR', message: err.message, requestId: req.requestId } });
+  }
 });
 
 // ---- MATCHING ENGINE ----
@@ -165,15 +193,21 @@ async function calculateJobMatch(profile: any, candidateSkills: any[], experienc
   }
 
   // 3. Role Match
-  const targetRoles = Array.isArray(profile.target_roles)
-    ? profile.target_roles
-    : JSON.parse(profile.target_roles || '[]');
-  const roleMatch = targetRoles.some((r: string) => job.title.toLowerCase().includes(r.replace('role_', '').toLowerCase())) ? 1.0 : 0.5;
+  let targetRoles = [];
+  try {
+    targetRoles = Array.isArray(profile.target_roles)
+      ? profile.target_roles
+      : JSON.parse(profile.target_roles || '[]');
+  } catch { targetRoles = []; }
+  const roleMatch = targetRoles.some((r: string) => (job.title || '').toLowerCase().includes(r.replace('role_', '').toLowerCase())) ? 1.0 : 0.5;
 
   // 4. Location Match
-  const preferredLocations = Array.isArray(profile.preferred_locations)
-    ? profile.preferred_locations
-    : JSON.parse(profile.preferred_locations || '[]');
+  let preferredLocations = [];
+  try {
+    preferredLocations = Array.isArray(profile.preferred_locations)
+      ? profile.preferred_locations
+      : JSON.parse(profile.preferred_locations || '[]');
+  } catch { preferredLocations = []; }
   const jobLoc = (job.location || '').toLowerCase();
   let locationMatch = 0.5;
   if (jobLoc.includes('remote')) locationMatch = 1.0;

@@ -18,7 +18,7 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'targetRoleId and skillChanges are required', requestId: req.requestId } });
     }
 
-    const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
     if (!profile) {
       return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
     }
@@ -30,7 +30,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Get current skills
-    const candidateSkills = db.prepare('SELECT skill_id, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) as any[];
+    const candidateSkills = (await db.prepare('SELECT skill_id, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) || []) as any[];
     const skillMap = new Map(candidateSkills.map(s => [s.skill_id, s.verified_score || s.assessment_score || s.self_reported_score || 0]));
 
     // Apply hypothetical changes
@@ -125,7 +125,7 @@ router.post('/scenarios', async (req: Request, res: Response) => {
     }
 
     const id = generateId();
-    db.prepare('INSERT INTO career_scenarios (id, user_id, name, target_role_id, skill_changes, result, model_version) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    await db.prepare('INSERT INTO career_scenarios (id, user_id, name, target_role_id, skill_changes, result, model_version) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(id, req.user!.userId, name, targetRoleId, JSON.stringify(skillChanges), JSON.stringify(result || {}), '1.0');
 
     return res.status(201).json({ data: { id, message: 'Scenario saved' }, meta: { requestId: req.requestId } });
@@ -135,33 +135,45 @@ router.post('/scenarios', async (req: Request, res: Response) => {
 });
 
 // ---- LIST SCENARIOS ----
-router.get('/scenarios', (req: Request, res: Response) => {
-  const db = getDb();
-  const scenarios = db.prepare('SELECT * FROM career_scenarios WHERE user_id = ? ORDER BY created_at DESC').all(req.user!.userId) as any[];
-  scenarios.forEach(s => {
-    s.skill_changes = JSON.parse(s.skill_changes || '[]');
-    s.result = JSON.parse(s.result || '{}');
-  });
-  return res.json({ data: scenarios, meta: { requestId: req.requestId } });
+router.get('/scenarios', async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const scenarios = (await db.prepare('SELECT * FROM career_scenarios WHERE user_id = ? ORDER BY created_at DESC').all(req.user!.userId) || []) as any[];
+    scenarios.forEach(s => {
+      try { s.skill_changes = typeof s.skill_changes === 'string' ? JSON.parse(s.skill_changes || '[]') : (s.skill_changes || []); } catch { s.skill_changes = []; }
+      try { s.result = typeof s.result === 'string' ? JSON.parse(s.result || '{}') : (s.result || {}); } catch { s.result = {}; }
+    });
+    return res.json({ data: scenarios, meta: { requestId: req.requestId } });
+  } catch (err: any) {
+    return res.status(500).json({ error: { code: 'SCENARIOS_FETCH_ERROR', message: err.message, requestId: req.requestId } });
+  }
 });
 
 // ---- GET SCENARIO ----
-router.get('/scenarios/:id', (req: Request, res: Response) => {
-  const db = getDb();
-  const scenario = db.prepare('SELECT * FROM career_scenarios WHERE id = ? AND user_id = ?').get(req.params.id, req.user!.userId) as any;
-  if (!scenario) {
-    return res.status(404).json({ error: { code: 'SCENARIO_NOT_FOUND', message: 'Scenario not found', requestId: req.requestId } });
+router.get('/scenarios/:id', async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const scenario = await db.prepare('SELECT * FROM career_scenarios WHERE id = ? AND user_id = ?').get(req.params.id, req.user!.userId) as any;
+    if (!scenario) {
+      return res.status(404).json({ error: { code: 'SCENARIO_NOT_FOUND', message: 'Scenario not found', requestId: req.requestId } });
+    }
+    try { scenario.skill_changes = typeof scenario.skill_changes === 'string' ? JSON.parse(scenario.skill_changes || '[]') : (scenario.skill_changes || []); } catch { scenario.skill_changes = []; }
+    try { scenario.result = typeof scenario.result === 'string' ? JSON.parse(scenario.result || '{}') : (scenario.result || {}); } catch { scenario.result = {}; }
+    return res.json({ data: scenario, meta: { requestId: req.requestId } });
+  } catch (err: any) {
+    return res.status(500).json({ error: { code: 'SCENARIO_GET_ERROR', message: err.message, requestId: req.requestId } });
   }
-  scenario.skill_changes = JSON.parse(scenario.skill_changes || '[]');
-  scenario.result = JSON.parse(scenario.result || '{}');
-  return res.json({ data: scenario, meta: { requestId: req.requestId } });
 });
 
 // ---- DELETE SCENARIO ----
-router.delete('/scenarios/:id', (req: Request, res: Response) => {
-  const db = getDb();
-  db.prepare('DELETE FROM career_scenarios WHERE id = ? AND user_id = ?').run(req.params.id, req.user!.userId);
-  return res.json({ data: { message: 'Scenario deleted' }, meta: { requestId: req.requestId } });
+router.delete('/scenarios/:id', async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    await db.prepare('DELETE FROM career_scenarios WHERE id = ? AND user_id = ?').run(req.params.id, req.user!.userId);
+    return res.json({ data: { message: 'Scenario deleted' }, meta: { requestId: req.requestId } });
+  } catch (err: any) {
+    return res.status(500).json({ error: { code: 'SCENARIO_DELETE_ERROR', message: err.message, requestId: req.requestId } });
+  }
 });
 
 export default router;

@@ -10,29 +10,39 @@ router.use(authenticate);
 router.get('/dashboard', async (req: Request, res: Response) => {
   try {
     const db = getDb();
-    const profile = db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as any;
+    let profile = await db.prepare('SELECT * FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as any;
     if (!profile) {
       return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
     }
 
-    const skills = db.prepare('SELECT COUNT(*) as count FROM candidate_skills WHERE candidate_id = ?').get(profile.id) as { count: number };
-    const gaps = db.prepare('SELECT * FROM skill_gaps WHERE candidate_id = ? ORDER BY gap DESC LIMIT 5').all(profile.id) as any[];
-    const matches = db.prepare('SELECT * FROM job_matches WHERE candidate_id = ? ORDER BY overall_match DESC LIMIT 5').all(profile.id) as any[];
-    matches.forEach(m => { m.matched_skills = JSON.parse(m.matched_skills || '[]'); m.missing_skills = JSON.parse(m.missing_skills || '[]'); });
+    const skillsRes = await db.prepare('SELECT COUNT(*) as count FROM candidate_skills WHERE candidate_id = ?').get(profile.id) as { count: number | string };
+    const skillCount = Number(skillsRes?.count || 0);
 
-    const learning = db.prepare('SELECT status, COUNT(*) as count FROM learning_progress WHERE user_id = ? GROUP BY status').all(req.user!.userId) as any[];
-    const scenarios = db.prepare('SELECT COUNT(*) as count FROM career_scenarios WHERE user_id = ?').get(req.user!.userId) as { count: number };
-    const savedJobs = db.prepare('SELECT COUNT(*) as count FROM saved_jobs WHERE candidate_id = ?').get(profile.id) as { count: number };
+    const gaps = (await db.prepare('SELECT * FROM skill_gaps WHERE candidate_id = ? ORDER BY gap DESC LIMIT 5').all(profile.id) || []) as any[];
+    const matches = (await db.prepare('SELECT * FROM job_matches WHERE candidate_id = ? ORDER BY overall_match DESC LIMIT 5').all(profile.id) || []) as any[];
+    matches.forEach(m => {
+      try { m.matched_skills = typeof m.matched_skills === 'string' ? JSON.parse(m.matched_skills || '[]') : (m.matched_skills || []); } catch { m.matched_skills = []; }
+      try { m.missing_skills = typeof m.missing_skills === 'string' ? JSON.parse(m.missing_skills || '[]') : (m.missing_skills || []); } catch { m.missing_skills = []; }
+    });
+
+    const learning = (await db.prepare('SELECT status, COUNT(*) as count FROM learning_progress WHERE user_id = ? GROUP BY status').all(req.user!.userId) || []) as any[];
+    const scenariosRes = await db.prepare('SELECT COUNT(*) as count FROM career_scenarios WHERE user_id = ?').get(req.user!.userId) as { count: number | string };
+    const scenarioCount = Number(scenariosRes?.count || 0);
+
+    const savedJobsRes = await db.prepare('SELECT COUNT(*) as count FROM saved_jobs WHERE candidate_id = ?').get(profile.id) as { count: number | string };
+    const savedJobCount = Number(savedJobsRes?.count || 0);
+
+    const displayName = profile.name || (profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : 'Candidate');
 
     return res.json({
       data: {
-        profile: { name: `${profile.first_name} ${profile.last_name}`, headline: profile.headline },
-        skillCount: skills.count,
+        profile: { name: displayName, headline: profile.headline || '' },
+        skillCount,
         topGaps: gaps.map(g => ({ skillName: g.skill_name, gap: g.gap, priority: g.priority })),
         topMatches: matches.slice(0, 5).map(m => ({ jobId: m.job_id, overallMatch: m.overall_match, skillMatch: m.skill_match })),
-        learningProgress: learning.reduce((acc: Record<string, number>, l: any) => { acc[l.status] = l.count; return acc; }, {}),
-        scenarioCount: scenarios.count,
-        savedJobCount: savedJobs.count,
+        learningProgress: learning.reduce((acc: Record<string, number>, l: any) => { acc[l.status] = Number(l.count || 0); return acc; }, {}),
+        scenarioCount,
+        savedJobCount,
       },
       meta: { requestId: req.requestId }
     });
@@ -47,13 +57,13 @@ router.get('/role-readiness/:roleId', async (req: Request, res: Response) => {
     const db = getDb();
     const intel = getIntelligenceProvider();
 
-    const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
     if (!profile) return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
 
     const requirements = await intel.getRoleRequirements(req.params.roleId);
     if (!requirements) return res.status(404).json({ error: { code: 'ROLE_NOT_FOUND', message: 'Role not found', requestId: req.requestId } });
 
-    const candidateSkills = db.prepare('SELECT skill_id, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) as any[];
+    const candidateSkills = (await db.prepare('SELECT skill_id, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) || []) as any[];
     const skillMap = new Map(candidateSkills.map(s => [s.skill_id, s.verified_score || s.assessment_score || s.self_reported_score || 0]));
 
     let totalRequired = 0;
@@ -61,7 +71,7 @@ router.get('/role-readiness/:roleId', async (req: Request, res: Response) => {
     let metCount = 0;
     const breakdown: Array<{ skillName: string; required: number; current: number; met: boolean }> = [];
 
-    for (const req_skill of requirements.skills) {
+    for (const req_skill of (requirements.skills || [])) {
       const current = skillMap.get(req_skill.skillId) || 0;
       totalRequired += req_skill.requiredScore;
       totalCurrent += Math.min(current, req_skill.requiredScore);
@@ -71,7 +81,7 @@ router.get('/role-readiness/:roleId', async (req: Request, res: Response) => {
     }
 
     const readiness = totalRequired > 0 ? Math.round((totalCurrent / totalRequired) * 100) / 100 : 0;
-    const skillCoverage = requirements.skills.length > 0 ? Math.round((metCount / requirements.skills.length) * 100) / 100 : 0;
+    const skillCoverage = (requirements.skills || []).length > 0 ? Math.round((metCount / requirements.skills.length) * 100) / 100 : 0;
 
     return res.json({
       data: {
@@ -80,7 +90,7 @@ router.get('/role-readiness/:roleId', async (req: Request, res: Response) => {
         readiness,
         skillCoverage,
         breakdown,
-        totalSkillsRequired: requirements.skills.length,
+        totalSkillsRequired: (requirements.skills || []).length,
         totalSkillsMet: metCount,
       },
       meta: { requestId: req.requestId }
@@ -96,21 +106,21 @@ router.get('/adjacent-roles', async (req: Request, res: Response) => {
     const db = getDb();
     const intel = getIntelligenceProvider();
 
-    const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
     if (!profile) return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
 
-    const candidateSkills = db.prepare('SELECT skill_id, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) as any[];
+    const candidateSkills = (await db.prepare('SELECT skill_id, self_reported_score, assessment_score, verified_score FROM candidate_skills WHERE candidate_id = ?').all(profile.id) || []) as any[];
     const skillMap = new Map(candidateSkills.map(s => [s.skill_id, s.verified_score || s.assessment_score || s.self_reported_score || 0]));
 
     // Search for roles
-    const roles = await intel.searchRoles('');
+    const roles = await intel.searchRoles('') || [];
 
     // Calculate readiness for each role
     const adjacentRoles: Array<{ roleId: string; roleName: string; readiness: number; transferableSkills: string[]; gapSkills: string[] }> = [];
 
     for (const role of roles) {
       const requirements = await intel.getRoleRequirements(role.id);
-      if (!requirements) continue;
+      if (!requirements || !requirements.skills) continue;
 
       let totalReq = 0;
       let totalCur = 0;
@@ -145,10 +155,10 @@ router.get('/market-insights', async (req: Request, res: Response) => {
     const db = getDb();
     const intel = getIntelligenceProvider();
 
-    const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
+    const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user!.userId) as { id: string } | undefined;
     if (!profile) return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
 
-    const candidateSkills = db.prepare('SELECT skill_id, skill_name FROM candidate_skills WHERE candidate_id = ?').all(profile.id) as any[];
+    const candidateSkills = (await db.prepare('SELECT skill_id, skill_name FROM candidate_skills WHERE candidate_id = ?').all(profile.id) || []) as any[];
 
     const insights: Array<{ skillName: string; trend: string; demand: number; growthRate: number; advice: string }> = [];
     for (const skill of candidateSkills) {

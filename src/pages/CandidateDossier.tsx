@@ -28,6 +28,13 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
   const [editRole, setEditRole] = useState(candidate.targetRole)
   const [editLoc, setEditLoc] = useState(candidate.location)
 
+  const handleOpenEditModal = () => {
+    setEditName(candidate.name)
+    setEditRole(candidate.targetRole)
+    setEditLoc(candidate.location)
+    setIsEditModalOpen(true)
+  }
+
   // Fetch live candidate profile
   useEffect(() => {
     let mounted = true
@@ -35,9 +42,11 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
       api.candidate.getProfile().then((data) => {
         if (mounted && data) {
           setCandidate(data as CandidateProfile)
-          setEditName(data.name)
-          setEditRole(data.targetRole)
-          setEditLoc(data.location)
+          if (!isEditModalOpen) {
+            setEditName(data.name)
+            setEditRole(data.targetRole)
+            setEditLoc(data.location)
+          }
         }
       })
     }
@@ -144,7 +153,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={handleOpenEditModal}
               className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center gap-1.5 transition-colors"
             >
               <Edit size={13} /> Edit Profile
@@ -534,6 +543,13 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   const [editRole, setEditRole] = useState(candidate.targetRole)
   const [editLoc, setEditLoc] = useState(candidate.location)
 
+  const handleOpenEditModal = () => {
+    setEditName(candidate.name)
+    setEditRole(candidate.targetRole)
+    setEditLoc(candidate.location)
+    setIsEditModalOpen(true)
+  }
+
   // Fetch live candidate profile
   useEffect(() => {
     let mounted = true
@@ -541,9 +557,11 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
       api.candidate.getProfile().then((data) => {
         if (mounted && data) {
           setCandidate(data as CandidateProfile)
-          setEditName(data.name)
-          setEditRole(data.targetRole)
-          setEditLoc(data.location)
+          if (!isEditModalOpen) {
+            setEditName(data.name)
+            setEditRole(data.targetRole)
+            setEditLoc(data.location)
+          }
         }
       })
     }
@@ -553,7 +571,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
       mounted = false
       window.removeEventListener('candidate-profile-updated', loadProfile)
     }
-  }, [])
+  }, [isEditModalOpen])
 
   useEffect(() => {
     if (!isEditModalOpen) return
@@ -652,7 +670,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setIsEditModalOpen(true)}
+              onClick={handleOpenEditModal}
               className="btn-secondary flex items-center gap-1.5 text-xs font-mono py-2 px-3"
             >
               <Edit size={14} /> EDIT PROFILE

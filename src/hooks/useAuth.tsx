@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useTheme } from './useTheme'
-import { API_BASE } from '../services/api'
+import { API_BASE, api } from '../services/api'
 
 export type UserRole = 'CANDIDATE' | 'RECRUITER' | 'EMPLOYER_ADMIN' | 'WORKFORCE_PLANNER' | 'ADMIN'
 
@@ -163,14 +163,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         id: returnedUser.id || data.data?.userId || 'usr_' + Date.now(),
         email: email.trim(),
         role: (returnedUser.role?.toUpperCase() || 'CANDIDATE') as UserRole,
-        name: matchingPreset?.name || returnedUser.name || email.split('@')[0],
+        name: returnedUser.name || matchingPreset?.name || email.split('@')[0],
         headline: matchingPreset?.headline || 'Intelligence Operative',
         organization: matchingPreset?.organization || 'La Casa De Rozgaar',
-        avatarInitials: getInitials(matchingPreset?.name || email.split('@')[0]),
+        avatarInitials: getInitials(returnedUser.name || matchingPreset?.name || email.split('@')[0]),
       }
 
       setToken(authToken || 'jwt_simulated_token_' + Date.now())
       setUser(authUser)
+      api.setToken(authToken || null, authUser)
       try {
         localStorage.removeItem('lcdr_candidate_profile')
         window.dispatchEvent(new Event('candidate-profile-updated'))
@@ -199,6 +200,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const simToken = 'lcdr_jwt_' + Math.random().toString(36).substring(2)
         setToken(simToken)
         setUser(authUser)
+        api.setToken(simToken, authUser)
         try {
           localStorage.removeItem('lcdr_candidate_profile')
           window.dispatchEvent(new Event('candidate-profile-updated'))
@@ -251,6 +253,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setToken(authToken || 'jwt_simulated_token_' + Date.now())
       setUser(authUser)
+      api.setToken(authToken || null, authUser)
       try {
         localStorage.removeItem('lcdr_candidate_profile')
         window.dispatchEvent(new Event('candidate-profile-updated'))
@@ -272,6 +275,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
+    api.setToken(null, null)
     try {
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(USER_KEY)
