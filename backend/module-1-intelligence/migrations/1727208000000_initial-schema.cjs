@@ -49,7 +49,7 @@ exports.up = (pgm) => {
   pgm.createIndex('skills', 'canonical_name');
   pgm.createIndex('skills', 'category');
   pgm.createIndex('skills', 'parent_skill_id');
-  pgm.createIndex('skills', 'canonical_name', { method: 'gin', opclass: 'gin_trgm_ops' });
+  pgm.createIndex('skills', 'canonical_name', { method: 'gin', opclass: 'gin_trgm_ops', name: 'idx_skills_canonical_name_trgm' });
 
   // ============================================================================
   // SKILL ALIASES
@@ -86,7 +86,7 @@ exports.up = (pgm) => {
 
   pgm.createIndex('skill_aliases', 'skill_id');
   pgm.createIndex('skill_aliases', 'alias');
-  pgm.createIndex('skill_aliases', 'alias', { method: 'gin', opclass: 'gin_trgm_ops' });
+  pgm.createIndex('skill_aliases', 'alias', { method: 'gin', opclass: 'gin_trgm_ops', name: 'idx_skill_aliases_alias_trgm' });
   pgm.addConstraint('skill_aliases', 'unique_skill_alias', {
     unique: ['skill_id', 'alias'],
   });
@@ -132,7 +132,7 @@ exports.up = (pgm) => {
   pgm.createIndex('roles', 'canonical_name');
   pgm.createIndex('roles', 'role_family');
   pgm.createIndex('roles', 'seniority_level');
-  pgm.createIndex('roles', 'canonical_name', { method: 'gin', opclass: 'gin_trgm_ops' });
+  pgm.createIndex('roles', 'canonical_name', { method: 'gin', opclass: 'gin_trgm_ops', name: 'idx_roles_canonical_name_trgm' });
 
   // ============================================================================
   // JOBS
@@ -303,7 +303,7 @@ exports.up = (pgm) => {
   pgm.createIndex('jobs', 'country');
   pgm.createIndex('jobs', 'is_remote');
   pgm.createIndex('jobs', 'employment_type');
-  pgm.createIndex('jobs', 'title', { method: 'gin', opclass: 'gin_trgm_ops' });
+  pgm.createIndex('jobs', 'title', { method: 'gin', opclass: 'gin_trgm_ops', name: 'idx_jobs_title_trgm' });
   pgm.createIndex('jobs', 'company_name');
   pgm.createIndex('jobs', 'created_at');
 
