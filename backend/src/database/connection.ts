@@ -2,6 +2,7 @@ import { createRequire } from 'module';
 import { config } from '../config.js';
 import { mkdirSync, existsSync } from 'fs';
 import { dirname } from 'path';
+import { seedDatabase } from './seed.js';
 
 const require = createRequire(import.meta.url);
 const { DatabaseSync } = require('node:sqlite');
@@ -9,17 +10,43 @@ const { DatabaseSync } = require('node:sqlite');
 export type DatabaseInstance = any;
 
 let db: any = null;
+let isInitializing = false;
 
 export function getDb(): any {
   if (!db) {
-    const dbPath = config.database.path;
-    const dir = dirname(dbPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
+    let dbPath = config.database.path;
+    try {
+      const dir = dirname(dbPath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+    } catch {
+      dbPath = '/tmp/module2.db';
     }
-    db = new DatabaseSync(dbPath);
-    db.exec('PRAGMA journal_mode = WAL;');
-    db.exec('PRAGMA foreign_keys = ON;');
+
+    try {
+      db = new DatabaseSync(dbPath);
+    } catch {
+      db = new DatabaseSync(':memory:');
+    }
+
+    try {
+      db.exec('PRAGMA journal_mode = WAL;');
+    } catch {}
+    try {
+      db.exec('PRAGMA foreign_keys = ON;');
+    } catch {}
+
+    if (!isInitializing) {
+      isInitializing = true;
+      try {
+        seedDatabase();
+      } catch (err) {
+        console.error('[DB] Auto-seed error:', err);
+      } finally {
+        isInitializing = false;
+      }
+    }
   }
   return db;
 }

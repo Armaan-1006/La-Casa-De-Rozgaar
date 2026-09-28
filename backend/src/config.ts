@@ -28,7 +28,7 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
 
   database: {
-    path: process.env.DATABASE_PATH || './data/module2.db',
+    path: process.env.DATABASE_PATH || (process.env.VERCEL ? '/tmp/module2.db' : './data/module2.db'),
   },
 
   jwt: {
@@ -37,11 +37,11 @@ export const config = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
 
-  intelligenceProvider: (process.env.INTELLIGENCE_PROVIDER || 'mock') as 'mock' | 'remote',
+  intelligenceProvider: (process.env.INTELLIGENCE_PROVIDER || (process.env.MODULE1_API_URL ? 'remote' : 'mock')) as 'mock' | 'remote',
 
   module1: {
-    apiUrl: process.env.MODULE1_API_URL || 'http://localhost:3000/api/v1',
-    apiKey: process.env.MODULE1_API_KEY || '',
+    apiUrl: (process.env.MODULE1_API_URL || 'http://localhost:3000/api/v1').replace(/\/+$/, ''),
+    apiKey: process.env.MODULE1_API_KEY || process.env.API_KEY_INGESTION || '',
   },
 
   rateLimit: {
@@ -50,7 +50,7 @@ export const config = {
   },
 
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || '*',
   },
 
   assessment: {

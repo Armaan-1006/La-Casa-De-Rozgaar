@@ -18,7 +18,16 @@ import {
   ResearchPaper
 } from '../data/mockData'
 
-const API_BASE = '/api/v1'
+const RAW_API_URL = typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL
+  ? (import.meta.env.VITE_API_URL as string).trim()
+  : '';
+export const API_BASE = RAW_API_URL ? RAW_API_URL.replace(/\/+$/, '') : '/api/v1';
+
+const RAW_MODULE1_URL = typeof import.meta !== 'undefined' && import.meta.env?.VITE_MODULE1_URL
+  ? (import.meta.env.VITE_MODULE1_URL as string).trim()
+  : '';
+export const MODULE1_BASE = RAW_MODULE1_URL ? RAW_MODULE1_URL.replace(/\/+$/, '') : '';
+
 const TOKEN_KEY = 'lcdr_auth_token'
 const USER_KEY = 'lcdr_auth_user'
 const CANDIDATE_STORAGE_KEY = 'lcdr_candidate_profile'
@@ -718,17 +727,26 @@ class ApiService {
   // =========================================================================
   public async checkHealth(): Promise<{ status: string; database?: string; intelligenceProvider?: string }> {
     try {
-      const res = await fetch('/health')
+      let healthUrl = '/health';
+      if (API_BASE.startsWith('http')) {
+        try {
+          const parsed = new URL(API_BASE);
+          healthUrl = `${parsed.origin}/health`;
+        } catch {
+          healthUrl = `${API_BASE}/health`;
+        }
+      }
+      const res = await fetch(healthUrl);
       if (res.ok) {
-        const data = await res.json()
-        this.isOnline = true
-        return data
+        const data = await res.json();
+        this.isOnline = true;
+        return data;
       }
     } catch {
       // offline
     }
-    this.isOnline = false
-    return { status: 'offline' }
+    this.isOnline = false;
+    return { status: 'offline' };
   }
 }
 

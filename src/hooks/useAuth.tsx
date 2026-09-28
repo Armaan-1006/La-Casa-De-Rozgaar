@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useTheme } from './useTheme'
+import { API_BASE } from '../services/api'
 
 export type UserRole = 'CANDIDATE' | 'RECRUITER' | 'EMPLOYER_ADMIN' | 'WORKFORCE_PLANNER' | 'ADMIN'
 
@@ -141,7 +142,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = useCallback(async ({ email, password }: LoginCredentials): Promise<AuthResult> => {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/v1/auth/login', {
+      const loginUrl = API_BASE.startsWith('http') ? `${API_BASE}/auth/login` : '/api/v1/auth/login'
+      const res = await fetch(loginUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password }),
@@ -217,7 +219,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = useCallback(async ({ email, password, name, role }: RegisterData): Promise<AuthResult> => {
     setIsLoading(true)
     try {
-      const res = await fetch('/api/v1/auth/register', {
+      const registerUrl = API_BASE.startsWith('http') ? `${API_BASE}/auth/register` : '/api/v1/auth/register'
+      const res = await fetch(registerUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password, name, role }),

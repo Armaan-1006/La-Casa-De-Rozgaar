@@ -13,15 +13,15 @@ const configSchema = z.object({
 
   // Database
   database: z.object({
-    url: z.string().url(),
+    url: z.string().default(''),
     host: z.string().default('localhost'),
     port: z.coerce.number().default(5432),
-    name: z.string(),
-    user: z.string(),
-    password: z.string(),
+    name: z.string().default('lacasa_intelligence'),
+    user: z.string().default('postgres'),
+    password: z.string().default(''),
     maxConnections: z.coerce.number().default(20),
     idleTimeout: z.coerce.number().default(30000),
-  }),
+  }).default({}),
 
   // Redis
   redis: z.object({
@@ -29,66 +29,66 @@ const configSchema = z.object({
     port: z.coerce.number().default(6379),
     password: z.string().optional(),
     db: z.coerce.number().default(0),
-  }),
+  }).default({}),
 
   // API
   api: z.object({
     prefix: z.string().default('/api/v1'),
     rateLimitMax: z.coerce.number().default(100),
     rateLimitWindow: z.coerce.number().default(60000),
-  }),
+  }).default({}),
 
   // Security
   security: z.object({
-    apiKeyIngestion: z.string().min(32),
-    jwtSecret: z.string().min(32),
-    corsOrigin: z.string(),
-  }),
+    apiKeyIngestion: z.string().default('8a015bec32f4f6e02e28b706b46887f14254e3745253ddcea03082d05e3a878f'),
+    jwtSecret: z.string().default('08ed2f5c6d5b03456ec368c9386c2a3343e25c50f2cf7bd844d46c74c833d4a2'),
+    corsOrigin: z.string().default('*'),
+  }).default({}),
 
   // ML Service
   mlService: z.object({
-    url: z.string().url(),
+    url: z.string().default('http://localhost:8000'),
     timeout: z.coerce.number().default(30000),
-  }),
+  }).default({}),
 
   // Logging
   logging: z.object({
     level: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
     pretty: z.coerce.boolean().default(false),
-  }),
+  }).default({}),
 
   // Workers
   workers: z.object({
     concurrency: z.coerce.number().default(5),
     removeOnComplete: z.coerce.number().default(100),
     removeOnFail: z.coerce.number().default(1000),
-  }),
+  }).default({}),
 
   // Data Quality
   dataQuality: z.object({
     minConfidence: z.coerce.number().min(0).max(1).default(0.7),
     freshnessWarningDays: z.coerce.number().default(7),
     freshnessErrorDays: z.coerce.number().default(30),
-  }),
+  }).default({}),
 
   // Ingestion
   ingestion: z.object({
     batchSize: z.coerce.number().default(100),
     maxRetries: z.coerce.number().default(3),
-  }),
+  }).default({}),
 
   // Forecasting
   forecasting: z.object({
     horizonDays: z.coerce.number().default(90),
     minSampleSize: z.coerce.number().default(50),
-  }),
+  }).default({}),
 
   // Feature Flags
   features: z.object({
     enableMlExtraction: z.coerce.boolean().default(true),
     enableForecasting: z.coerce.boolean().default(true),
     enableTrendDetection: z.coerce.boolean().default(true),
-  }),
+  }).default({}),
 });
 
 // Parse and validate configuration

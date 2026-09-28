@@ -39,17 +39,19 @@ export function createApp(): Express {
       if (!origin) return callback(null, true);
       if (
         config.nodeEnv === 'development' ||
+        config.cors.origin === '*' ||
         origin.startsWith('http://localhost:') ||
         origin.startsWith('http://127.0.0.1:') ||
-        origin === config.cors.origin
+        origin === config.cors.origin ||
+        origin.endsWith('.vercel.app')
       ) {
         return callback(null, true);
       }
       return callback(null, true);
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-ID', 'X-API-Key'],
   }));
 
   // Rate limiter (skip in test environment)
@@ -71,13 +73,13 @@ export function createApp(): Express {
   // Request ID middleware
   app.use(requestIdMiddleware);
 
-  // Health check
-  app.get('/health', (_req: Request, res: Response) => {
+  // Health check handler
+  const healthHandler = (_req: Request, res: Response) => {
     try {
       const db = getDb();
       db.prepare('SELECT 1').get();
       res.json({
-        status: 'healthy',
+        status: 'ok',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
         environment: config.nodeEnv,
@@ -91,6 +93,20 @@ export function createApp(): Express {
         error: err.message,
       });
     }
+  };
+
+  app.get('/health', healthHandler);
+  app.get('/api/health', healthHandler);
+
+  // Root endpoint
+  app.get('/', (_req: Request, res: Response) => {
+    res.json({
+      name: 'La Casa De Rozgaar - Module 2 Backend',
+      version: '1.0.0',
+      description: 'User, Talent & Career Intelligence API',
+      health: '/health',
+      apiBase: '/api/v1',
+    });
   });
 
   // API v1 routes
@@ -133,9 +149,11 @@ export function createApp(): Express {
   return app;
 }
 
-// Server startup
-if (process.env.NODE_ENV !== 'test') {
-  const app = createApp();
+// Instantiate default app for export
+export const app = createApp();
+
+// Server startup for standalone execution (local / Docker)
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   const server = app.listen(config.port, config.host, () => {
     console.log(`=======================================================`);
     console.log(` LA CASA DE ROZGAAR - MODULE 2 BACKEND`);
@@ -164,4 +182,4 @@ if (process.env.NODE_ENV !== 'test') {
   process.on('SIGINT', shutdown);
 }
 
-export default createApp;
+export default app;

@@ -1,15 +1,32 @@
 import { buildApp } from './app.js';
 import { config } from './config/index.js';
 import { closePool } from './db/index.js';
+import type { FastifyInstance } from 'fastify';
+
+let fastifyApp: FastifyInstance | null = null;
+
+export async function getFastifyApp(): Promise<FastifyInstance> {
+  if (!fastifyApp) {
+    fastifyApp = await buildApp();
+    await fastifyApp.ready();
+  }
+  return fastifyApp;
+}
+
+// Handler for Vercel Serverless Functions
+export default async function handler(req: any, res: any) {
+  const app = await getFastifyApp();
+  app.server.emit('request', req, res);
+}
 
 const signals = ['SIGINT', 'SIGTERM'];
 
 async function start() {
-  let app: Awaited<ReturnType<typeof buildApp>> | undefined;
+  let app: FastifyInstance | undefined;
 
   try {
     // Build and start the Fastify app
-    app = await buildApp();
+    app = await getFastifyApp();
 
     await app.listen({
       port: config.port,
@@ -81,5 +98,7 @@ Press CTRL+C to stop
   }
 }
 
-// Start the server
-start();
+// Start standalone server only when not running on Vercel or in tests
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  start();
+}

@@ -6,21 +6,14 @@
       "src": "src/server.ts",
       "use": "@vercel/node",
       "config": {
-        "maxDuration": 10
+        "maxDuration": 15
       }
     }
   ],
   "routes": [
     {
-      "src": "/health",
-      "dest": "src/server.ts"
-    },
-    {
-      "src": "/api/v1/(.*)",
+      "src": "/(.*)",
       "dest": "src/server.ts"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }

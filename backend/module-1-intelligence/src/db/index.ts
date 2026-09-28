@@ -3,29 +3,56 @@ import { config } from '../config/index.js';
 
 const { Pool } = pg;
 
-// Create PostgreSQL connection pool
-export const pool = new Pool({
-  connectionString: config.database.url,
-  max: config.database.maxConnections,
-  idleTimeoutMillis: config.database.idleTimeout,
-  connectionTimeoutMillis: 5000,
-});
+// Determine SSL options for cloud databases (Neon, Railway, AWS, etc.)
+const useSsl =
+  (config.database.url &&
+    (config.database.url.includes('sslmode=require') ||
+      config.database.url.includes('neon.tech') ||
+      config.database.url.includes('aws.neon.tech') ||
+      config.database.url.includes('railway'))) ||
+  config.nodeEnv === 'production';
 
-// Handle pool errors
+// Create PostgreSQL connection pool
+export const pool = new Pool(
+  config.database.url
+    ? {
+        connectionString: config.database.url,
+        max: config.database.maxConnections,
+        idleTimeoutMillis: config.database.idleTimeout,
+        connectionTimeoutMillis: 10000,
+        ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+      }
+    : {
+        host: config.database.host,
+        port: config.database.port,
+        database: config.database.name,
+        user: config.database.user,
+        password: config.database.password,
+        max: config.database.maxConnections,
+        idleTimeoutMillis: config.database.idleTimeout,
+        connectionTimeoutMillis: 10000,
+        ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+      }
+);
+
+// Handle pool errors safely without crashing process in serverless
 pool.on('error', (err) => {
-  console.error('Unexpected database pool error:', err);
-  process.exit(-1);
+  console.error('Unexpected database pool error (handled):', err.message);
 });
 
 // Test database connection
 export async function testConnection(): Promise<boolean> {
+  if (!config.database.url && (!config.database.host || config.database.host === 'localhost')) {
+    // If not configured, report false gracefully without throwing
+    return false;
+  }
   try {
     const client = await pool.connect();
     await client.query('SELECT NOW()');
     client.release();
     return true;
   } catch (error) {
-    console.error('Database connection failed:', error);
+    console.error('Database connection failed:', error instanceof Error ? error.message : error);
     return false;
   }
 }
