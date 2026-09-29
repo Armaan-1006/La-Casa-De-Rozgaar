@@ -5,49 +5,71 @@ import { getIntelligenceProvider } from '../intelligence/index.js';
 const router = Router();
 router.use(authenticate);
 // ---- LIST RESOURCES ----
-router.get('/resources', (req, res) => {
-    const db = getDb();
-    const page = parseInt(req.query.page) || 1;
-    const pageSize = parseInt(req.query.pageSize) || 25;
-    const offset = (page - 1) * pageSize;
-    const skillId = req.query.skillId;
-    const difficulty = req.query.difficulty;
-    let query = 'SELECT * FROM learning_resources WHERE 1=1';
-    const params = [];
-    if (skillId) {
-        query += ` AND skill_ids LIKE ?`;
-        params.push(`%${skillId}%`);
+router.get('/resources', async (req, res) => {
+    try {
+        const db = getDb();
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 25;
+        const offset = (page - 1) * pageSize;
+        const skillId = req.query.skillId;
+        const difficulty = req.query.difficulty;
+        let query = 'SELECT * FROM learning_resources WHERE 1=1';
+        const params = [];
+        if (skillId) {
+            query += ` AND skill_ids LIKE ?`;
+            params.push(`%${skillId}%`);
+        }
+        if (difficulty) {
+            query += ` AND difficulty = ?`;
+            params.push(difficulty);
+        }
+        const totalQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
+        const countRes = await db.prepare(totalQuery).get(...params);
+        const total = Number(countRes?.count || 0);
+        query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params.push(pageSize, offset);
+        const resources = (await db.prepare(query).all(...params) || []);
+        resources.forEach(r => {
+            try {
+                r.skill_ids = typeof r.skill_ids === 'string' ? JSON.parse(r.skill_ids || '[]') : (r.skill_ids || []);
+            }
+            catch {
+                r.skill_ids = [];
+            }
+            try {
+                r.role_ids = typeof r.role_ids === 'string' ? JSON.parse(r.role_ids || '[]') : (r.role_ids || []);
+            }
+            catch {
+                r.role_ids = [];
+            }
+        });
+        return res.json({ data: resources, meta: { requestId: req.requestId, page, pageSize, total } });
     }
-    if (difficulty) {
-        query += ` AND difficulty = ?`;
-        params.push(difficulty);
+    catch (err) {
+        return res.status(500).json({ error: { code: 'RESOURCES_FETCH_ERROR', message: err.message, requestId: req.requestId } });
     }
-    const totalQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
-    const total = db.prepare(totalQuery).get(...params).count;
-    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-    params.push(pageSize, offset);
-    const resources = db.prepare(query).all(...params);
-    resources.forEach(r => {
-        r.skill_ids = JSON.parse(r.skill_ids || '[]');
-        r.role_ids = JSON.parse(r.role_ids || '[]');
-    });
-    return res.json({ data: resources, meta: { requestId: req.requestId, page, pageSize, total } });
 });
 // ---- PERSONALIZED RECOMMENDATIONS ----
 router.get('/recommended', async (req, res) => {
     try {
         const db = getDb();
         const intel = getIntelligenceProvider();
-        const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.userId);
+        const profile = await db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.userId);
         if (!profile)
             return res.status(404).json({ error: { code: 'PROFILE_NOT_FOUND', message: 'Profile not found', requestId: req.requestId } });
         // Get skill gaps
-        const gaps = db.prepare('SELECT * FROM skill_gaps WHERE candidate_id = ? ORDER BY gap DESC').all(profile.id);
+        const gaps = (await db.prepare('SELECT * FROM skill_gaps WHERE candidate_id = ? ORDER BY gap DESC').all(profile.id) || []);
         // Get all resources
-        const allResources = db.prepare('SELECT * FROM learning_resources').all();
+        const allResources = (await db.prepare('SELECT * FROM learning_resources').all() || []);
         const scored = [];
         for (const resource of allResources) {
-            const skillIds = JSON.parse(resource.skill_ids || '[]');
+            let skillIds = [];
+            try {
+                skillIds = typeof resource.skill_ids === 'string' ? JSON.parse(resource.skill_ids || '[]') : (resource.skill_ids || []);
+            }
+            catch {
+                skillIds = [];
+            }
             for (const gap of gaps) {
                 if (gap.gap > 0 && skillIds.includes(gap.skill_id)) {
                     const marketSignal = await intel.getMarketSkillSignal(gap.skill_id);
@@ -57,15 +79,22 @@ router.get('/recommended', async (req, res) => {
                     const score = (gap.gap / 10) * 0.4 + (marketDemand / 100) * 0.3 + difficultyMatch * 0.3;
                     const reasons = [];
                     if (gap.gap > 2)
-                        reasons.push(`Significant gap in ${gap.skill_name} (${gap.gap.toFixed(1)} points)`);
+                        reasons.push(`Significant gap in ${gap.skill_name} (${(gap.gap || 0).toFixed(1)} points)`);
                     else
-                        reasons.push(`Gap in ${gap.skill_name} (${gap.gap.toFixed(1)} points)`);
+                        reasons.push(`Gap in ${gap.skill_name} (${(gap.gap || 0).toFixed(1)} points)`);
                     if (gap.priority === 'CRITICAL' || gap.priority === 'HIGH')
                         reasons.push(`${gap.priority} priority for target role`);
                     if (marketSignal?.trend === 'GROWING' || marketSignal?.trend === 'EMERGING')
                         reasons.push(`${marketSignal.trend} market demand`);
+                    let roleIds = [];
+                    try {
+                        roleIds = typeof resource.role_ids === 'string' ? JSON.parse(resource.role_ids || '[]') : (resource.role_ids || []);
+                    }
+                    catch {
+                        roleIds = [];
+                    }
                     scored.push({
-                        resource: { ...resource, skill_ids: skillIds, role_ids: JSON.parse(resource.role_ids || '[]') },
+                        resource: { ...resource, skill_ids: skillIds, role_ids: roleIds },
                         relevantSkillGap: gap.skill_name,
                         gapSize: gap.gap,
                         reason: reasons.join('. ') + '.',
@@ -89,69 +118,96 @@ router.get('/recommended', async (req, res) => {
     }
 });
 // ---- LEARNING PATHS ----
-router.get('/paths', (req, res) => {
-    const db = getDb();
-    const paths = db.prepare('SELECT * FROM learning_paths WHERE user_id = ? ORDER BY created_at DESC').all(req.user.userId);
-    paths.forEach(p => { p.resources = JSON.parse(p.resources || '[]'); });
-    return res.json({ data: paths, meta: { requestId: req.requestId } });
-});
-router.post('/paths', (req, res) => {
-    const db = getDb();
-    const { targetRoleId, resources } = req.body;
-    if (!targetRoleId) {
-        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'targetRoleId is required', requestId: req.requestId } });
+router.get('/paths', async (req, res) => {
+    try {
+        const db = getDb();
+        const paths = (await db.prepare('SELECT * FROM learning_paths WHERE user_id = ? ORDER BY created_at DESC').all(req.user.userId) || []);
+        paths.forEach(p => {
+            try {
+                p.resources = typeof p.resources === 'string' ? JSON.parse(p.resources || '[]') : (p.resources || []);
+            }
+            catch {
+                p.resources = [];
+            }
+        });
+        return res.json({ data: paths, meta: { requestId: req.requestId } });
     }
-    const id = generateId();
-    db.prepare('INSERT INTO learning_paths (id, user_id, target_role_id, resources) VALUES (?, ?, ?, ?)')
-        .run(id, req.user.userId, targetRoleId, JSON.stringify(resources || []));
-    return res.status(201).json({ data: { id, message: 'Learning path created' }, meta: { requestId: req.requestId } });
+    catch (err) {
+        return res.status(500).json({ error: { code: 'PATHS_FETCH_ERROR', message: err.message, requestId: req.requestId } });
+    }
+});
+router.post('/paths', async (req, res) => {
+    try {
+        const db = getDb();
+        const { targetRoleId, resources } = req.body;
+        if (!targetRoleId) {
+            return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'targetRoleId is required', requestId: req.requestId } });
+        }
+        const id = generateId();
+        await db.prepare('INSERT INTO learning_paths (id, user_id, target_role_id, resources) VALUES (?, ?, ?, ?)')
+            .run(id, req.user.userId, targetRoleId, JSON.stringify(resources || []));
+        return res.status(201).json({ data: { id, message: 'Learning path created' }, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'PATH_CREATE_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
 // ---- PROGRESS ----
-router.get('/progress', (req, res) => {
-    const db = getDb();
-    const progress = db.prepare(`
-    SELECT lp.*, lr.title as resource_title, lr.type as resource_type, lr.url as resource_url
-    FROM learning_progress lp
-    JOIN learning_resources lr ON lp.resource_id = lr.id
-    WHERE lp.user_id = ?
-    ORDER BY lp.started_at DESC
-  `).all(req.user.userId);
-    return res.json({ data: progress, meta: { requestId: req.requestId } });
+router.get('/progress', async (req, res) => {
+    try {
+        const db = getDb();
+        const progress = (await db.prepare(`
+      SELECT lp.*, lr.title as resource_title, lr.type as resource_type, lr.url as resource_url
+      FROM learning_progress lp
+      JOIN learning_resources lr ON lp.resource_id = lr.id
+      WHERE lp.user_id = ?
+      ORDER BY lp.started_at DESC
+    `).all(req.user.userId) || []);
+        return res.json({ data: progress, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'PROGRESS_FETCH_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
-router.put('/progress/:resourceId', (req, res) => {
-    const db = getDb();
-    const { status, progress, timeSpentMinutes } = req.body;
-    const existing = db.prepare('SELECT id FROM learning_progress WHERE user_id = ? AND resource_id = ?').get(req.user.userId, req.params.resourceId);
-    if (existing) {
-        const updates = [];
-        const params = [];
-        if (status) {
-            updates.push('status = ?');
-            params.push(status);
+router.put('/progress/:resourceId', async (req, res) => {
+    try {
+        const db = getDb();
+        const { status, progress, timeSpentMinutes } = req.body;
+        const existing = await db.prepare('SELECT id FROM learning_progress WHERE user_id = ? AND resource_id = ?').get(req.user.userId, req.params.resourceId);
+        if (existing) {
+            const updates = [];
+            const params = [];
+            if (status) {
+                updates.push('status = ?');
+                params.push(status);
+            }
+            if (progress !== undefined) {
+                updates.push('progress = ?');
+                params.push(progress);
+            }
+            if (timeSpentMinutes !== undefined) {
+                updates.push('time_spent_minutes = ?');
+                params.push(timeSpentMinutes);
+            }
+            if (status === 'IN_PROGRESS') {
+                updates.push(`started_at = COALESCE(started_at, NOW())`);
+            }
+            if (status === 'COMPLETED') {
+                updates.push(`completed_at = NOW()`);
+                updates.push('progress = 100');
+            }
+            params.push(existing.id);
+            await db.prepare(`UPDATE learning_progress SET ${updates.join(', ')} WHERE id = ?`).run(...params);
         }
-        if (progress !== undefined) {
-            updates.push('progress = ?');
-            params.push(progress);
+        else {
+            await db.prepare("INSERT INTO learning_progress (id, user_id, resource_id, status, progress, time_spent_minutes, started_at) VALUES (?, ?, ?, ?, ?, ?, NOW())")
+                .run(generateId(), req.user.userId, req.params.resourceId, status || 'IN_PROGRESS', progress || 0, timeSpentMinutes || 0);
         }
-        if (timeSpentMinutes !== undefined) {
-            updates.push('time_spent_minutes = ?');
-            params.push(timeSpentMinutes);
-        }
-        if (status === 'IN_PROGRESS') {
-            updates.push(`started_at = COALESCE(started_at, datetime('now'))`);
-        }
-        if (status === 'COMPLETED') {
-            updates.push(`completed_at = datetime('now')`);
-            updates.push('progress = 100');
-        }
-        params.push(existing.id);
-        db.prepare(`UPDATE learning_progress SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+        return res.json({ data: { message: 'Progress updated' }, meta: { requestId: req.requestId } });
     }
-    else {
-        db.prepare("INSERT INTO learning_progress (id, user_id, resource_id, status, progress, time_spent_minutes, started_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))")
-            .run(generateId(), req.user.userId, req.params.resourceId, status || 'IN_PROGRESS', progress || 0, timeSpentMinutes || 0);
+    catch (err) {
+        return res.status(500).json({ error: { code: 'PROGRESS_UPDATE_ERROR', message: err.message, requestId: req.requestId } });
     }
-    return res.json({ data: { message: 'Progress updated' }, meta: { requestId: req.requestId } });
 });
 function getDifficultyMatch(currentScore, difficulty) {
     if (currentScore < 4 && difficulty === 'BEGINNER')

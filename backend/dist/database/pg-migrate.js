@@ -21,6 +21,7 @@ export async function runPgMigrations(connectionString) {
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
+        name TEXT,
         role TEXT NOT NULL DEFAULT 'CANDIDATE',
         email_verified INTEGER NOT NULL DEFAULT 0,
         is_active INTEGER NOT NULL DEFAULT 1,
@@ -486,6 +487,32 @@ export async function runPgMigrations(connectionString) {
       CREATE INDEX IF NOT EXISTS idx_m2_assessment_attempts_assessment ON assessment_attempts(assessment_id);
       CREATE INDEX IF NOT EXISTS idx_m2_skill_gaps_candidate ON skill_gaps(candidate_id);
     `);
+        // Seed interview questions if empty
+        const iqCount = await client.query('SELECT COUNT(*) as count FROM interview_questions');
+        if (Number(iqCount.rows[0]?.count || 0) === 0) {
+            await client.query(`
+        INSERT INTO interview_questions (id, company, role_id, question, topic, difficulty, type, source)
+        VALUES 
+          ('iq_1', 'Google', 'role_fullstack', 'Design a globally distributed rate limiter handling 500,000 req/sec with regional failovers.', 'System Design', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
+          ('iq_2', 'Microsoft', 'role_fullstack', 'Implement an in-memory reactive state manager in TypeScript with subscription batching.', 'Live Coding', 'HARD', 'CODING', 'REPORTED'),
+          ('iq_3', 'Amazon', 'role_fullstack', 'Describe an occasion where you made an architectural tradeoff between speed and tech debt.', 'Behavioral & Leadership', 'MEDIUM', 'BEHAVIORAL', 'REPORTED'),
+          ('iq_4', 'Razorpay', 'role_fullstack', 'How do you guarantee strict idempotency across payment webhook processing during retries?', 'Architecture', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
+          ('iq_5', 'Meta', 'role_fullstack', 'Design an optimistic concurrency control system for collaborative document editing.', 'System Design', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
+          ('iq_6', 'Netflix', 'role_fullstack', 'Explain chaos engineering strategies to test resilient microservice mesh partitions.', 'Architecture', 'HARD', 'SYSTEM_DESIGN', 'REPORTED')
+        ON CONFLICT (id) DO NOTHING
+      `);
+        }
+        // Seed research items if empty
+        const resCount = await client.query('SELECT COUNT(*) as count FROM research_items');
+        if (Number(resCount.rows[0]?.count || 0) === 0) {
+            await client.query(`
+        INSERT INTO research_items (id, title, authors, abstract, summary, published_at, source, original_url, topics, skill_ids, role_ids, type)
+        VALUES 
+          ('res_1', 'Attention Is All You Need', '["Vaswani et al."]', 'We propose a new simple network architecture, the Transformer, based solely on attention mechanisms.', 'Introduced the Transformer architecture which revolutionized NLP and led to models like BERT and GPT.', '2017-06-12', 'arXiv', 'https://arxiv.org/abs/1706.03762', '["NLP", "Deep Learning", "Transformers"]', '["skill_ml", "skill_tensorflow"]', '["role_datascientist", "role_mleng"]', 'ORIGINAL_PAPER'),
+          ('res_2', 'The State of JavaScript & TypeScript 2026', '["Survey Contributors"]', 'Annual survey of JavaScript and TypeScript ecosystem trends, frameworks, and developer preferences.', 'React & Next.js lead frontend architectures; TypeScript adoption reaches 92%; Bun and Rust tooling accelerate.', '2026-01-15', 'stateofjs.com', 'https://stateofjs.com', '["JavaScript", "TypeScript", "Web Architecture"]', '["skill_javascript", "skill_react", "skill_typescript"]', '["role_fullstack", "role_frontend"]', 'INDUSTRY_ARTICLE')
+        ON CONFLICT (id) DO NOTHING
+      `);
+        }
         console.log('[PG-MIGRATE] Migrations successfully executed on Neon PostgreSQL!');
     }
     finally {

@@ -4,49 +4,84 @@ import { authenticate } from '../middleware/auth.js';
 const router = Router();
 router.use(authenticate);
 // ---- LIST NOTIFICATIONS ----
-router.get('/', (req, res) => {
-    const db = getDb();
-    const page = parseInt(req.query.page) || 1;
-    const pageSize = parseInt(req.query.pageSize) || 25;
-    const offset = (page - 1) * pageSize;
-    const unreadOnly = req.query.unread === 'true';
-    let query = 'SELECT * FROM notifications WHERE user_id = ?';
-    const params = [req.user.userId];
-    if (unreadOnly) {
-        query += ' AND read_at IS NULL';
+router.get('/', async (req, res) => {
+    try {
+        const db = getDb();
+        const page = parseInt(req.query.page) || 1;
+        const pageSize = parseInt(req.query.pageSize) || 25;
+        const offset = (page - 1) * pageSize;
+        const unreadOnly = req.query.unread === 'true';
+        let query = 'SELECT * FROM notifications WHERE user_id = ?';
+        const params = [req.user.userId];
+        if (unreadOnly) {
+            query += ' AND read = 0';
+        }
+        const totalQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
+        const countRes = await db.prepare(totalQuery).get(...params);
+        const total = Number(countRes?.count || 0);
+        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        params.push(pageSize, offset);
+        const notifications = (await db.prepare(query).all(...params) || []);
+        notifications.forEach(n => {
+            try {
+                n.metadata = typeof n.metadata === 'string' ? JSON.parse(n.metadata || '{}') : (n.metadata || {});
+            }
+            catch {
+                n.metadata = {};
+            }
+            n.isRead = Boolean(n.read);
+        });
+        const unreadRes = await db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND read = 0').get(req.user.userId);
+        const unreadCount = Number(unreadRes?.count || 0);
+        return res.json({ data: notifications, meta: { requestId: req.requestId, page, pageSize, total, unreadCount } });
     }
-    const totalQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
-    const total = db.prepare(totalQuery).get(...params).count;
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(pageSize, offset);
-    const notifications = db.prepare(query).all(...params);
-    notifications.forEach(n => { n.metadata = JSON.parse(n.metadata || '{}'); });
-    const unreadCount = db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND read_at IS NULL').get(req.user.userId).count;
-    return res.json({ data: notifications, meta: { requestId: req.requestId, page, pageSize, total, unreadCount } });
+    catch (err) {
+        return res.status(500).json({ error: { code: 'NOTIFICATIONS_FETCH_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
 // ---- MARK AS READ ----
-router.put('/:id/read', (req, res) => {
-    const db = getDb();
-    db.prepare(`UPDATE notifications SET read_at = datetime('now') WHERE id = ? AND user_id = ?`).run(req.params.id, req.user.userId);
-    return res.json({ data: { message: 'Notification marked as read' }, meta: { requestId: req.requestId } });
+router.put('/:id/read', async (req, res) => {
+    try {
+        const db = getDb();
+        await db.prepare(`UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?`).run(req.params.id, req.user.userId);
+        return res.json({ data: { message: 'Notification marked as read' }, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'NOTIFICATION_UPDATE_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
 // ---- MARK ALL AS READ ----
-router.put('/read-all', (req, res) => {
-    const db = getDb();
-    db.prepare(`UPDATE notifications SET read_at = datetime('now') WHERE user_id = ? AND read_at IS NULL`).run(req.user.userId);
-    return res.json({ data: { message: 'All notifications marked as read' }, meta: { requestId: req.requestId } });
+router.put('/read-all', async (req, res) => {
+    try {
+        const db = getDb();
+        await db.prepare(`UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0`).run(req.user.userId);
+        return res.json({ data: { message: 'All notifications marked as read' }, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'NOTIFICATIONS_READ_ALL_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
 // ---- DELETE NOTIFICATION ----
-router.delete('/:id', (req, res) => {
-    const db = getDb();
-    db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?').run(req.params.id, req.user.userId);
-    return res.json({ data: { message: 'Notification deleted' }, meta: { requestId: req.requestId } });
+router.delete('/:id', async (req, res) => {
+    try {
+        const db = getDb();
+        await db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?').run(req.params.id, req.user.userId);
+        return res.json({ data: { message: 'Notification deleted' }, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'NOTIFICATION_DELETE_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
 // ---- CREATE NOTIFICATION (INTERNAL HELPER — also used by other routes) ----
 export function createNotification(userId, type, title, message, metadata = {}) {
-    const db = getDb();
-    db.prepare('INSERT INTO notifications (id, user_id, type, title, message, metadata) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(generateId(), userId, type, title, message, JSON.stringify(metadata));
+    try {
+        const db = getDb();
+        Promise.resolve(db.prepare('INSERT INTO notifications (id, user_id, type, title, message, metadata) VALUES (?, ?, ?, ?, ?, ?)')
+            .run(generateId(), userId, type, title, message, JSON.stringify(metadata))).catch((err) => console.warn('Failed to create notification:', err.message));
+    }
+    catch (err) {
+        console.warn('Failed to create notification:', err.message);
+    }
 }
 export default router;
 //# sourceMappingURL=notifications.js.map

@@ -463,8 +463,8 @@ export const TalentVault: React.FC<TalentVaultProps> = ({ onNavigate }) => {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => onNavigate?.('employer')}
-              className="btn-secondary text-xs font-mono py-2.5 px-3.5 flex items-center gap-2"
+              onClick={() => onNavigate?.('employer-dashboard')}
+              className="btn-secondary text-xs font-mono py-2.5 px-3.5 flex items-center gap-2 cursor-pointer"
             >
               EMPLOYER DASHBOARD <ArrowRight size={13} />
             </button>

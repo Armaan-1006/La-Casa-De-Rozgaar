@@ -4,6 +4,7 @@ export declare const config: {
     readonly nodeEnv: string;
     readonly database: {
         readonly url: string;
+        readonly intelligenceUrl: string;
         readonly path: string;
     };
     readonly jwt: {

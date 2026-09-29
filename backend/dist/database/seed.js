@@ -2,12 +2,12 @@ import { getDb } from './connection.js';
 import { generateId } from './connection.js';
 import { runMigrations } from './migrate.js';
 import bcrypt from 'bcryptjs';
-export function seedDatabase() {
+export async function seedDatabase() {
     const db = getDb();
-    runMigrations();
+    await runMigrations();
     // Check if already seeded
-    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
-    if (userCount.count > 0) {
+    const userCount = await db.prepare('SELECT COUNT(*) as count FROM users').get();
+    if (userCount && Number(userCount.count) > 0) {
         console.log('[SEED] Database already seeded, skipping');
         return;
     }
@@ -20,13 +20,13 @@ export function seedDatabase() {
     const recruiterId = generateId();
     const employerAdminId = generateId();
     const workforcePlannerId = generateId();
-    const insertUser = db.prepare(`INSERT INTO users (id, email, password_hash, role, email_verified) VALUES (?, ?, ?, ?, 1)`);
-    insertUser.run(adminId, 'admin@rozgaar.in', passwordHash, 'ADMIN');
-    insertUser.run(candidateId, 'rahul@example.com', passwordHash, 'CANDIDATE');
-    insertUser.run(candidate2Id, 'priya@example.com', passwordHash, 'CANDIDATE');
-    insertUser.run(recruiterId, 'recruiter@techcorp.in', passwordHash, 'RECRUITER');
-    insertUser.run(employerAdminId, 'hr@techcorp.in', passwordHash, 'EMPLOYER_ADMIN');
-    insertUser.run(workforcePlannerId, 'planner@techcorp.in', passwordHash, 'WORKFORCE_PLANNER');
+    const insertUser = db.prepare(`INSERT INTO users (id, email, password_hash, name, role, email_verified) VALUES (?, ?, ?, ?, ?, 1)`);
+    insertUser.run(adminId, 'admin@rozgaar.in', passwordHash, 'System Administrator', 'ADMIN');
+    insertUser.run(candidateId, 'rahul@example.com', passwordHash, 'Rahul Sharma', 'CANDIDATE');
+    insertUser.run(candidate2Id, 'priya@example.com', passwordHash, 'Priya Patel', 'CANDIDATE');
+    insertUser.run(recruiterId, 'recruiter@techcorp.in', passwordHash, 'Vikram Malhotra', 'RECRUITER');
+    insertUser.run(employerAdminId, 'hr@techcorp.in', passwordHash, 'TechCorp HR Admin', 'EMPLOYER_ADMIN');
+    insertUser.run(workforcePlannerId, 'planner@techcorp.in', passwordHash, 'Ananya Deshmukh', 'WORKFORCE_PLANNER');
     // ---- Candidate Profiles ----
     const profileId = generateId();
     const profile2Id = generateId();

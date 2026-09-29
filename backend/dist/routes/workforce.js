@@ -5,62 +5,92 @@ import { getIntelligenceProvider } from '../intelligence/index.js';
 const router = Router();
 router.use(authenticate);
 // ---- WORKFORCE PROFILES ----
-router.get('/profiles', requireOrganization, (req, res) => {
-    const db = getDb();
-    const orgId = req.query.organizationId;
-    if (!orgId)
-        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'organizationId is required', requestId: req.requestId } });
-    const profiles = db.prepare('SELECT * FROM workforce_profiles WHERE organization_id = ? ORDER BY created_at DESC').all(orgId);
-    profiles.forEach(p => {
-        p.current_skills = JSON.parse(p.current_skills || '[]');
-        p.target_skills = JSON.parse(p.target_skills || '[]');
-        p.metadata = JSON.parse(p.metadata || '{}');
-    });
-    return res.json({ data: profiles, meta: { requestId: req.requestId } });
+router.get('/profiles', requireOrganization, async (req, res) => {
+    try {
+        const db = getDb();
+        const orgId = req.query.organizationId;
+        if (!orgId)
+            return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'organizationId is required', requestId: req.requestId } });
+        const profiles = (await db.prepare('SELECT * FROM workforce_profiles WHERE organization_id = ? ORDER BY created_at DESC').all(orgId) || []);
+        profiles.forEach(p => {
+            try {
+                p.current_skills = typeof p.current_skills === 'string' ? JSON.parse(p.current_skills || '[]') : (p.current_skills || []);
+            }
+            catch {
+                p.current_skills = [];
+            }
+            try {
+                p.target_skills = typeof p.target_skills === 'string' ? JSON.parse(p.target_skills || '[]') : (p.target_skills || []);
+            }
+            catch {
+                p.target_skills = [];
+            }
+            try {
+                p.metadata = typeof p.metadata === 'string' ? JSON.parse(p.metadata || '{}') : (p.metadata || {});
+            }
+            catch {
+                p.metadata = {};
+            }
+        });
+        return res.json({ data: profiles, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'WORKFORCE_FETCH_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
-router.post('/profiles', requireOrganization, (req, res) => {
-    const db = getDb();
-    const { organizationId, department, roleId, employeeCount, currentSkills, targetSkills } = req.body;
-    if (!organizationId || !department || !roleId) {
-        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'organizationId, department, roleId are required', requestId: req.requestId } });
+router.post('/profiles', requireOrganization, async (req, res) => {
+    try {
+        const db = getDb();
+        const { organizationId, department, roleId, employeeCount, currentSkills, targetSkills } = req.body;
+        if (!organizationId || !department || !roleId) {
+            return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'organizationId, department, roleId are required', requestId: req.requestId } });
+        }
+        const id = generateId();
+        await db.prepare(`INSERT INTO workforce_profiles (id, organization_id, department, role_id, employee_count, current_skills, target_skills, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(id, organizationId, department, roleId, employeeCount || 0, JSON.stringify(currentSkills || []), JSON.stringify(targetSkills || []), req.user.userId);
+        return res.status(201).json({ data: { id, message: 'Workforce profile created' }, meta: { requestId: req.requestId } });
     }
-    const id = generateId();
-    db.prepare(`INSERT INTO workforce_profiles (id, organization_id, department, role_id, employee_count, current_skills, target_skills, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(id, organizationId, department, roleId, employeeCount || 0, JSON.stringify(currentSkills || []), JSON.stringify(targetSkills || []), req.user.userId);
-    return res.status(201).json({ data: { id, message: 'Workforce profile created' }, meta: { requestId: req.requestId } });
+    catch (err) {
+        return res.status(500).json({ error: { code: 'WORKFORCE_CREATE_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
-router.put('/profiles/:id', requireOrganization, (req, res) => {
-    const db = getDb();
-    const { department, roleId, employeeCount, currentSkills, targetSkills } = req.body;
-    const updates = [];
-    const params = [];
-    if (department) {
-        updates.push('department = ?');
-        params.push(department);
+router.put('/profiles/:id', requireOrganization, async (req, res) => {
+    try {
+        const db = getDb();
+        const { department, roleId, employeeCount, currentSkills, targetSkills } = req.body;
+        const updates = [];
+        const params = [];
+        if (department) {
+            updates.push('department = ?');
+            params.push(department);
+        }
+        if (roleId) {
+            updates.push('role_id = ?');
+            params.push(roleId);
+        }
+        if (employeeCount !== undefined) {
+            updates.push('employee_count = ?');
+            params.push(employeeCount);
+        }
+        if (currentSkills) {
+            updates.push('current_skills = ?');
+            params.push(JSON.stringify(currentSkills));
+        }
+        if (targetSkills) {
+            updates.push('target_skills = ?');
+            params.push(JSON.stringify(targetSkills));
+        }
+        if (updates.length) {
+            updates.push(`updated_at = datetime('now')`);
+            params.push(req.params.id);
+            await db.prepare(`UPDATE workforce_profiles SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+        }
+        return res.json({ data: { message: 'Profile updated' }, meta: { requestId: req.requestId } });
     }
-    if (roleId) {
-        updates.push('role_id = ?');
-        params.push(roleId);
+    catch (err) {
+        return res.status(500).json({ error: { code: 'WORKFORCE_UPDATE_ERROR', message: err.message, requestId: req.requestId } });
     }
-    if (employeeCount !== undefined) {
-        updates.push('employee_count = ?');
-        params.push(employeeCount);
-    }
-    if (currentSkills) {
-        updates.push('current_skills = ?');
-        params.push(JSON.stringify(currentSkills));
-    }
-    if (targetSkills) {
-        updates.push('target_skills = ?');
-        params.push(JSON.stringify(targetSkills));
-    }
-    if (updates.length) {
-        updates.push(`updated_at = datetime('now')`);
-        params.push(req.params.id);
-        db.prepare(`UPDATE workforce_profiles SET ${updates.join(', ')} WHERE id = ?`).run(...params);
-    }
-    return res.json({ data: { message: 'Profile updated' }, meta: { requestId: req.requestId } });
 });
 // ---- WORKFORCE GAP ANALYSIS ----
 router.post('/gaps/analyze', requireOrganization, async (req, res) => {
@@ -70,11 +100,11 @@ router.post('/gaps/analyze', requireOrganization, async (req, res) => {
         const { profileId } = req.body;
         if (!profileId)
             return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'profileId is required', requestId: req.requestId } });
-        const profile = db.prepare('SELECT * FROM workforce_profiles WHERE id = ?').get(profileId);
+        const profile = await db.prepare('SELECT * FROM workforce_profiles WHERE id = ?').get(profileId);
         if (!profile)
             return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Workforce profile not found', requestId: req.requestId } });
-        const currentSkills = JSON.parse(profile.current_skills || '[]');
-        const targetSkills = JSON.parse(profile.target_skills || '[]');
+        const currentSkills = (typeof profile.current_skills === 'string' ? JSON.parse(profile.current_skills || '[]') : (profile.current_skills || []));
+        const targetSkills = (typeof profile.target_skills === 'string' ? JSON.parse(profile.target_skills || '[]') : (profile.target_skills || []));
         const requirements = await intel.getRoleRequirements(profile.role_id);
         const allTargets = [...targetSkills];
         if (requirements) {
@@ -118,11 +148,12 @@ router.post('/gaps/analyze', requireOrganization, async (req, res) => {
             }
         }
         gaps.sort((a, b) => b.gap - a.gap);
-        // Store gaps
+        // Delete existing gaps and insert new ones
+        await db.prepare('DELETE FROM workforce_gaps WHERE profile_id = ?').run(profileId);
+        const insertGap = db.prepare(`INSERT INTO workforce_gaps (id, profile_id, skill_id, skill_name, current_avg, target_score, gap, coverage, impacted_employees, priority)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
         for (const gap of gaps) {
-            db.prepare(`INSERT OR REPLACE INTO workforce_gaps (id, profile_id, skill_id, skill_name, current_avg, target_score, gap, coverage, impacted_employees, priority)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-                .run(generateId(), profileId, gap.skillId, gap.skillName, gap.currentAvg, gap.target, gap.gap, gap.coverage, gap.impactedEmployees, gap.priority);
+            await insertGap.run(generateId(), profileId, gap.skillId, gap.skillName, gap.currentAvg, gap.target, gap.gap, gap.coverage, gap.impactedEmployees, gap.priority);
         }
         return res.json({
             data: {
@@ -153,7 +184,7 @@ router.post('/gaps/recommendation', requireOrganization, async (req, res) => {
         const { profileId } = req.body;
         if (!profileId)
             return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'profileId is required', requestId: req.requestId } });
-        const gaps = db.prepare('SELECT * FROM workforce_gaps WHERE profile_id = ? ORDER BY gap DESC').all(profileId);
+        const gaps = (await db.prepare('SELECT * FROM workforce_gaps WHERE profile_id = ? ORDER BY gap DESC').all(profileId) || []);
         if (!gaps.length)
             return res.json({ data: { recommendations: [], message: 'No gaps found. Run gap analysis first.' }, meta: { requestId: req.requestId } });
         const recommendations = [];
@@ -220,25 +251,60 @@ router.post('/gaps/recommendation', requireOrganization, async (req, res) => {
         return res.status(500).json({ error: { code: 'RECOMMENDATION_ERROR', message: err.message, requestId: req.requestId } });
     }
 });
-// ---- WORKFORCE PLANS ----
-router.get('/plans', requireOrganization, (req, res) => {
-    const db = getDb();
-    const orgId = req.query.organizationId;
-    if (!orgId)
-        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'organizationId is required', requestId: req.requestId } });
-    const plans = db.prepare('SELECT * FROM workforce_plans WHERE organization_id = ? ORDER BY created_at DESC').all(orgId);
-    plans.forEach(p => { p.actions = JSON.parse(p.actions || '[]'); });
-    return res.json({ data: plans, meta: { requestId: req.requestId } });
+// ---- GET WORKFORCE GAPS ----
+router.get('/gaps', async (req, res) => {
+    try {
+        const db = getDb();
+        const orgId = req.query.organizationId || req.user?.organizationId;
+        let gaps = [];
+        if (orgId) {
+            gaps = (await db.prepare('SELECT g.* FROM workforce_gaps g JOIN workforce_profiles p ON g.profile_id = p.id WHERE p.organization_id = ? ORDER BY g.gap DESC').all(orgId) || []);
+        }
+        if (!gaps.length) {
+            gaps = (await db.prepare('SELECT * FROM workforce_gaps ORDER BY gap DESC LIMIT 20').all() || []);
+        }
+        return res.json({ data: gaps, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'WORKFORCE_GAPS_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
-router.post('/plans', requireOrganization, (req, res) => {
-    const db = getDb();
-    const { organizationId, profileId, name, actions, timeline, budget } = req.body;
-    if (!organizationId || !name)
-        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'organizationId and name are required', requestId: req.requestId } });
-    const id = generateId();
-    db.prepare(`INSERT INTO workforce_plans (id, organization_id, profile_id, name, actions, timeline, budget, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(id, organizationId, profileId || null, name, JSON.stringify(actions || []), timeline || null, budget || null, req.user.userId);
-    return res.status(201).json({ data: { id, message: 'Workforce plan created' }, meta: { requestId: req.requestId } });
+// ---- WORKFORCE PLANS ----
+router.get('/plans', requireOrganization, async (req, res) => {
+    try {
+        const db = getDb();
+        const orgId = req.query.organizationId;
+        if (!orgId)
+            return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'organizationId is required', requestId: req.requestId } });
+        const plans = (await db.prepare('SELECT * FROM workforce_plans WHERE organization_id = ? ORDER BY created_at DESC').all(orgId) || []);
+        plans.forEach(p => {
+            try {
+                p.actions = typeof p.actions === 'string' ? JSON.parse(p.actions || '[]') : (p.actions || []);
+            }
+            catch {
+                p.actions = [];
+            }
+        });
+        return res.json({ data: plans, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'WORKFORCE_PLANS_ERROR', message: err.message, requestId: req.requestId } });
+    }
+});
+router.post('/plans', requireOrganization, async (req, res) => {
+    try {
+        const db = getDb();
+        const { organizationId, profileId, name, actions, timeline, budget } = req.body;
+        if (!organizationId || !name)
+            return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'organizationId and name are required', requestId: req.requestId } });
+        const id = generateId();
+        await db.prepare(`INSERT INTO workforce_plans (id, organization_id, profile_id, name, actions, timeline, budget, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(id, organizationId, profileId || null, name, JSON.stringify(actions || []), timeline || null, budget || null, req.user.userId);
+        return res.status(201).json({ data: { id, message: 'Workforce plan created' }, meta: { requestId: req.requestId } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'WORKFORCE_PLAN_CREATE_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
 export default router;
 //# sourceMappingURL=workforce.js.map

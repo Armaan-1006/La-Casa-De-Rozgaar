@@ -20,11 +20,8 @@ export async function seedPgDatabase(connectionString) {
     });
     const client = await pool.connect();
     try {
-        const userRes = await client.query('SELECT COUNT(*)::int as count FROM users');
-        if (userRes.rows[0].count > 0) {
-            console.log('[PG-SEED] Database already has users in Neon PostgreSQL, skipping user seed.');
-            return;
-        }
+        // Clear previous demo accounts to ensure clean state
+        await client.query('TRUNCATE users, candidate_profiles, organizations, assessments CASCADE');
         console.log('[PG-SEED] Seeding demo accounts and candidate profiles into Neon PostgreSQL...');
         const passwordHash = bcrypt.hashSync('password123', 10);
         // ---- Users ----
@@ -34,13 +31,13 @@ export async function seedPgDatabase(connectionString) {
         const recruiterId = generateId();
         const employerAdminId = generateId();
         const workforcePlannerId = generateId();
-        const insertUserSql = `INSERT INTO users (id, email, password_hash, role, email_verified) VALUES ($1, $2, $3, $4, 1)`;
-        await client.query(insertUserSql, [adminId, 'admin@rozgaar.in', passwordHash, 'ADMIN']);
-        await client.query(insertUserSql, [candidateId, 'rahul@example.com', passwordHash, 'CANDIDATE']);
-        await client.query(insertUserSql, [candidate2Id, 'priya@example.com', passwordHash, 'CANDIDATE']);
-        await client.query(insertUserSql, [recruiterId, 'recruiter@techcorp.in', passwordHash, 'RECRUITER']);
-        await client.query(insertUserSql, [employerAdminId, 'hr@techcorp.in', passwordHash, 'EMPLOYER_ADMIN']);
-        await client.query(insertUserSql, [workforcePlannerId, 'planner@techcorp.in', passwordHash, 'WORKFORCE_PLANNER']);
+        const insertUserSql = `INSERT INTO users (id, email, password_hash, name, role, email_verified) VALUES ($1, $2, $3, $4, $5, 1)`;
+        await client.query(insertUserSql, [adminId, 'admin@rozgaar.in', passwordHash, 'System Administrator', 'ADMIN']);
+        await client.query(insertUserSql, [candidateId, 'rahul@example.com', passwordHash, 'Rahul Sharma', 'CANDIDATE']);
+        await client.query(insertUserSql, [candidate2Id, 'priya@example.com', passwordHash, 'Priya Patel', 'CANDIDATE']);
+        await client.query(insertUserSql, [recruiterId, 'recruiter@techcorp.in', passwordHash, 'Vikram Malhotra', 'RECRUITER']);
+        await client.query(insertUserSql, [employerAdminId, 'hr@techcorp.in', passwordHash, 'TechCorp HR Admin', 'EMPLOYER_ADMIN']);
+        await client.query(insertUserSql, [workforcePlannerId, 'planner@techcorp.in', passwordHash, 'Ananya Deshmukh', 'WORKFORCE_PLANNER']);
         // ---- Candidate Profiles ----
         const profileId = generateId();
         const profile2Id = generateId();
@@ -147,8 +144,103 @@ export async function seedPgDatabase(connectionString) {
             JSON.stringify(['JavaScript', 'React', 'Node.js', 'SQL']),
             'INTERMEDIATE',
             45,
-            3,
+            10,
             adminId
+        ]);
+        const insertQSql = `
+      INSERT INTO assessment_questions (id, assessment_id, type, text, options, correct_answers, skill_ids, difficulty, points, sort_order)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `;
+        await client.query(insertQSql, [
+            generateId(), assessId, 'MCQ',
+            'What is the output of: console.log(typeof null)?',
+            JSON.stringify(['"null"', '"undefined"', '"object"', '"boolean"']),
+            JSON.stringify(['"object"']),
+            JSON.stringify(['skill_javascript']), 3, 1, 1
+        ]);
+        await client.query(insertQSql, [
+            generateId(), assessId, 'MCQ',
+            'In React, what hook is used for side effects?',
+            JSON.stringify(['useState', 'useEffect', 'useContext', 'useMemo']),
+            JSON.stringify(['useEffect']),
+            JSON.stringify(['skill_react']), 2, 1, 2
+        ]);
+        await client.query(insertQSql, [
+            generateId(), assessId, 'MULTIPLE_ANSWER',
+            'Which of the following are valid HTTP methods?',
+            JSON.stringify(['GET', 'POST', 'SEND', 'PATCH', 'REMOVE', 'DELETE']),
+            JSON.stringify(['GET', 'POST', 'PATCH', 'DELETE']),
+            JSON.stringify(['skill_nodejs']), 3, 1, 3
+        ]);
+        await client.query(insertQSql, [
+            generateId(), assessId, 'MCQ',
+            'What SQL clause is used to filter groups?',
+            JSON.stringify(['WHERE', 'HAVING', 'FILTER', 'GROUP_FILTER']),
+            JSON.stringify(['HAVING']),
+            JSON.stringify(['skill_sql']), 3, 1, 4
+        ]);
+        await client.query(insertQSql, [
+            generateId(), assessId, 'MCQ',
+            'What does the "use strict" directive do in JavaScript?',
+            JSON.stringify(['Enables ES6 features', 'Enforces stricter parsing and error handling', 'Improves performance', 'Enables TypeScript mode']),
+            JSON.stringify(['Enforces stricter parsing and error handling']),
+            JSON.stringify(['skill_javascript']), 2, 1, 5
+        ]);
+        await client.query(insertQSql, [
+            generateId(), assessId, 'MCQ',
+            'In React, what is the purpose of the key prop in lists?',
+            JSON.stringify(['Styling', 'Security', 'Reconciliation performance', 'Data binding']),
+            JSON.stringify(['Reconciliation performance']),
+            JSON.stringify(['skill_react']), 3, 1, 6
+        ]);
+        await client.query(insertQSql, [
+            generateId(), assessId, 'MCQ',
+            'Which Node.js module is used for file system operations?',
+            JSON.stringify(['http', 'fs', 'path', 'os']),
+            JSON.stringify(['fs']),
+            JSON.stringify(['skill_nodejs']), 2, 1, 7
+        ]);
+        await client.query(insertQSql, [
+            generateId(), assessId, 'MCQ',
+            'What is the difference between INNER JOIN and LEFT JOIN?',
+            JSON.stringify(['No difference', 'LEFT JOIN includes unmatched rows from the left table', 'INNER JOIN includes all rows', 'LEFT JOIN is faster']),
+            JSON.stringify(['LEFT JOIN includes unmatched rows from the left table']),
+            JSON.stringify(['skill_sql']), 3, 1, 8
+        ]);
+        // ---- Workforce Profiles ----
+        await client.query(`
+      INSERT INTO workforce_profiles (id, organization_id, department, role_id, employee_count, current_skills, target_skills, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (id) DO UPDATE SET
+        organization_id = EXCLUDED.organization_id,
+        department = EXCLUDED.department,
+        role_id = EXCLUDED.role_id,
+        employee_count = EXCLUDED.employee_count,
+        current_skills = EXCLUDED.current_skills,
+        target_skills = EXCLUDED.target_skills
+    `, [
+            'wf_eng_fullstack',
+            orgId,
+            'Engineering',
+            'role_fullstack',
+            25,
+            JSON.stringify([
+                { skillId: 'skill_javascript', averageScore: 7.2, coverage: 0.9 },
+                { skillId: 'skill_react', averageScore: 6.5, coverage: 0.8 },
+                { skillId: 'skill_nodejs', averageScore: 5.8, coverage: 0.6 },
+                { skillId: 'skill_typescript', averageScore: 4.2, coverage: 0.4 },
+                { skillId: 'skill_docker', averageScore: 3.5, coverage: 0.3 },
+                { skillId: 'skill_aws', averageScore: 3.0, coverage: 0.25 },
+            ]),
+            JSON.stringify([
+                { skillId: 'skill_javascript', targetScore: 8.0 },
+                { skillId: 'skill_react', targetScore: 8.0 },
+                { skillId: 'skill_nodejs', targetScore: 7.5 },
+                { skillId: 'skill_typescript', targetScore: 7.5 },
+                { skillId: 'skill_docker', targetScore: 7.0 },
+                { skillId: 'skill_aws', targetScore: 7.0 },
+            ]),
+            employerAdminId
         ]);
         console.log('[PG-SEED] Successfully seeded Neon PostgreSQL database!');
     }

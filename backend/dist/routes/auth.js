@@ -13,18 +13,19 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Email and password are required', requestId: req.requestId } });
         }
         const db = getDb();
-        const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
         if (existing) {
             return res.status(409).json({ error: { code: 'EMAIL_EXISTS', message: 'Email already registered', requestId: req.requestId } });
         }
         const passwordHash = await bcrypt.hash(password, 10);
         const userId = generateId();
-        const userRole = (role?.toUpperCase() === 'RECRUITER' || role?.toUpperCase() === 'EMPLOYER_ADMIN' || role?.toUpperCase() === 'WORKFORCE_PLANNER' || role?.toUpperCase() === 'ADMIN') ? role.toUpperCase() : 'CANDIDATE';
-        db.prepare('INSERT INTO users (id, email, password_hash, role) VALUES (?, ?, ?, ?)').run(userId, email, passwordHash, userRole);
+        const resolvedName = name || email.split('@')[0];
+        const userRole = (role?.toUpperCase() === 'RECRUITER' || role?.toUpperCase() === 'EMPLOYER_ADMIN' || role?.toUpperCase() === 'ADMIN') ? role.toUpperCase() : 'CANDIDATE';
+        await db.prepare('INSERT INTO users (id, email, password_hash, name, role) VALUES (?, ?, ?, ?, ?)').run(userId, email, passwordHash, resolvedName, userRole);
         // Auto-create candidate profile if CANDIDATE role
         if (userRole === 'CANDIDATE') {
             const profileId = generateId();
-            db.prepare('INSERT INTO candidate_profiles (id, user_id, name) VALUES (?, ?, ?)').run(profileId, userId, name || email.split('@')[0]);
+            await db.prepare('INSERT INTO candidate_profiles (id, user_id, name) VALUES (?, ?, ?)').run(profileId, userId, resolvedName);
         }
         // Generate token
         const tokenPayload = { userId, email, role: userRole, jti: generateId() };
@@ -32,17 +33,18 @@ router.post('/register', async (req, res) => {
         const refreshToken = jwt.sign({ userId, type: 'refresh', jti: generateId() }, config.jwt.secret, { expiresIn: config.jwt.refreshExpiresIn });
         const sessionId = generateId();
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-        db.prepare('INSERT INTO sessions (id, user_id, token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(sessionId, userId, token, refreshToken, expiresAt);
+        await db.prepare('INSERT INTO sessions (id, user_id, token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(sessionId, userId, token, refreshToken, expiresAt);
         auditLog(userId, 'USER_REGISTERED', 'user', userId);
         return res.status(201).json({
             data: {
                 userId,
                 email,
+                name: resolvedName,
                 role: userRole,
                 token,
                 accessToken: token,
                 refreshToken,
-                user: { id: userId, email, role: userRole.toLowerCase() }
+                user: { id: userId, email, name: resolvedName, role: userRole.toLowerCase() }
             },
             meta: { requestId: req.requestId }
         });
@@ -59,7 +61,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Email and password are required', requestId: req.requestId } });
         }
         const db = getDb();
-        const user = db.prepare('SELECT id, email, password_hash, role FROM users WHERE email = ?').get(email);
+        const user = await db.prepare('SELECT id, email, name, password_hash, role FROM users WHERE email = ?').get(email);
         if (!user) {
             return res.status(401).json({ error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password', requestId: req.requestId } });
         }
@@ -72,17 +74,18 @@ router.post('/login', async (req, res) => {
         const refreshToken = jwt.sign({ userId: user.id, type: 'refresh', jti: generateId() }, config.jwt.secret, { expiresIn: config.jwt.refreshExpiresIn });
         const sessionId = generateId();
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-        db.prepare('INSERT INTO sessions (id, user_id, token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(sessionId, user.id, token, refreshToken, expiresAt);
+        await db.prepare('INSERT INTO sessions (id, user_id, token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(sessionId, user.id, token, refreshToken, expiresAt);
         auditLog(user.id, 'USER_LOGIN', 'user', user.id);
         return res.json({
             data: {
                 userId: user.id,
                 email: user.email,
+                name: user.name,
                 role: user.role,
                 token,
                 accessToken: token,
                 refreshToken,
-                user: { id: user.id, email: user.email, role: user.role.toLowerCase() }
+                user: { id: user.id, email: user.email, name: user.name, role: user.role.toLowerCase() }
             },
             meta: { requestId: req.requestId }
         });
@@ -92,14 +95,19 @@ router.post('/login', async (req, res) => {
     }
 });
 // ---- LOGOUT ----
-router.post('/logout', authenticate, (req, res) => {
-    const token = req.headers.authorization?.slice(7);
-    if (token) {
-        const db = getDb();
-        db.prepare('UPDATE sessions SET revoked = 1 WHERE token = ?').run(token);
-        auditLog(req.user.userId, 'USER_LOGOUT', 'user', req.user.userId);
+router.post('/logout', authenticate, async (req, res) => {
+    try {
+        const token = req.headers.authorization?.slice(7);
+        if (token) {
+            const db = getDb();
+            await db.prepare('UPDATE sessions SET revoked = 1 WHERE token = ?').run(token);
+            auditLog(req.user.userId, 'USER_LOGOUT', 'user', req.user.userId);
+        }
+        return res.json({ data: { message: 'Logged out successfully' }, meta: { requestId: req.requestId } });
     }
-    return res.json({ data: { message: 'Logged out successfully' }, meta: { requestId: req.requestId } });
+    catch (err) {
+        return res.status(500).json({ error: { code: 'LOGOUT_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
 // ---- REFRESH TOKEN ----
 router.post('/refresh', async (req, res) => {
@@ -113,23 +121,23 @@ router.post('/refresh', async (req, res) => {
             return res.status(401).json({ error: { code: 'INVALID_TOKEN', message: 'Invalid refresh token', requestId: req.requestId } });
         }
         const db = getDb();
-        const session = db.prepare('SELECT id FROM sessions WHERE refresh_token = ? AND revoked = 0').get(refreshToken);
+        const session = await db.prepare('SELECT id FROM sessions WHERE refresh_token = ? AND revoked = 0').get(refreshToken);
         if (!session) {
             return res.status(401).json({ error: { code: 'SESSION_REVOKED', message: 'Session expired or revoked', requestId: req.requestId } });
         }
-        const user = db.prepare('SELECT id, email, role FROM users WHERE id = ?').get(decoded.userId);
+        const user = await db.prepare('SELECT id, email, role FROM users WHERE id = ?').get(decoded.userId);
         if (!user) {
             return res.status(401).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found', requestId: req.requestId } });
         }
         // Revoke old session
-        db.prepare('UPDATE sessions SET revoked = 1 WHERE id = ?').run(session.id);
+        await db.prepare('UPDATE sessions SET revoked = 1 WHERE id = ?').run(session.id);
         // Create new tokens
         const tokenPayload = { userId: user.id, email: user.email, role: user.role, jti: generateId() };
         const newToken = jwt.sign(tokenPayload, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
         const newRefreshToken = jwt.sign({ userId: user.id, type: 'refresh', jti: generateId() }, config.jwt.secret, { expiresIn: config.jwt.refreshExpiresIn });
         const newSessionId = generateId();
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-        db.prepare('INSERT INTO sessions (id, user_id, token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(newSessionId, user.id, newToken, newRefreshToken, expiresAt);
+        await db.prepare('INSERT INTO sessions (id, user_id, token, refresh_token, expires_at) VALUES (?, ?, ?, ?, ?)').run(newSessionId, user.id, newToken, newRefreshToken, expiresAt);
         return res.json({
             data: { token: newToken, refreshToken: newRefreshToken },
             meta: { requestId: req.requestId }
@@ -140,20 +148,25 @@ router.post('/refresh', async (req, res) => {
     }
 });
 // ---- ME (current user) ----
-router.get('/me', authenticate, (req, res) => {
-    const db = getDb();
-    const user = db.prepare('SELECT id, email, role, email_verified, created_at FROM users WHERE id = ?').get(req.user.userId);
-    if (!user) {
-        return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found', requestId: req.requestId } });
+router.get('/me', authenticate, async (req, res) => {
+    try {
+        const db = getDb();
+        const user = await db.prepare('SELECT id, email, role, email_verified, created_at FROM users WHERE id = ?').get(req.user.userId);
+        if (!user) {
+            return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found', requestId: req.requestId } });
+        }
+        return res.json({
+            data: {
+                ...user,
+                role: user.role.toLowerCase(),
+                userRole: user.role,
+            },
+            meta: { requestId: req.requestId }
+        });
     }
-    return res.json({
-        data: {
-            ...user,
-            role: user.role.toLowerCase(),
-            userRole: user.role,
-        },
-        meta: { requestId: req.requestId }
-    });
+    catch (err) {
+        return res.status(500).json({ error: { code: 'FETCH_ERROR', message: err.message, requestId: req.requestId } });
+    }
 });
 export default router;
 //# sourceMappingURL=auth.js.map

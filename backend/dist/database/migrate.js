@@ -3,9 +3,9 @@ import { getDb } from './connection.js';
  * Run all database migrations.
  * Idempotent — safe to re-run.
  */
-export function runMigrations() {
+export async function runMigrations() {
     const db = getDb();
-    db.exec(`
+    await db.exec(`
     -- ============================================================
     -- USERS & AUTH
     -- ============================================================
@@ -13,8 +13,10 @@ export function runMigrations() {
       id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
+      name TEXT,
       role TEXT NOT NULL DEFAULT 'CANDIDATE',
       email_verified INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );

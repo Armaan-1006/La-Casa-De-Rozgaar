@@ -15,7 +15,7 @@ export declare function requestIdMiddleware(req: Request, _res: Response, next: 
 /**
  * Authenticate via Bearer token.
  */
-export declare function authenticate(req: Request, res: Response, next: NextFunction): void;
+export declare function authenticate(req: Request, res: Response, next: NextFunction): Promise<void>;
 /**
  * Authorization: require specific roles.
  */
@@ -23,7 +23,7 @@ export declare function authorize(...roles: UserRole[]): (req: Request, res: Res
 /**
  * Verify organization membership (for employer endpoints).
  */
-export declare function requireOrganization(req: Request, res: Response, next: NextFunction): void;
+export declare function requireOrganization(req: Request, res: Response, next: NextFunction): Promise<void>;
 /**
  * Global error handler.
  */

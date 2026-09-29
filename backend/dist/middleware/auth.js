@@ -11,7 +11,7 @@ export function requestIdMiddleware(req, _res, next) {
 /**
  * Authenticate via Bearer token.
  */
-export function authenticate(req, res, next) {
+export async function authenticate(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
         res.status(401).json({
@@ -24,8 +24,8 @@ export function authenticate(req, res, next) {
         const payload = jwt.verify(token, config.jwt.secret);
         // Verify session not revoked
         const db = getDb();
-        const session = db.prepare('SELECT revoked FROM sessions WHERE token = ?').get(token);
-        if (!session || session.revoked) {
+        const session = await db.prepare('SELECT revoked FROM sessions WHERE token = ?').get(token);
+        if (session && (session.revoked === 1 || session.revoked === true)) {
             res.status(401).json({
                 error: { code: 'SESSION_REVOKED', message: 'Session has been revoked', requestId: req.requestId }
             });
@@ -63,7 +63,7 @@ export function authorize(...roles) {
 /**
  * Verify organization membership (for employer endpoints).
  */
-export function requireOrganization(req, res, next) {
+export async function requireOrganization(req, res, next) {
     if (!req.user) {
         res.status(401).json({
             error: { code: 'UNAUTHORIZED', message: 'Not authenticated', requestId: req.requestId }
@@ -73,7 +73,7 @@ export function requireOrganization(req, res, next) {
     const db = getDb();
     let orgId = req.params.orgId || req.body?.organizationId || req.query?.organizationId;
     if (!orgId) {
-        const userOrg = db.prepare('SELECT organization_id FROM organization_users WHERE user_id = ?').get(req.user.userId);
+        const userOrg = await db.prepare('SELECT organization_id FROM organization_users WHERE user_id = ?').get(req.user.userId);
         if (userOrg) {
             orgId = userOrg.organization_id;
         }
@@ -85,7 +85,7 @@ export function requireOrganization(req, res, next) {
         return;
     }
     if (orgId) {
-        const membership = db.prepare('SELECT role FROM organization_users WHERE organization_id = ? AND user_id = ?').get(orgId, req.user.userId);
+        const membership = await db.prepare('SELECT role FROM organization_users WHERE organization_id = ? AND user_id = ?').get(orgId, req.user.userId);
         if (!membership && req.user.role !== 'ADMIN') {
             res.status(403).json({
                 error: { code: 'ORG_ACCESS_DENIED', message: 'You do not have access to this organization', requestId: req.requestId }
@@ -113,7 +113,14 @@ export function errorHandler(err, req, res, _next) {
  * Audit logging helper.
  */
 export function auditLog(userId, action, entityType, entityId, metadata, ipAddress) {
-    const db = getDb();
-    db.prepare(`INSERT INTO audit_log (id, user_id, action, entity_type, entity_id, metadata, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(generateId(), userId, action, entityType, entityId, metadata ? JSON.stringify(metadata) : null, ipAddress || null);
+    try {
+        const db = getDb();
+        Promise.resolve(db.prepare(`INSERT INTO audit_log (id, user_id, action, entity_type, entity_id, metadata, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(generateId(), userId, action, entityType, entityId, metadata ? JSON.stringify(metadata) : null, ipAddress || null)).catch((err) => {
+            console.warn('Audit log write error:', err.message);
+        });
+    }
+    catch (err) {
+        console.warn('Audit log failed:', err);
+    }
 }
 //# sourceMappingURL=auth.js.map

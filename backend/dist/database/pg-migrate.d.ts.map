@@ -1,1 +1,1 @@
-{"version":3,"file":"pg-migrate.d.ts","sourceRoot":"","sources":["../../src/database/pg-migrate.ts"],"names":[],"mappings":"AAKA,wBAAsB,eAAe,CAAC,gBAAgB,CAAC,EAAE,MAAM,GAAG,OAAO,CAAC,IAAI,CAAC,CA8e9E"}
+{"version":3,"file":"pg-migrate.d.ts","sourceRoot":"","sources":["../../src/database/pg-migrate.ts"],"names":[],"mappings":"AAKA,wBAAsB,eAAe,CAAC,gBAAgB,CAAC,EAAE,MAAM,GAAG,OAAO,CAAC,IAAI,CAAC,CA2gB9E"}
