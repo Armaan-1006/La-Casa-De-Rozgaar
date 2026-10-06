@@ -116,7 +116,7 @@ export function useLandingAudio(options: LandingAudioOptions = {}) {
         .then(() => {
           setPlaying(true);
           setAvailable(true);
-          fade(AMBIENT_BG_VOLUME, 4200); // Light, gradual fade-in to subtle background volume
+          fade(AMBIENT_BG_VOLUME, 2100); // Light, gradual fade-in to subtle background volume
         })
         .catch(() => {
           setAvailable(false);
