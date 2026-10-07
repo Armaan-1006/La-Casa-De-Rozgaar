@@ -6,7 +6,7 @@
       "src": "src/server.ts",
       "use": "@vercel/node",
       "config": {
-        "maxDuration": 15
+        "maxDuration": 60
       }
     }
   ],
@@ -14,6 +14,16 @@
     {
       "src": "/(.*)",
       "dest": "src/server.ts"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/cron/collect-jobs",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/v1/cron/collect-jobs",
+      "schedule": "0 13 * * *"
     }
   ]
 }

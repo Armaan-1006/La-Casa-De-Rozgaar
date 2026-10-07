@@ -16,8 +16,8 @@ router.get('/resources', async (req, res) => {
         let query = 'SELECT * FROM learning_resources WHERE 1=1';
         const params = [];
         if (skillId) {
-            query += ` AND skill_ids LIKE ?`;
-            params.push(`%${skillId}%`);
+            query += ` AND (skills LIKE ? OR title LIKE ?)`;
+            params.push(`%${skillId}%`, `%${skillId}%`);
         }
         if (difficulty) {
             query += ` AND difficulty = ?`;
@@ -26,22 +26,17 @@ router.get('/resources', async (req, res) => {
         const totalQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
         const countRes = await db.prepare(totalQuery).get(...params);
         const total = Number(countRes?.count || 0);
-        query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        query += ` ORDER BY title ASC LIMIT ? OFFSET ?`;
         params.push(pageSize, offset);
         const resources = (await db.prepare(query).all(...params) || []);
         resources.forEach(r => {
             try {
-                r.skill_ids = typeof r.skill_ids === 'string' ? JSON.parse(r.skill_ids || '[]') : (r.skill_ids || []);
+                r.skills = typeof r.skills === 'string' ? JSON.parse(r.skills || '[]') : (r.skills || []);
             }
             catch {
-                r.skill_ids = [];
+                r.skills = [];
             }
-            try {
-                r.role_ids = typeof r.role_ids === 'string' ? JSON.parse(r.role_ids || '[]') : (r.role_ids || []);
-            }
-            catch {
-                r.role_ids = [];
-            }
+            r.skill_ids = r.skills;
         });
         return res.json({ data: resources, meta: { requestId: req.requestId, page, pageSize, total } });
     }

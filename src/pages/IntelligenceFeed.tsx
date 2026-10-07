@@ -1,20 +1,45 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ArrowRight, Zap, TrendingUp, DollarSign, Building2, Bell } from 'lucide-react'
 import { mockIntelligenceFeed } from '../data/mockData'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface IntelligenceFeedProps {
   onNavigate?: (page: string) => void
 }
 
 export const IntelligenceFeed: React.FC<IntelligenceFeedProps> = ({ onNavigate }) => {
+  const [feedItems, setFeedItems] = useState(mockIntelligenceFeed)
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
+
+  useEffect(() => {
+    let mounted = true
+    api.research.getIntelligenceFeed().then((items) => {
+      if (mounted && items && items.length > 0) {
+        // Map backend feed items to UI format if needed
+        const formatted = items.map((item: any, idx: number) => ({
+          id: item.id || `INTEL-FEED-${idx + 1}`,
+          category: item.category || (idx % 2 === 0 ? 'HIRING ALERT' : 'EMERGING SKILL'),
+          title: item.headline || item.title || 'Market Ingestion Signal',
+          timestamp: item.timestamp ? (item.timestamp.includes('T') ? item.timestamp.split('T')[0] : item.timestamp) : '2026-10-07',
+          source: item.source || 'GLOBAL RADAR',
+          impact: item.severity === 'HIGH' ? 'CRITICAL' : 'HIGH',
+          summary: item.summary || 'Real-time job signal captured by multi-source ingestion engine.',
+          tags: item.tags || ['Tech', 'Hiring', 'Demand'],
+          actionLabel: 'EXPLORE MATCHES',
+          actionTarget: 'job-finder',
+        }))
+        setFeedItems(formatted)
+      }
+    })
+    return () => { mounted = false }
+  }, [])
 
   const categories = ['ALL', 'EMERGING SKILL', 'MARKET SURGE', 'COMPENSATION SHIFT', 'HIRING ALERT']
 
   const filtered = selectedCategory === 'ALL'
-    ? mockIntelligenceFeed
-    : mockIntelligenceFeed.filter((b) => b.category === selectedCategory)
+    ? feedItems
+    : feedItems.filter((b) => b.category === selectedCategory)
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {

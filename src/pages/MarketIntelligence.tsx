@@ -1,10 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { ArrowRight, Globe, DollarSign } from 'lucide-react'
+import { ArrowRight, Globe, DollarSign, RefreshCw } from 'lucide-react'
 import { mockMarketData } from '../data/mockData'
 import { formatNumber } from '../lib/utils'
 import { useTheme } from '../hooks/useTheme'
 import { cn } from '../lib/utils'
+import { api } from '../services/api'
 
 interface MarketIntelligenceProps {
   onNavigate?: (page: string) => void
@@ -12,10 +13,25 @@ interface MarketIntelligenceProps {
 
 export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNavigate }) => {
   const { isProfessional } = useTheme()
+  const [marketData, setMarketData] = useState(mockMarketData)
   const [selectedRoleName, setSelectedRoleName] = useState('Full Stack Developer')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    api.research.getMarketData().then((data) => {
+      if (mounted && data) {
+        setMarketData(data)
+      }
+    }).finally(() => {
+      if (mounted) setLoading(false)
+    })
+    return () => { mounted = false }
+  }, [])
 
   const activeRole =
-    mockMarketData.topRoles.find((r) => r.name === selectedRoleName) || mockMarketData.topRoles[3]
+    marketData.topRoles.find((r) => r.name === selectedRoleName) || marketData.topRoles[0] || mockMarketData.topRoles[3]
 
   return (
     <div className="space-y-8">
@@ -52,7 +68,7 @@ export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNaviga
           <span className="text-[10px] font-mono text-warm-ivory/50">SELECT TO UPDATE INTELLIGENCE VECTORS</span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-          {mockMarketData.topRoles.map((role) => (
+          {marketData.topRoles.map((role) => (
             <button
               key={role.name}
               onClick={() => setSelectedRoleName(role.name)}
@@ -182,7 +198,7 @@ export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNaviga
         <p className="text-xs text-warm-ivory/50 font-mono mb-6">OPEN LISTINGS BY REGIONAL TECH HUBS</p>
         <div className="w-full h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={mockMarketData.locationDemand}>
+            <BarChart data={marketData.locationDemand || mockMarketData.locationDemand}>
               <CartesianGrid strokeDasharray="3 3" stroke={isProfessional ? '#E2E8F0' : 'rgba(179,19,43,0.1)'} />
               <XAxis dataKey="location" stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />
               <YAxis stroke={isProfessional ? '#64748B' : 'rgba(242,233,220,0.4)'} tick={{ fill: isProfessional ? '#475569' : 'rgba(242,233,220,0.6)', fontSize: 11 }} />

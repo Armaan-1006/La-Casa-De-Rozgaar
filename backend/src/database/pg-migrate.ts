@@ -480,6 +480,156 @@ export async function runPgMigrations(connectionString?: string): Promise<void> 
         ip_address TEXT
       );
 
+      ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS metadata TEXT;
+
+      -- ============================================================
+      -- DATA COLLECTION & MARKET INTELLIGENCE
+      -- ============================================================
+      CREATE TABLE IF NOT EXISTS job_postings (
+        id TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        source_id TEXT,
+        source_url TEXT,
+        title TEXT NOT NULL,
+        company TEXT,
+        company_id TEXT,
+        location TEXT,
+        city TEXT,
+        state TEXT,
+        country TEXT DEFAULT 'India',
+        description TEXT,
+        requirements TEXT,
+        responsibilities TEXT,
+        benefits TEXT,
+        employment_type TEXT,
+        remote_type TEXT,
+        experience_min REAL,
+        experience_max REAL,
+        education_level TEXT,
+        salary_min REAL,
+        salary_max REAL,
+        salary_currency TEXT DEFAULT 'INR',
+        salary_period TEXT,
+        skills TEXT DEFAULT '[]',
+        required_skills TEXT DEFAULT '[]',
+        preferred_skills TEXT DEFAULT '[]',
+        industry TEXT,
+        category TEXT,
+        seniority_level TEXT,
+        application_url TEXT,
+        application_email TEXT,
+        posted_at TEXT,
+        expires_at TEXT,
+        collected_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        processed INTEGER DEFAULT 0,
+        normalized INTEGER DEFAULT 0,
+        skills_extracted INTEGER DEFAULT 0,
+        data_quality_score REAL DEFAULT 0.0,
+        raw_data TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(source, source_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS ingestion_logs (
+        id TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        collector_type TEXT,
+        batch_id TEXT,
+        total_jobs INTEGER DEFAULT 0,
+        new_jobs INTEGER DEFAULT 0,
+        updated_jobs INTEGER DEFAULT 0,
+        duplicate_jobs INTEGER DEFAULT 0,
+        failed_jobs INTEGER DEFAULT 0,
+        status TEXT,
+        error_message TEXT,
+        metadata TEXT,
+        started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        completed_at TIMESTAMPTZ,
+        duration_seconds REAL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS market_skill_demand (
+        id TEXT PRIMARY KEY,
+        skill_id TEXT NOT NULL,
+        skill_name TEXT NOT NULL,
+        job_count INTEGER DEFAULT 0,
+        demand_percentage REAL DEFAULT 0.0,
+        previous_job_count INTEGER DEFAULT 0,
+        trend_percentage REAL DEFAULT 0.0,
+        momentum TEXT,
+        avg_salary_min REAL,
+        avg_salary_max REAL,
+        avg_experience_required REAL,
+        paired_skills TEXT DEFAULT '[]',
+        top_roles TEXT DEFAULT '[]',
+        top_locations TEXT DEFAULT '[]',
+        category TEXT,
+        urgency TEXT,
+        sample_size INTEGER DEFAULT 0,
+        data_quality REAL DEFAULT 0.0,
+        last_calculated TIMESTAMPTZ DEFAULT NOW(),
+        calculation_period TEXT DEFAULT '30d',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS market_role_demand (
+        id TEXT PRIMARY KEY,
+        role_id TEXT NOT NULL,
+        role_name TEXT NOT NULL,
+        job_count INTEGER DEFAULT 0,
+        demand_percentage REAL DEFAULT 0.0,
+        growth_rate REAL DEFAULT 0.0,
+        avg_salary_min REAL,
+        avg_salary_max REAL,
+        avg_experience_required REAL,
+        top_skills TEXT DEFAULT '[]',
+        emerging_skills TEXT DEFAULT '[]',
+        last_calculated TIMESTAMPTZ DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS compensation_benchmarks (
+        id TEXT PRIMARY KEY,
+        role_id TEXT NOT NULL,
+        role_name TEXT NOT NULL,
+        experience_level TEXT NOT NULL,
+        location TEXT NOT NULL,
+        currency TEXT DEFAULT 'INR',
+        percentile_10 REAL,
+        percentile_25 REAL,
+        percentile_50 REAL,
+        percentile_75 REAL,
+        percentile_90 REAL,
+        sample_size INTEGER DEFAULT 0,
+        confidence_score REAL DEFAULT 0.0,
+        last_updated TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS collection_schedule (
+        id TEXT PRIMARY KEY,
+        source TEXT UNIQUE NOT NULL,
+        collector_type TEXT NOT NULL,
+        frequency_minutes INTEGER NOT NULL DEFAULT 60,
+        last_run_at TIMESTAMPTZ,
+        next_run_at TIMESTAMPTZ,
+        last_status TEXT,
+        last_jobs_collected INTEGER DEFAULT 0,
+        enabled INTEGER DEFAULT 1,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS skill_extraction_queue (
+        id TEXT PRIMARY KEY,
+        job_id TEXT NOT NULL,
+        status TEXT DEFAULT 'PENDING',
+        attempts INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
       -- ============================================================
       -- INDEXES
       -- ============================================================
@@ -488,37 +638,49 @@ export async function runPgMigrations(connectionString?: string): Promise<void> 
       CREATE INDEX IF NOT EXISTS idx_m2_sessions_token ON sessions(token);
       CREATE INDEX IF NOT EXISTS idx_m2_candidate_profiles_user ON candidate_profiles(user_id);
       CREATE INDEX IF NOT EXISTS idx_m2_candidate_skills_candidate ON candidate_skills(candidate_id);
-      CREATE INDEX IF NOT EXISTS idx_m2_assessment_attempts_user ON assessment_attempts(user_id);
+      CREATE INDEX IF NOT EXISTS idx_m2_assessment_attempts_cand ON assessment_attempts(candidate_id);
       CREATE INDEX IF NOT EXISTS idx_m2_assessment_attempts_assessment ON assessment_attempts(assessment_id);
       CREATE INDEX IF NOT EXISTS idx_m2_skill_gaps_candidate ON skill_gaps(candidate_id);
+      CREATE INDEX IF NOT EXISTS idx_dc_job_postings_source ON job_postings(source);
+      CREATE INDEX IF NOT EXISTS idx_dc_job_postings_location ON job_postings(city, state);
+      CREATE INDEX IF NOT EXISTS idx_dc_ingestion_logs_source ON ingestion_logs(source);
+      CREATE INDEX IF NOT EXISTS idx_dc_market_skill_demand_skill ON market_skill_demand(skill_name);
     `);
 
     // Seed interview questions if empty
-    const iqCount = await client.query('SELECT COUNT(*) as count FROM interview_questions');
-    if (Number(iqCount.rows[0]?.count || 0) === 0) {
-      await client.query(`
-        INSERT INTO interview_questions (id, company, role_id, question, topic, difficulty, type, source)
-        VALUES 
-          ('iq_1', 'Google', 'role_fullstack', 'Design a globally distributed rate limiter handling 500,000 req/sec with regional failovers.', 'System Design', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
-          ('iq_2', 'Microsoft', 'role_fullstack', 'Implement an in-memory reactive state manager in TypeScript with subscription batching.', 'Live Coding', 'HARD', 'CODING', 'REPORTED'),
-          ('iq_3', 'Amazon', 'role_fullstack', 'Describe an occasion where you made an architectural tradeoff between speed and tech debt.', 'Behavioral & Leadership', 'MEDIUM', 'BEHAVIORAL', 'REPORTED'),
-          ('iq_4', 'Razorpay', 'role_fullstack', 'How do you guarantee strict idempotency across payment webhook processing during retries?', 'Architecture', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
-          ('iq_5', 'Meta', 'role_fullstack', 'Design an optimistic concurrency control system for collaborative document editing.', 'System Design', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
-          ('iq_6', 'Netflix', 'role_fullstack', 'Explain chaos engineering strategies to test resilient microservice mesh partitions.', 'Architecture', 'HARD', 'SYSTEM_DESIGN', 'REPORTED')
-        ON CONFLICT (id) DO NOTHING
-      `);
+    try {
+      const iqCount = await client.query('SELECT COUNT(*) as count FROM interview_questions');
+      if (Number(iqCount.rows[0]?.count || 0) === 0) {
+        await client.query(`
+          INSERT INTO interview_questions (id, company, role_id, question, topic, difficulty, type, source)
+          VALUES 
+            ('iq_1', 'Google', 'role_fullstack', 'Design a globally distributed rate limiter handling 500,000 req/sec with regional failovers.', 'System Design', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
+            ('iq_2', 'Microsoft', 'role_fullstack', 'Implement an in-memory reactive state manager in TypeScript with subscription batching.', 'Live Coding', 'HARD', 'CODING', 'REPORTED'),
+            ('iq_3', 'Amazon', 'role_fullstack', 'Describe an occasion where you made an architectural tradeoff between speed and tech debt.', 'Behavioral & Leadership', 'MEDIUM', 'BEHAVIORAL', 'REPORTED'),
+            ('iq_4', 'Razorpay', 'role_fullstack', 'How do you guarantee strict idempotency across payment webhook processing during retries?', 'Architecture', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
+            ('iq_5', 'Meta', 'role_fullstack', 'Design an optimistic concurrency control system for collaborative document editing.', 'System Design', 'HARD', 'SYSTEM_DESIGN', 'REPORTED'),
+            ('iq_6', 'Netflix', 'role_fullstack', 'Explain chaos engineering strategies to test resilient microservice mesh partitions.', 'Architecture', 'HARD', 'SYSTEM_DESIGN', 'REPORTED')
+          ON CONFLICT (id) DO NOTHING
+        `);
+      }
+    } catch (seedErr: any) {
+      console.log('[PG-MIGRATE] Notice: interview_questions seed skipped:', seedErr.message);
     }
 
     // Seed research items if empty
-    const resCount = await client.query('SELECT COUNT(*) as count FROM research_items');
-    if (Number(resCount.rows[0]?.count || 0) === 0) {
-      await client.query(`
-        INSERT INTO research_items (id, title, authors, abstract, summary, published_at, source, original_url, topics, skill_ids, role_ids, type)
-        VALUES 
-          ('res_1', 'Attention Is All You Need', '["Vaswani et al."]', 'We propose a new simple network architecture, the Transformer, based solely on attention mechanisms.', 'Introduced the Transformer architecture which revolutionized NLP and led to models like BERT and GPT.', '2017-06-12', 'arXiv', 'https://arxiv.org/abs/1706.03762', '["NLP", "Deep Learning", "Transformers"]', '["skill_ml", "skill_tensorflow"]', '["role_datascientist", "role_mleng"]', 'ORIGINAL_PAPER'),
-          ('res_2', 'The State of JavaScript & TypeScript 2026', '["Survey Contributors"]', 'Annual survey of JavaScript and TypeScript ecosystem trends, frameworks, and developer preferences.', 'React & Next.js lead frontend architectures; TypeScript adoption reaches 92%; Bun and Rust tooling accelerate.', '2026-01-15', 'stateofjs.com', 'https://stateofjs.com', '["JavaScript", "TypeScript", "Web Architecture"]', '["skill_javascript", "skill_react", "skill_typescript"]', '["role_fullstack", "role_frontend"]', 'INDUSTRY_ARTICLE')
-        ON CONFLICT (id) DO NOTHING
-      `);
+    try {
+      const resCount = await client.query('SELECT COUNT(*) as count FROM research_items');
+      if (Number(resCount.rows[0]?.count || 0) === 0) {
+        await client.query(`
+          INSERT INTO research_items (id, title, authors, abstract, summary, published_at, source, original_url, topics, skill_ids, role_ids, type)
+          VALUES 
+            ('res_1', 'Attention Is All You Need', '["Vaswani et al."]', 'We propose a new simple network architecture, the Transformer, based solely on attention mechanisms.', 'Introduced the Transformer architecture which revolutionized NLP and led to models like BERT and GPT.', '2017-06-12', 'arXiv', 'https://arxiv.org/abs/1706.03762', '["NLP", "Deep Learning", "Transformers"]', '["skill_ml", "skill_tensorflow"]', '["role_datascientist", "role_mleng"]', 'ORIGINAL_PAPER'),
+            ('res_2', 'The State of JavaScript & TypeScript 2026', '["Survey Contributors"]', 'Annual survey of JavaScript and TypeScript ecosystem trends, frameworks, and developer preferences.', 'React & Next.js lead frontend architectures; TypeScript adoption reaches 92%; Bun and Rust tooling accelerate.', '2026-01-15', 'stateofjs.com', 'https://stateofjs.com', '["JavaScript", "TypeScript", "Web Architecture"]', '["skill_javascript", "skill_react", "skill_typescript"]', '["role_fullstack", "role_frontend"]', 'INDUSTRY_ARTICLE')
+          ON CONFLICT (id) DO NOTHING
+        `);
+      }
+    } catch (seedErr: any) {
+      console.log('[PG-MIGRATE] Notice: research_items seed skipped:', seedErr.message);
     }
 
     console.log('[PG-MIGRATE] Migrations successfully executed on Neon PostgreSQL!');

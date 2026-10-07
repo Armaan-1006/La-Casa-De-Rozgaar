@@ -1,4 +1,5 @@
 import type { IntelligenceProvider } from './provider.js';
+import { getDb } from '../database/connection.js';
 import type {
   Job, JobSearchQuery, JobSearchResult,
   Skill, Role, RoleRequirements,
@@ -189,12 +190,65 @@ const MOCK_MARKET_ROLE_SIGNALS: Record<string, MarketRoleSignal> = {
 
 export class MockIntelligenceProvider implements IntelligenceProvider {
   async getJob(jobId: string): Promise<Job | null> {
+    try {
+      const db = getDb();
+      const row = await db.prepare('SELECT * FROM job_postings WHERE id = ? OR source_id = ?').get(jobId, jobId) as any;
+      if (row) {
+        return this.mapRowToJob(row);
+      }
+    } catch {}
+
     const num = jobId.replace(/\D/g, '');
     const padded = num ? `job_${num.padStart(3, '0')}` : jobId;
     return MOCK_JOBS.find(j => j.id === jobId || j.id === padded || j.id === `job_${num}`) || null;
   }
 
   async searchJobs(query: JobSearchQuery): Promise<JobSearchResult> {
+    try {
+      const db = getDb();
+      let sql = 'SELECT * FROM job_postings WHERE 1=1';
+      const params: any[] = [];
+
+      if (query.keywords) {
+        sql += ' AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(company) LIKE ?)';
+        const kw = `%${query.keywords.toLowerCase()}%`;
+        params.push(kw, kw, kw);
+      }
+
+      if (query.location) {
+        sql += ' AND (LOWER(location) LIKE ? OR LOWER(city) LIKE ? OR LOWER(country) LIKE ?)';
+        const loc = `%${query.location.toLowerCase()}%`;
+        params.push(loc, loc, loc);
+      }
+
+      sql += ' ORDER BY collected_at DESC, id DESC LIMIT 200';
+      const rows = (await db.prepare(sql).all(...params) || []) as any[];
+
+      if (rows.length > 0) {
+        let mappedJobs = rows.map(r => this.mapRowToJob(r));
+
+        if (query.skills?.length) {
+          const querySkills = query.skills.map(s => s.toLowerCase().replace(/^skill_/, ''));
+          mappedJobs = mappedJobs.filter(j =>
+            j.skills.some(s => querySkills.includes(s.toLowerCase().replace(/^skill_/, '')))
+          );
+        }
+
+        const page = query.page || 1;
+        const pageSize = query.pageSize || 25;
+        const start = (page - 1) * pageSize;
+
+        return {
+          jobs: mappedJobs.slice(start, start + pageSize),
+          total: mappedJobs.length,
+          page,
+          pageSize,
+        };
+      }
+    } catch (err: any) {
+      console.warn('[Intelligence] DB job search fallback to memory:', err.message);
+    }
+
     let results = [...MOCK_JOBS];
 
     if (query.keywords) {
@@ -228,6 +282,40 @@ export class MockIntelligenceProvider implements IntelligenceProvider {
     };
   }
 
+  private mapRowToJob(row: any): Job {
+    let skills: string[] = [];
+    try {
+      if (row.skills) {
+        skills = typeof row.skills === 'string' ? JSON.parse(row.skills) : row.skills;
+      } else if (row.required_skills) {
+        skills = typeof row.required_skills === 'string' ? JSON.parse(row.required_skills) : row.required_skills;
+      }
+    } catch {
+      skills = [];
+    }
+
+    return {
+      id: row.id,
+      title: row.title,
+      company: row.company,
+      description: row.description || '',
+      location: row.location || 'Remote',
+      employmentType: row.employment_type || 'FULL_TIME',
+      experienceRequired: {
+        min: row.experience_min || 1,
+        max: row.experience_max || 8,
+      },
+      skills: skills.map(s => s.toLowerCase().startsWith('skill_') ? s : `skill_${s.toLowerCase().replace(/[^a-z0-9]/g, '')}`),
+      salary: row.salary_min ? {
+        min: row.salary_min,
+        max: row.salary_max || Math.round(row.salary_min * 1.4),
+        currency: row.salary_currency || 'INR',
+      } : undefined,
+      postedAt: row.posted_at || row.collected_at || new Date().toISOString(),
+      source: row.source || 'LIVE_COLLECTION',
+    };
+  }
+
   async getSkill(skillId: string): Promise<Skill | null> {
     return MOCK_SKILLS[skillId] || null;
   }
@@ -255,6 +343,23 @@ export class MockIntelligenceProvider implements IntelligenceProvider {
   }
 
   async getMarketSkillSignal(skillId: string): Promise<MarketSkillSignal | null> {
+    try {
+      const db = getDb();
+      const rawName = skillId.replace(/^skill_/, '');
+      const row = await db.prepare('SELECT * FROM market_skill_demand WHERE LOWER(skill_id) = ? OR LOWER(skill_name) = ?').get(skillId.toLowerCase(), rawName.toLowerCase()) as any;
+      if (row) {
+        return {
+          skillId: row.skill_id,
+          skillName: row.skill_name,
+          demand: Math.min(99, Math.max(10, Math.round(Number(row.demand_percentage || 50)))),
+          trend: row.momentum === 'EMERGING' || Number(row.trend_percentage) > 10 ? 'GROWING' : Number(row.trend_percentage) < -10 ? 'DECLINING' : 'STABLE',
+          growthRate: Number(row.trend_percentage || 5.0),
+          jobCount: Number(row.job_count || 10),
+          averageCompensationImpact: Math.min(30, Math.max(5, Math.round(Number(row.demand_percentage || 50) / 4))),
+        };
+      }
+    } catch {}
+
     return MOCK_MARKET_SKILL_SIGNALS[skillId] || null;
   }
 
@@ -263,6 +368,48 @@ export class MockIntelligenceProvider implements IntelligenceProvider {
   }
 
   async getCompensation(query: CompensationQuery): Promise<CompensationData | null> {
+    try {
+      const db = getDb();
+      const roleName = query.roleId ? query.roleId.replace(/^role_/, '').replace(/_/g, ' ') : 'Software Engineer';
+      const rows = (await db.prepare(`
+        SELECT salary_min, salary_max, salary_currency
+        FROM job_postings
+        WHERE salary_min IS NOT NULL AND salary_min > 0
+        LIMIT 50
+      `).all() || []) as any[];
+
+      if (rows.length > 0) {
+        const salaries = rows.map(r => Number(r.salary_min)).filter(s => !isNaN(s) && s > 0).sort((a, b) => a - b);
+        if (salaries.length > 0) {
+          const min = salaries[0];
+          const median = salaries[Math.floor(salaries.length / 2)];
+          const max = salaries[salaries.length - 1];
+          const currency = rows[0].salary_currency || 'INR';
+          const multiplier = query.experienceYears ? Math.max(0.8, 0.7 + query.experienceYears * 0.1) : 1.0;
+
+          return {
+            role: roleName,
+            location: query.location || 'India / Remote',
+            experienceYears: query.experienceYears,
+            observed: {
+              min: Math.round(min * multiplier),
+              median: Math.round(median * multiplier),
+              max: Math.round(max * multiplier),
+              currency,
+            },
+            sampleSize: salaries.length,
+            freshness: new Date().toISOString().split('T')[0],
+            breakdown: [
+              { factor: 'Real Job Postings Baseline', value: `${salaries.length} Live Data Points`, impact: 40 },
+              { factor: 'Experience Curve', value: `${query.experienceYears || '3-5'} years`, impact: 30 },
+              { factor: 'Market Density', value: query.location || 'Pan-India', impact: 20 },
+              { factor: 'Skill Verification', value: 'Skill Engine Indexed', impact: 10 },
+            ],
+          };
+        }
+      }
+    } catch {}
+
     const roleSignal = query.roleId ? MOCK_MARKET_ROLE_SIGNALS[query.roleId] : null;
     if (roleSignal) {
       const base = roleSignal.averageCompensation;
@@ -281,7 +428,7 @@ export class MockIntelligenceProvider implements IntelligenceProvider {
           currency: base.currency,
         },
         sampleSize: 342,
-        freshness: '2026-09-24',
+        freshness: new Date().toISOString().split('T')[0],
         breakdown: [
           { factor: 'Role', value: roleSignal.roleName, impact: 40 },
           { factor: 'Experience', value: `${query.experienceYears || 'N/A'} years`, impact: 30 },

@@ -22,6 +22,9 @@ import workforceRoutes from './routes/workforce.js';
 import compensationRoutes from './routes/compensation.js';
 import notificationsRoutes from './routes/notifications.js';
 import usersRoutes from './routes/users.js';
+import dataCollectionRoutes from './routes/data-collection.js';
+import cronRoutes from './routes/cron.js';
+import { SchedulerService } from './services/data-collection/scheduler-service.js';
 export function createApp() {
     const app = express();
     // Security middleware
@@ -117,6 +120,10 @@ export function createApp() {
     apiV1.use('/workforce', workforceRoutes);
     apiV1.use('/compensation', compensationRoutes);
     apiV1.use('/notifications', notificationsRoutes);
+    // New data collection endpoints (admin only)
+    apiV1.use('/data-collection', dataCollectionRoutes);
+    // Cron endpoints for automated syncs
+    apiV1.use('/cron', cronRoutes);
     app.use('/api/v1', apiV1);
     // 404 handler
     app.use((req, res) => {
@@ -135,7 +142,8 @@ export function createApp() {
 // Instantiate default app for export
 export const app = createApp();
 // Server startup for standalone execution (local / Docker)
-if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+const isDirectRun = process.argv[1] && (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.js'));
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test' && isDirectRun) {
     const server = app.listen(config.port, config.host, () => {
         console.log(`=======================================================`);
         console.log(` LA CASA DE ROZGAAR - MODULE 2 BACKEND`);
@@ -148,6 +156,8 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
         console.log(` Database:        ${config.database.path}`);
         console.log(` Environment:     ${config.nodeEnv}`);
         console.log(`=======================================================`);
+        // Activate background data collection scheduler
+        SchedulerService.getInstance().start();
     });
     // Graceful shutdown
     const shutdown = () => {

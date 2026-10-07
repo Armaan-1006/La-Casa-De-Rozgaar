@@ -3,6 +3,7 @@ import type { Job, JobSearchQuery, JobSearchResult, Skill, Role, RoleRequirement
 export declare class MockIntelligenceProvider implements IntelligenceProvider {
     getJob(jobId: string): Promise<Job | null>;
     searchJobs(query: JobSearchQuery): Promise<JobSearchResult>;
+    private mapRowToJob;
     getSkill(skillId: string): Promise<Skill | null>;
     searchSkills(query: string): Promise<Skill[]>;
     getRole(roleId: string): Promise<Role | null>;

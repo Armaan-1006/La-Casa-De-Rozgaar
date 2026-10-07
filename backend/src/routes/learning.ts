@@ -20,8 +20,8 @@ router.get('/resources', async (req: Request, res: Response) => {
     const params: any[] = [];
 
     if (skillId) {
-      query += ` AND skill_ids LIKE ?`;
-      params.push(`%${skillId}%`);
+      query += ` AND (skills LIKE ? OR title LIKE ?)`;
+      params.push(`%${skillId}%`, `%${skillId}%`);
     }
     if (difficulty) {
       query += ` AND difficulty = ?`;
@@ -32,13 +32,13 @@ router.get('/resources', async (req: Request, res: Response) => {
     const countRes = await db.prepare(totalQuery).get(...params) as { count: number | string };
     const total = Number(countRes?.count || 0);
 
-    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY title ASC LIMIT ? OFFSET ?`;
     params.push(pageSize, offset);
 
     const resources = (await db.prepare(query).all(...params) || []) as any[];
     resources.forEach(r => {
-      try { r.skill_ids = typeof r.skill_ids === 'string' ? JSON.parse(r.skill_ids || '[]') : (r.skill_ids || []); } catch { r.skill_ids = []; }
-      try { r.role_ids = typeof r.role_ids === 'string' ? JSON.parse(r.role_ids || '[]') : (r.role_ids || []); } catch { r.role_ids = []; }
+      try { r.skills = typeof r.skills === 'string' ? JSON.parse(r.skills || '[]') : (r.skills || []); } catch { r.skills = []; }
+      r.skill_ids = r.skills;
     });
 
     return res.json({ data: resources, meta: { requestId: req.requestId, page, pageSize, total } });

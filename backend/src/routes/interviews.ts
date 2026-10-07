@@ -12,24 +12,22 @@ router.get('/questions', async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 25;
     const offset = (page - 1) * pageSize;
-    const company = req.query.company as string;
     const roleId = req.query.roleId as string;
-    const type = req.query.type as string;
+    const difficulty = req.query.difficulty as string;
     const topic = req.query.topic as string;
 
     let query = 'SELECT * FROM interview_questions WHERE 1=1';
     const params: any[] = [];
 
-    if (company) { query += ' AND company LIKE ?'; params.push(`%${company}%`); }
     if (roleId) { query += ' AND role_id = ?'; params.push(roleId); }
-    if (type) { query += ' AND type = ?'; params.push(type); }
-    if (topic) { query += ' AND topic LIKE ?'; params.push(`%${topic}%`); }
+    if (difficulty) { query += ' AND difficulty = ?'; params.push(difficulty); }
+    if (topic) { query += ' AND (question LIKE ? OR key_points LIKE ?)'; params.push(`%${topic}%`, `%${topic}%`); }
 
     const totalQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
     const countRes = await db.prepare(totalQuery).get(...params) as { count: number | string };
     const total = Number(countRes?.count || 0);
 
-    query += ' ORDER BY reported_at DESC LIMIT ? OFFSET ?';
+    query += ' ORDER BY id ASC LIMIT ? OFFSET ?';
     params.push(pageSize, offset);
 
     const questions = (await db.prepare(query).all(...params) || []) as any[];

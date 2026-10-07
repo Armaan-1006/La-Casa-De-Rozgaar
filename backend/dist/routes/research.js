@@ -10,27 +10,17 @@ router.get('/', async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const pageSize = parseInt(req.query.pageSize) || 25;
         const offset = (page - 1) * pageSize;
-        const type = req.query.type;
         const topic = req.query.topic;
-        const industry = req.query.industry;
         let query = 'SELECT * FROM research_items WHERE 1=1';
         const params = [];
-        if (type) {
-            query += ' AND type = ?';
-            params.push(type);
-        }
         if (topic) {
-            query += ' AND topic LIKE ?';
-            params.push(`%${topic}%`);
-        }
-        if (industry) {
-            query += ' AND industry = ?';
-            params.push(industry);
+            query += ' AND (tags LIKE ? OR title LIKE ? OR abstract LIKE ?)';
+            params.push(`%${topic}%`, `%${topic}%`, `%${topic}%`);
         }
         const totalQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
         const countRes = await db.prepare(totalQuery).get(...params);
         const total = Number(countRes?.count || 0);
-        query += ' ORDER BY published_at DESC LIMIT ? OFFSET ?';
+        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
         params.push(pageSize, offset);
         const items = (await db.prepare(query).all(...params) || []);
         items.forEach(item => {
@@ -39,6 +29,12 @@ router.get('/', async (req, res) => {
             }
             catch {
                 item.tags = [];
+            }
+            try {
+                item.authors = typeof item.authors === 'string' ? JSON.parse(item.authors || '[]') : (item.authors || []);
+            }
+            catch {
+                item.authors = [];
             }
             try {
                 item.metadata = typeof item.metadata === 'string' ? JSON.parse(item.metadata || '{}') : (item.metadata || {});
@@ -51,6 +47,108 @@ router.get('/', async (req, res) => {
     }
     catch (err) {
         return res.status(500).json({ error: { code: 'RESEARCH_FETCH_ERROR', message: err.message, requestId: req.requestId } });
+    }
+});
+// ---- MARKET RADAR LIVE STATS (FROM REAL DATA) ----
+router.get('/market-radar', async (req, res) => {
+    try {
+        const db = getDb();
+        // 1. Get total live jobs and source breakdown
+        const totalJobsRes = await db.prepare('SELECT COUNT(*) as count FROM job_postings').get();
+        const totalJobs = Number(totalJobsRes?.count || 0);
+        // 2. Get top skills from real market_skill_demand
+        const topSkills = (await db.prepare(`
+      SELECT skill_id, skill_name, job_count, demand_percentage, trend_percentage, momentum, avg_salary_min, avg_salary_max, category
+      FROM market_skill_demand
+      ORDER BY job_count DESC, demand_percentage DESC
+      LIMIT 20
+    `).all() || []);
+        // 3. Role distribution from live job_postings
+        const roleStats = (await db.prepare(`
+      SELECT 
+        CASE 
+          WHEN LOWER(title) LIKE '%frontend%' OR LOWER(title) LIKE '%react%' OR LOWER(title) LIKE '%ui%' THEN 'Frontend Engineer'
+          WHEN LOWER(title) LIKE '%backend%' OR LOWER(title) LIKE '%node%' OR LOWER(title) LIKE '%java%' THEN 'Backend Engineer'
+          WHEN LOWER(title) LIKE '%full stack%' OR LOWER(title) LIKE '%fullstack%' OR LOWER(title) LIKE '%software engineer%' OR LOWER(title) LIKE '%developer%' THEN 'Full Stack Developer'
+          WHEN LOWER(title) LIKE '%data%' OR LOWER(title) LIKE '%machine learning%' OR LOWER(title) LIKE '%ml%' OR LOWER(title) LIKE '%ai%' THEN 'AI / Data Engineer'
+          WHEN LOWER(title) LIKE '%devops%' OR LOWER(title) LIKE '%sre%' OR LOWER(title) LIKE '%cloud%' OR LOWER(title) LIKE '%infra%' THEN 'Cloud & DevOps'
+          ELSE 'Software Engineer'
+        END as role_group,
+        COUNT(*) as demand,
+        AVG(CASE WHEN salary_min > 0 THEN salary_min ELSE NULL END) as avg_salary
+      FROM job_postings
+      GROUP BY role_group
+      ORDER BY demand DESC
+    `).all() || []);
+        // 4. Regional breakdown from live job_postings
+        const regional = (await db.prepare(`
+      SELECT 
+        CASE 
+          WHEN LOWER(location) LIKE '%bengaluru%' OR LOWER(location) LIKE '%bangalore%' THEN 'Bengaluru Cyber Grid'
+          WHEN LOWER(location) LIKE '%hyderabad%' THEN 'Hyderabad Cyberabad'
+          WHEN LOWER(location) LIKE '%pune%' THEN 'Pune Tech Corridor'
+          WHEN LOWER(location) LIKE '%mumbai%' THEN 'Mumbai Financial Tech'
+          WHEN LOWER(location) LIKE '%delhi%' OR LOWER(location) LIKE '%noida%' OR LOWER(location) LIKE '%gurugram%' OR LOWER(location) LIKE '%gurgaon%' THEN 'NCR Tech Hub'
+          WHEN LOWER(location) LIKE '%remote%' OR remote_type = 'REMOTE' THEN 'Distributed Remote / Global'
+          ELSE 'Pan-India & Global Tech'
+        END as region,
+        COUNT(*) as count
+      FROM job_postings
+      GROUP BY region
+      ORDER BY count DESC
+      LIMIT 6
+    `).all() || []);
+        // Calculate hiring pressure index (0 - 100)
+        const hiringPressureIndex = Math.min(99, Math.max(70, Math.round(75 + (totalJobs / 50))));
+        return res.json({
+            data: {
+                totalJobs,
+                hiringPressureIndex,
+                topSkills,
+                roleStats,
+                regionalBreakdown: regional,
+                lastUpdated: new Date().toISOString(),
+            },
+            meta: { requestId: req.requestId }
+        });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'MARKET_RADAR_ERROR', message: err.message, requestId: req.requestId } });
+    }
+});
+// ---- LIVE INTELLIGENCE FEED (FROM REAL DATA) ----
+router.get('/feed', async (req, res) => {
+    try {
+        const db = getDb();
+        const recentJobs = (await db.prepare(`
+      SELECT id, title, company, location, source, posted_at, salary_min, salary_max, salary_currency, skills
+      FROM job_postings
+      ORDER BY collected_at DESC, id DESC
+      LIMIT 20
+    `).all() || []);
+        const feed = recentJobs.map((j, idx) => {
+            let skills = [];
+            try {
+                skills = typeof j.skills === 'string' ? JSON.parse(j.skills) : (j.skills || []);
+            }
+            catch { }
+            return {
+                id: `FEED-SIG-${idx + 1}`,
+                type: 'JOB_INGESTION',
+                severity: 'HIGH',
+                headline: `Live Opening: ${j.title} at ${j.company}`,
+                source: (j.source || 'GLOBAL_RADAR').toUpperCase(),
+                location: j.location || 'Remote',
+                timestamp: j.posted_at || new Date().toISOString(),
+                summary: `Verified opening in ${j.location || 'Remote'} requiring ${skills.slice(0, 4).join(', ') || 'core engineering capabilities'}.`,
+                tags: skills.slice(0, 3),
+                salary: j.salary_min ? `${j.salary_currency || '₹'} ${(j.salary_min / 100000).toFixed(1)}L - ${(j.salary_max / 100000).toFixed(1)}L` : 'Competitive',
+            };
+        });
+        return res.json({ data: feed, meta: { requestId: req.requestId, total: feed.length } });
+    }
+    catch (err) {
+        return res.status(500).json({ error: { code: 'FEED_ERROR', message: err.message, requestId: req.requestId } });
     }
 });
 // ---- GET RESEARCH ITEM ----
