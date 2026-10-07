@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Zap, Target, ArrowRight, Eye, User, Brain, TrendingUp, TrendingDown, Info, ChevronRight } from 'lucide-react'
 import { mockMarketData } from '../data/mockData'
@@ -6,6 +6,7 @@ import { formatNumber, getTrendColor } from '../lib/utils'
 import { cn } from '../lib/utils'
 import { useTheme } from '../hooks/useTheme'
 import { useAuth } from '../hooks/useAuth'
+import { api } from '../services/api'
 
 interface WarRoomProps {
   onNavigate?: (page: string) => void
@@ -16,8 +17,73 @@ interface WarRoomProps {
 // ============================================================================
 const EnterpriseOverview: React.FC<{ onNavigate?: (page: string) => void }> = ({ onNavigate }) => {
   const [timeRange, setTimeRange] = useState<'30D' | '90D' | 'YTD'>('90D')
+  const [dashboardData, setDashboardData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
-  const kpis = [
+  useEffect(() => {
+    let mounted = true
+    setLoading(true)
+    
+    Promise.all([
+      api.employer.getDashboardMetrics(),
+      api.employer.getWorkforceAnalytics(),
+      api.employer.getSkillGaps(),
+      api.employer.getMarketRoles()
+    ]).then(([metrics, analytics, gaps, roles]) => {
+      if (mounted) {
+        setDashboardData({ metrics, analytics, gaps, roles })
+      }
+    }).catch((err) => {
+      console.warn('[WarRoom] Failed to load employer data:', err)
+    }).finally(() => {
+      if (mounted) setLoading(false)
+    })
+
+    return () => { mounted = false }
+  }, [])
+
+  const kpis = dashboardData?.metrics ? [
+    {
+      label: 'Total Workforce',
+      value: dashboardData.metrics.totalWorkforceFormatted || formatNumber(dashboardData.metrics.totalWorkforce),
+      trend: '+4.2%',
+      trendUp: true,
+      period: 'vs last year',
+      tooltip: 'Active FTE and contracted workforce.',
+    },
+    {
+      label: 'Critical Skill Gaps',
+      value: String(dashboardData.metrics.criticalGaps || 0),
+      trend: '-8.2%',
+      trendUp: false,
+      period: 'vs last quarter',
+      tooltip: 'Competencies with capability deficits > 1.5 points against target demand.',
+    },
+    {
+      label: 'Open Requisitions',
+      value: String(dashboardData.metrics.openRequisitions || 0),
+      trend: '+15',
+      trendUp: true,
+      period: 'active this month',
+      tooltip: 'Approved vacant positions across active business units.',
+    },
+    {
+      label: 'Talent Coverage',
+      value: dashboardData.metrics.talentCoverage || '82%',
+      trend: '+3.1%',
+      trendUp: true,
+      period: 'readiness index',
+      tooltip: 'Percentage of strategic positions with qualified internal or pipeline coverage.',
+    },
+    {
+      label: 'Market Demand Growth',
+      value: dashboardData.metrics.marketGrowth || '+12.4%',
+      trend: 'Accelerating',
+      trendUp: true,
+      period: 'industry index',
+      tooltip: 'Observed vacancy volume growth across benchmark peers.',
+    },
+  ] : [
     {
       label: 'Total Workforce',
       value: '12,482',
@@ -60,7 +126,7 @@ const EnterpriseOverview: React.FC<{ onNavigate?: (page: string) => void }> = ({
     },
   ]
 
-  const trendData = [
+  const trendData = dashboardData?.analytics?.trendData || [
     { month: 'Apr', capability: 74, projectedDemand: 70 },
     { month: 'May', capability: 76, projectedDemand: 73 },
     { month: 'Jun', capability: 75, projectedDemand: 77 },

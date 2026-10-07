@@ -738,7 +738,13 @@ class ApiService {
     },
 
     getMarketData: async () => {
-      await api.ensureAuth()
+      try {
+        await api.ensureAuth()
+      } catch {
+        // If not authenticated, return mock data with live enrichment markers
+        return mockMarketData
+      }
+
       try {
         const res = await api.request<any>('/research/market-radar')
         if (res.data) {
@@ -748,14 +754,24 @@ class ApiService {
           const regional = radar.regionalBreakdown || []
 
           // Map to rich format expected by MarketIntelligence page
-          const mappedTopRoles = roleStats.length > 0 ? roleStats.map((r: any, idx: number) => ({
-            name: r.role_group,
-            demand: Number(r.demand) * 120, // Scaled market extrapolation
-            trend: '+18.4%',
-            category: 'Engineering & Systems',
-            hiringIndex: 88,
-            avgSalary: r.avg_salary ? `₹${(r.avg_salary / 100000).toFixed(0)}L` : '₹22L - ₹34L',
-          })) : mockMarketData.topRoles
+          const mappedTopRoles = roleStats.length > 0 ? roleStats.map((r: any, idx: number) => {
+            const avgMin = r.avg_salary_min || r.avg_salary || 1200000
+            const avgMax = r.avg_salary_max || (avgMin * 1.8)
+            const salaryMinLakhs = Math.round(avgMin / 100000)
+            const salaryMaxLakhs = Math.round(avgMax / 100000)
+
+            return {
+              name: r.role_group,
+              demand: Number(r.demand),
+              trend: r.trend || '+15.6%',
+              growth: 'up' as const,
+              category: 'Engineering',
+              salary: `₹${salaryMinLakhs}L - ₹${salaryMaxLakhs}L`,
+              openings: Number(r.demand),
+              trajectory: mockMarketData.topRoles[idx % 6]?.trajectory || mockMarketData.topRoles[3].trajectory,
+              keySkills: mockMarketData.topRoles[idx % 6]?.keySkills || mockMarketData.topRoles[3].keySkills,
+            }
+          }) : mockMarketData.topRoles
 
           const mappedSkills = topSkills.length > 0 ? topSkills.slice(0, 10).map((s: any) => ({
             name: s.skill_name,
@@ -767,21 +783,24 @@ class ApiService {
           })) : mockMarketData.emergingSkills
 
           const mappedRegions = regional.length > 0 ? regional.map((reg: any) => ({
-            region: reg.region,
-            openings: Number(reg.count) * 85,
-            density: 'High Density Node',
-          })) : mockMarketData.regionalDemand
+            location: reg.region,
+            jobs: Number(reg.count),
+            trend: '+15%',
+            share: `${Math.round((Number(reg.count) / radar.totalJobs) * 100)}%`,
+          })) : mockMarketData.locationDemand
 
           return {
             ...mockMarketData,
-            totalActiveJobs: radar.totalJobs || 83,
+            totalActiveJobs: radar.totalJobs || 320,
             hiringPressureIndex: radar.hiringPressureIndex || 88,
-            topRoles: mappedTopRoles,
-            emergingSkills: mappedSkills,
-            regionalDemand: mappedRegions,
+            topRoles: mappedTopRoles.length > 0 ? mappedTopRoles : mockMarketData.topRoles,
+            emergingSkills: mappedSkills.length > 0 ? mappedSkills : mockMarketData.emergingSkills,
+            locationDemand: mappedRegions.length > 0 ? mappedRegions : mockMarketData.locationDemand,
           }
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[API] Market radar fetch failed:', err)
+      }
       return mockMarketData
     },
 
@@ -851,6 +870,103 @@ class ApiService {
         body: JSON.stringify(params)
       })
       return res.data
+    }
+  }
+
+  // =========================================================================
+  // 9B. EMPLOYER ANALYTICS (War Room & Dashboard)
+  // =========================================================================
+  public employer = {
+    getDashboardMetrics: async (orgId?: string) => {
+      try {
+        await this.ensureAuth()
+      } catch {
+        return null
+      }
+      
+      try {
+        // Get org ID from user's organizations if not provided
+        if (!orgId) {
+          const orgsRes = await this.request<any[]>('/employer/my')
+          if (orgsRes.data && orgsRes.data.length > 0) {
+            orgId = orgsRes.data[0].id
+          } else {
+            return null
+          }
+        }
+        
+        const res = await this.request<any>(`/employer/${orgId}/dashboard`)
+        return res.data
+      } catch (err) {
+        console.warn('[API] Employer dashboard metrics failed:', err)
+        return null
+      }
+    },
+
+    getWorkforceAnalytics: async (orgId?: string) => {
+      try {
+        await this.ensureAuth()
+      } catch {
+        return null
+      }
+
+      try {
+        if (!orgId) {
+          const orgsRes = await this.request<any[]>('/employer/my')
+          if (orgsRes.data && orgsRes.data.length > 0) {
+            orgId = orgsRes.data[0].id
+          } else {
+            return null
+          }
+        }
+
+        const res = await this.request<any>(`/employer/${orgId}/workforce-analytics`)
+        return res.data
+      } catch (err) {
+        console.warn('[API] Workforce analytics failed:', err)
+        return null
+      }
+    },
+
+    getSkillGaps: async (orgId?: string) => {
+      try {
+        await this.ensureAuth()
+      } catch {
+        return null
+      }
+
+      try {
+        if (!orgId) {
+          const orgsRes = await this.request<any[]>('/employer/my')
+          if (orgsRes.data && orgsRes.data.length > 0) {
+            orgId = orgsRes.data[0].id
+          } else {
+            return null
+          }
+        }
+
+        const res = await this.request<any>(`/employer/${orgId}/skill-gaps`)
+        return res.data
+      } catch (err) {
+        console.warn('[API] Skill gaps failed:', err)
+        return null
+      }
+    },
+
+    getMarketRoles: async () => {
+      try {
+        await this.ensureAuth()
+      } catch {
+        return null
+      }
+
+      try {
+        const res = await this.request<any>('/employer/market-roles')
+        return res.data
+      } catch (err) {
+        console.warn('[API] Market roles failed:', err)
+        return null
+      }
     }
   }
 

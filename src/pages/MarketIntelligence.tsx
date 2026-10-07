@@ -22,7 +22,13 @@ export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNaviga
     setLoading(true)
     api.research.getMarketData().then((data) => {
       if (mounted && data) {
+        console.log('[MarketIntelligence] Loaded market data:', data)
         setMarketData(data)
+      }
+    }).catch((err) => {
+      console.warn('[MarketIntelligence] Failed to load market data:', err)
+      if (mounted) {
+        setMarketData(mockMarketData)
       }
     }).finally(() => {
       if (mounted) setLoading(false)
@@ -89,26 +95,34 @@ export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNaviga
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card">
           <p className="text-xs text-warm-ivory/60 font-mono mb-1">ACTIVE OPENINGS</p>
-          <p className="heading-sm text-crimson font-mono">{formatNumber(activeRole.demand)}</p>
-          <p className="text-[11px] text-emerald-400 font-mono mt-1">↑ High Hiring Pressure</p>
+          <p className="heading-sm text-crimson font-mono">{formatNumber(activeRole.demand || activeRole.openings || 0)}</p>
+          <p className="text-[11px] text-emerald-400 font-mono mt-1">
+            {activeRole.demand > 5000 ? '↑ High Hiring Pressure' : activeRole.demand > 2000 ? '↑ Moderate Demand' : '→ Stable Market'}
+          </p>
         </div>
 
         <div className="card">
           <p className="text-xs text-warm-ivory/60 font-mono mb-1">YOY DEMAND VELOCITY</p>
           <p className="heading-sm text-warm-ivory font-mono">{activeRole.trend}</p>
-          <p className="text-[11px] text-emerald-400 font-mono mt-1">Accelerating Ingestion</p>
+          <p className="text-[11px] text-emerald-400 font-mono mt-1">
+            {parseFloat(activeRole.trend) > 20 ? 'Explosive Growth' : parseFloat(activeRole.trend) > 10 ? 'Accelerating Ingestion' : 'Steady Growth'}
+          </p>
         </div>
 
         <div className="card">
           <p className="text-xs text-warm-ivory/60 font-mono mb-1">CATEGORY</p>
           <p className="heading-sm text-warm-ivory font-mono">{activeRole.category}</p>
-          <p className="text-[11px] text-warm-ivory/50 font-mono mt-1">Standardized Domain</p>
+          <p className="text-[11px] text-warm-ivory/50 font-mono mt-1">
+            {marketData.topRoles.length} verified role tracks
+          </p>
         </div>
 
         <div className="card">
           <p className="text-xs text-warm-ivory/60 font-mono mb-1">MEDIAN SALARY BAND</p>
           <p className="heading-sm text-emerald-400 font-mono">{activeRole.salary}</p>
-          <p className="text-[11px] text-warm-ivory/50 font-mono mt-1">Tier-1 Indian Corridors</p>
+          <p className="text-[11px] text-warm-ivory/50 font-mono mt-1">
+            Based on {formatNumber(activeRole.demand || 0)} live postings
+          </p>
         </div>
       </section>
 
@@ -218,18 +232,53 @@ export const MarketIntelligence: React.FC<MarketIntelligenceProps> = ({ onNaviga
         </div>
       </section>
 
-      {/* Compensation Breakdown Cards */}
+      {/* Compensation Breakdown Cards - Dynamic based on selected role */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {Object.entries(mockMarketData.compensationRanges.softwareEngineer).map(([level, range]) => (
-          <div key={level} className="card bg-burgundy/15 border-burgundy/30">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign size={16} className="text-emerald-400" />
-              <p className="text-xs text-warm-ivory/70 font-mono uppercase">{level} LEVEL</p>
+        {(() => {
+          // Parse salary range from active role
+          const salaryStr = activeRole.salary || '₹13L - ₹24L'
+          const match = salaryStr.match(/₹(\d+(?:\.\d+)?)L?\s*-\s*₹(\d+(?:\.\d+)?)L?/)
+          
+          if (match) {
+            const minLakhs = parseFloat(match[1])
+            const maxLakhs = parseFloat(match[2])
+            
+            // Calculate tiered ranges based on real data
+            const juniorMin = Math.round(minLakhs * 0.35 * 10) / 10
+            const juniorMax = Math.round(minLakhs * 0.65 * 10) / 10
+            const midMin = Math.round(minLakhs * 0.75 * 10) / 10
+            const midMax = Math.round(maxLakhs * 0.75 * 10) / 10
+            const seniorMin = Math.round(minLakhs * 1.1 * 10) / 10
+            const seniorMax = Math.round(maxLakhs * 1.25 * 10) / 10
+            
+            return [
+              { level: 'junior', range: `₹${juniorMin}L - ₹${juniorMax}L` },
+              { level: 'mid', range: `₹${midMin}L - ₹${midMax}L` },
+              { level: 'senior', range: `₹${seniorMin}L - ₹${seniorMax}L+` }
+            ].map(({ level, range }) => (
+              <div key={level} className="card bg-burgundy/15 border-burgundy/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign size={16} className="text-emerald-400" />
+                  <p className="text-xs text-warm-ivory/70 font-mono uppercase">{level} LEVEL - {activeRole.name}</p>
+                </div>
+                <p className="heading-md text-crimson mb-1 font-mono">{range}</p>
+                <p className="text-[11px] text-warm-ivory/50 font-mono">Total cash compensation + equity</p>
+              </div>
+            ))
+          }
+          
+          // Fallback to mock data if parsing fails
+          return Object.entries(mockMarketData.compensationRanges.softwareEngineer).map(([level, range]) => (
+            <div key={level} className="card bg-burgundy/15 border-burgundy/30">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign size={16} className="text-emerald-400" />
+                <p className="text-xs text-warm-ivory/70 font-mono uppercase">{level} LEVEL</p>
+              </div>
+              <p className="heading-md text-crimson mb-1 font-mono">{range}</p>
+              <p className="text-[11px] text-warm-ivory/50 font-mono">Total cash compensation + equity</p>
             </div>
-            <p className="heading-md text-crimson mb-1 font-mono">{range}</p>
-            <p className="text-[11px] text-warm-ivory/50 font-mono">Total cash compensation + equity</p>
-          </div>
-        ))}
+          ))
+        })()}
       </section>
     </div>
   )
