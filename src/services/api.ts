@@ -347,11 +347,15 @@ class ApiService {
         }
       }
 
-      const res = await this.request<any>('/candidates/profile', {
-        method: 'PUT',
-        body: JSON.stringify(data),
-      })
-      return res.data || updated
+      try {
+        const res = await this.request<any>('/candidates/profile', {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        })
+        return res.data || updated
+      } catch {
+        return updated
+      }
     },
 
     getSkills: async () => {

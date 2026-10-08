@@ -76,14 +76,14 @@ router.put('/profile', async (req: Request, res: Response) => {
     
     await db.prepare(`
       UPDATE candidate_profiles SET
-        name = COALESCE(?, name),
-        headline = COALESCE(?, headline),
-        bio = COALESCE(?, bio),
-        location = COALESCE(?, location),
-        target_roles = COALESCE(?, target_roles),
-        preferred_locations = COALESCE(?, preferred_locations),
-        employment_preferences = COALESCE(?, employment_preferences),
-        portfolio_links = COALESCE(?, portfolio_links),
+        name = COALESCE(CAST(? AS TEXT), name),
+        headline = COALESCE(CAST(? AS TEXT), headline),
+        bio = COALESCE(CAST(? AS TEXT), bio),
+        location = COALESCE(CAST(? AS TEXT), location),
+        target_roles = COALESCE(CAST(? AS TEXT), target_roles),
+        preferred_locations = COALESCE(CAST(? AS TEXT), preferred_locations),
+        employment_preferences = COALESCE(CAST(? AS TEXT), employment_preferences),
+        portfolio_links = COALESCE(CAST(? AS TEXT), portfolio_links),
         updated_at = NOW()
       WHERE id = ?
     `).run(
@@ -398,14 +398,14 @@ router.put('/preferences', async (req: Request, res: Response) => {
     const existing = await db.prepare('SELECT id FROM candidate_preferences WHERE candidate_id = ?').get(profile.id);
     if (existing) {
       await db.prepare(`UPDATE candidate_preferences SET
-        remote_preference = COALESCE(?, remote_preference),
-        salary_expectation_min = COALESCE(?, salary_expectation_min),
-        salary_expectation_max = COALESCE(?, salary_expectation_max),
-        salary_currency = COALESCE(?, salary_currency),
-        notice_period_days = COALESCE(?, notice_period_days),
-        willing_to_relocate = COALESCE(?, willing_to_relocate),
-        preferred_company_sizes = COALESCE(?, preferred_company_sizes),
-        preferred_industries = COALESCE(?, preferred_industries)
+        remote_preference = COALESCE(CAST(? AS TEXT), remote_preference),
+        salary_expectation_min = COALESCE(CAST(? AS REAL), salary_expectation_min),
+        salary_expectation_max = COALESCE(CAST(? AS REAL), salary_expectation_max),
+        salary_currency = COALESCE(CAST(? AS TEXT), salary_currency),
+        notice_period_days = COALESCE(CAST(? AS INTEGER), notice_period_days),
+        willing_to_relocate = COALESCE(CAST(? AS INTEGER), willing_to_relocate),
+        preferred_company_sizes = COALESCE(CAST(? AS TEXT), preferred_company_sizes),
+        preferred_industries = COALESCE(CAST(? AS TEXT), preferred_industries)
       WHERE candidate_id = ?`).run(
         remotePreference || null, salaryExpectationMin || null, salaryExpectationMax || null,
         salaryCurrency || null, noticePeriodDays || null, willingToRelocate != null ? (willingToRelocate ? 1 : 0) : null,

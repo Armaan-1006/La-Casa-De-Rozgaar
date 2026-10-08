@@ -21,6 +21,7 @@ import {
   Sliders,
   FileCode,
   ShieldCheck,
+  Lock,
 } from 'lucide-react'
 import { useTheme } from '../../hooks/useTheme'
 import { cn } from '../../lib/utils'
@@ -69,19 +70,37 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
   const [newEduYear, setNewEduYear] = useState('')
   const [newEduGpa, setNewEduGpa] = useState('')
 
-  // Sync formData whenever candidate or modal open state changes
+  // Track initial pre-existing skills that cannot be edited or removed by the user
+  const initialSkillNamesRef = useRef<Set<string>>(new Set())
+  const prevIsOpenRef = useRef(false)
+
+  // Sync formData whenever modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevIsOpenRef.current) {
       setFormData(JSON.parse(JSON.stringify(candidate)))
+      setIsSaving(false)
+      setSaveSuccess(false)
+      initialSkillNamesRef.current = new Set(
+        (candidate.skills || []).map((s: any) => s.name?.toLowerCase().trim())
+      )
+    } else if (!isOpen) {
+      setIsSaving(false)
       setSaveSuccess(false)
     }
+    prevIsOpenRef.current = isOpen
   }, [isOpen, candidate])
+
+  const handleClose = () => {
+    setIsSaving(false)
+    setSaveSuccess(false)
+    onClose()
+  }
 
   // Close on Escape & prevent scroll
   useEffect(() => {
     if (!isOpen) return
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') handleClose()
     }
     const originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -118,13 +137,22 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
   // Skills Management
   const handleAddSkill = () => {
     if (!newSkillName.trim()) return
+    const trimmed = newSkillName.trim()
+    const alreadyExists = formData.skills?.some(
+      (s: any) => s.name?.toLowerCase().trim() === trimmed.toLowerCase()
+    )
+    if (alreadyExists) {
+      alert(`Skill "${trimmed}" is already entered in your arsenal and cannot be re-added.`)
+      return
+    }
+
     const score = Number(newSkillScore) || 7.0
     const market = Number(newSkillMarket) || 8.0
     const gap = Number((score - market).toFixed(1))
     const tier = gap >= 0 ? 'strength' : gap > -1.5 ? 'high' : 'critical'
 
     const newSkill = {
-      name: newSkillName.trim(),
+      name: trimmed,
       score,
       market,
       gap,
@@ -139,6 +167,10 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
   }
 
   const handleRemoveSkill = (index: number) => {
+    const skillToRemove = formData.skills?.[index]
+    if (skillToRemove && initialSkillNamesRef.current.has(skillToRemove.name?.toLowerCase().trim())) {
+      return // Prevent removal of already entered skills
+    }
     setFormData((prev) => ({
       ...prev,
       skills: prev.skills.filter((_, i) => i !== index),
@@ -146,6 +178,10 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
   }
 
   const handleSkillScoreChange = (index: number, newScore: number) => {
+    const skillToChange = formData.skills?.[index]
+    if (skillToChange && initialSkillNamesRef.current.has(skillToChange.name?.toLowerCase().trim())) {
+      return // Prevent score modification for already entered skills
+    }
     setFormData((prev) => {
       const updated = [...prev.skills]
       const current = updated[index]
@@ -238,16 +274,19 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
 
   // Save Handler
   const handleSave = async () => {
+    if (isSaving) return
     setIsSaving(true)
     try {
       await onSave(formData)
       setSaveSuccess(true)
       setTimeout(() => {
+        setIsSaving(false)
         setSaveSuccess(false)
         onClose()
       }, 700)
     } catch {
       setIsSaving(false)
+      setSaveSuccess(false)
     }
   }
 
@@ -264,7 +303,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
     ? createPortal(
         <div
           onClick={(e) => {
-            if (e.target === e.currentTarget) onClose()
+            if (e.target === e.currentTarget) handleClose()
           }}
           className={cn(
             'fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-200',
@@ -330,7 +369,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
               </div>
 
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className={cn(
                   'p-1.5 rounded-lg transition-colors cursor-pointer',
                   isHeist
@@ -662,7 +701,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
                         />
                       </div>
                       <div>
-                        <label className="text-[11px] block mb-1 opacity-75">Candidate Score ({newSkillScore})</label>
+                        <label className="text-[11px] block mb-1 opacity-75">Skill Score ({newSkillScore})</label>
                         <input
                           type="range"
                           min="1"
@@ -692,12 +731,20 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
 
                   {/* Existing Skills List */}
                   <div className="space-y-3">
-                    <h4 className={cn('font-semibold text-xs', isHeist ? 'text-warm-ivory' : 'text-slate-900')}>
-                      Active Verified Skills ({formData.skills?.length || 0})
-                    </h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className={cn('font-semibold text-xs', isHeist ? 'text-warm-ivory' : 'text-slate-900')}>
+                        Active Verified Skills ({formData.skills?.length || 0})
+                      </h4>
+                      <span className="text-[10px] text-slate-500 dark:text-warm-ivory/50 flex items-center gap-1 font-mono">
+                        <Lock size={10} className="text-amber-500" /> Already entered skills are locked & non-editable
+                      </span>
+                    </div>
+
                     <div className="grid grid-cols-1 gap-2.5">
                       {formData.skills?.map((skill: any, idx: number) => {
+                        const isPreExisting = initialSkillNamesRef.current.has(skill.name?.toLowerCase().trim())
                         const isStrength = skill.gap >= 0
+
                         return (
                           <div
                             key={idx}
@@ -706,9 +753,36 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
                               isHeist ? 'bg-obsidian/80 border-burgundy/20' : 'bg-white border-slate-200'
                             )}
                           >
-                            <div className="flex-1 space-y-1 w-full sm:w-auto">
+                            <div className="flex-1 space-y-1.5 w-full sm:w-auto">
                               <div className="flex items-center justify-between">
-                                <span className="font-bold text-xs">{skill.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-xs">{skill.name}</span>
+                                  {isPreExisting ? (
+                                    <span
+                                      className={cn(
+                                        'text-[10px] px-1.5 py-0.5 rounded font-mono flex items-center gap-1',
+                                        isHeist
+                                          ? 'bg-burgundy/20 text-warm-ivory/70 border border-burgundy/30'
+                                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                      )}
+                                      title="Pre-existing verified skill — locked from modification"
+                                    >
+                                      <Lock size={10} className="text-amber-500" /> Locked
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className={cn(
+                                        'text-[10px] px-1.5 py-0.5 rounded font-mono',
+                                        isHeist
+                                          ? 'bg-crimson/20 text-crimson border border-crimson/30'
+                                          : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      )}
+                                    >
+                                      New
+                                    </span>
+                                  )}
+                                </div>
+
                                 <div className="flex items-center gap-2">
                                   <span
                                     className={cn(
@@ -720,27 +794,67 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
                                   >
                                     {isStrength ? 'Strength (+Gap)' : `Deficit (${skill.gap})`}
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveSkill(idx)}
-                                    className="text-slate-400 hover:text-crimson p-1 transition-colors cursor-pointer"
-                                  >
-                                    <X size={14} />
-                                  </button>
+
+                                  {isPreExisting ? (
+                                    <span
+                                      className="p-1 text-slate-400 opacity-40 cursor-not-allowed"
+                                      title="Already entered verified skills cannot be deleted"
+                                    >
+                                      <Lock size={13} />
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveSkill(idx)}
+                                      className="text-slate-400 hover:text-crimson p-1 transition-colors cursor-pointer"
+                                      title="Remove newly added skill"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3 pt-1">
-                                <span className="text-[11px] opacity-70 w-24">Score: <strong>{skill.score}</strong> / 10</span>
-                                <input
-                                  type="range"
-                                  min="1"
-                                  max="10"
-                                  step="0.1"
-                                  value={skill.score}
-                                  onChange={(e) => handleSkillScoreChange(idx, parseFloat(e.target.value))}
-                                  className="flex-1 accent-crimson cursor-pointer"
-                                />
-                                <span className="text-[11px] opacity-50">Market: {skill.market}</span>
+
+                              <div className="flex items-center gap-3 pt-0.5">
+                                <span className="text-[11px] opacity-75 w-28 flex items-center gap-1">
+                                  Score: <strong>{skill.score}</strong> / 10
+                                </span>
+
+                                {isPreExisting ? (
+                                  /* Non-editable clean visual score meter for already entered skills */
+                                  <div className="flex-1 flex items-center gap-2">
+                                    <div className="flex-1 h-2 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
+                                      <div
+                                        className={cn(
+                                          'h-full rounded-full transition-all',
+                                          isHeist ? 'bg-crimson shadow-glow-crimson' : 'bg-[#1E3A8A]'
+                                        )}
+                                        style={{ width: `${Math.min(100, Math.max(0, (skill.score / 10) * 100))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-mono italic">
+                                      (Read-only)
+                                    </span>
+                                  </div>
+                                ) : (
+                                  /* Newly added skill in current session */
+                                  <div className="flex-1 flex items-center gap-2">
+                                    <div className="flex-1 h-2 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden">
+                                      <div
+                                        className={cn(
+                                          'h-full rounded-full transition-all',
+                                          isHeist ? 'bg-crimson' : 'bg-blue-600'
+                                        )}
+                                        style={{ width: `${Math.min(100, Math.max(0, (skill.score / 10) * 100))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] text-blue-600 dark:text-crimson font-mono">
+                                      (Added)
+                                    </span>
+                                  </div>
+                                )}
+
+                                <span className="text-[11px] opacity-50 shrink-0">Market: {skill.market}</span>
                               </div>
                             </div>
                           </div>
@@ -1378,7 +1492,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className={cn(
                     'px-4 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer',
                     isHeist

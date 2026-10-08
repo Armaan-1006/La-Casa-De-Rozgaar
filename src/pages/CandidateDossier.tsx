@@ -62,8 +62,11 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
     setCandidate(updated)
     try {
       await api.candidate.updateProfile(updated)
-    } catch {
+      window.dispatchEvent(new Event('candidate-profile-updated'))
+    } catch (err) {
       // Offline fallback: state preserved in local state
+      console.warn('[Dossier] Profile updated in local state:', err)
+      window.dispatchEvent(new Event('candidate-profile-updated'))
     }
   }
 
@@ -631,8 +634,11 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
     setCandidate(updated)
     try {
       await api.candidate.updateProfile(updated)
-    } catch {
-      // Offline fallback
+      window.dispatchEvent(new Event('candidate-profile-updated'))
+    } catch (err) {
+      // Offline fallback: state preserved in local state
+      console.warn('[Dossier] Profile updated in local state:', err)
+      window.dispatchEvent(new Event('candidate-profile-updated'))
     }
   }
 
