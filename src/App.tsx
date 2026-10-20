@@ -320,7 +320,7 @@ function AppContent() {
         )}
       >
         <ThemeTransitionOverlay />
-        <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
+        <div className="p-3 sm:p-6 md:p-8 max-w-7xl mx-auto w-full min-w-0">
           <SecureAssessment onNavigate={handleNavigation} />
         </div>
       </div>
@@ -351,7 +351,7 @@ function AppContent() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header with Search, Mode Switcher & Notifications */}
         <Header
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
@@ -363,8 +363,8 @@ function AppContent() {
         />
 
         {/* Dynamic Page Container */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
+        <main className="flex-1 overflow-y-auto min-w-0">
+          <div className="p-3 sm:p-6 md:p-8 max-w-7xl mx-auto w-full min-w-0">
             <div
               key={`${currentPage}-${isHeist ? 'heist' : 'pro'}`}
               className={isHeist ? 'page-enter-heist' : 'page-enter-professional'}

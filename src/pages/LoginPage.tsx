@@ -245,7 +245,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
       </div>
 
       {/* Top Header Bar */}
-      <div className="relative z-10 max-w-6xl w-full mx-auto flex items-center justify-between pb-4 border-b border-inherit/20">
+      <div className="relative z-10 max-w-6xl w-full mx-auto flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 pb-4 border-b border-inherit/20">
         <div className="flex items-center gap-3">
           <div
             className={cn(
@@ -320,7 +320,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate, onSuccess }) =
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight leading-tight">
+              <h1 className="text-2xl sm:text-4xl font-heading font-bold tracking-tight leading-tight">
                 {isHeist ? (
                   <>
                     AUTHORIZE YOUR <br />

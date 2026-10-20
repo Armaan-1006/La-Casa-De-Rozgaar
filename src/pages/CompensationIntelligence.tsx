@@ -99,7 +99,7 @@ export const CompensationIntelligence: React.FC<CompensationProps> = ({ onNaviga
         {/* City Picker */}
         <div className="card">
           <label className="text-xs font-mono text-warm-ivory/60 mb-2 block uppercase">Select Regional Hub</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {cities.map((city) => (
               <button
                 key={city.name}

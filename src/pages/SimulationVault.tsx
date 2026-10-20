@@ -288,7 +288,7 @@ export const SimulationVault: React.FC = () => {
       {/* Header */}
       <section
         className={cn(
-          'relative overflow-hidden rounded-xl border p-6 md:p-8 transition-colors',
+          'relative overflow-hidden rounded-xl border p-4 sm:p-6 md:p-8 transition-colors',
           isHeist
             ? 'border-burgundy/30 bg-gradient-obsidian shadow-glow-crimson'
             : 'border-slate-200 bg-white shadow-sm'

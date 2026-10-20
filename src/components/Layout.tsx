@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Menu,
@@ -158,6 +158,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
   const isEmployer = user?.role === 'RECRUITER' || user?.role === 'EMPLOYER_ADMIN'
   const isAdmin = user?.role === 'ADMIN'
 
+  // Handle Escape key & body scroll lock on mobile
+  useEffect(() => {
+    if (!isOpen || isDesktop) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, isDesktop, onClose])
+
   // Filter Heist Navigation Items based on Role (Candidate only sees Candidate, Employer only sees Employer)
   const filteredHeistNavItems = heistNavigationItems.filter((item) => {
     if (item.label === 'CANDIDATE') {
@@ -205,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
 
         <aside
           className={cn(
-            'fixed md:static top-0 left-0 h-screen w-64 bg-white border-r border-slate-200 z-50 md:z-auto shrink-0 flex flex-col select-none transition-transform duration-200 ease-out',
+            'fixed md:static top-0 left-0 h-screen w-64 max-w-[80vw] bg-white border-r border-slate-200 z-50 md:z-auto shrink-0 flex flex-col select-none transition-transform duration-200 ease-out',
             isDesktop ? 'translate-x-0' : isOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
@@ -297,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, onNavigate, c
         animate={{ x: isDesktop ? 0 : isOpen ? 0 : -300 }}
         transition={{ duration: 0.25, ease: 'easeOut' }}
         className={cn(
-          'fixed md:static top-0 left-0 h-screen w-64 bg-gradient-obsidian border-r border-burgundy/25 z-50 md:z-auto shrink-0',
+          'fixed md:static top-0 left-0 h-screen w-64 max-w-[80vw] bg-gradient-obsidian border-r border-burgundy/25 z-50 md:z-auto shrink-0',
           'flex flex-col select-none'
         )}
       >
@@ -444,6 +459,16 @@ export const Header: React.FC<HeaderProps> = ({
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [selectedWorkspace, setSelectedWorkspace] = useState('Global Operations')
 
+  // Handle Escape key to close user dropdown
+  useEffect(() => {
+    if (!userMenuOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setUserMenuOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [userMenuOpen])
+
   const heistPageTitles: Record<string, string> = {
     'war-room': 'WAR ROOM COMMAND CENTER',
     'market-intelligence': 'MARKET INTELLIGENCE RADAR',
@@ -500,29 +525,29 @@ export const Header: React.FC<HeaderProps> = ({
 
     return (
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-        <div className="flex items-center justify-between px-4 md:px-6 py-2.5 gap-4">
+        <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 py-2.5 gap-2 sm:gap-4">
           {/* Left: Mobile trigger & Breadcrumb / Title */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={onMenuClick}
-              className="md:hidden text-slate-500 hover:text-slate-900 p-1.5 -ml-1 rounded hover:bg-slate-100"
+              className="md:hidden text-slate-500 hover:text-slate-900 p-1.5 -ml-1 rounded hover:bg-slate-100 shrink-0"
               aria-label="Toggle navigation menu"
             >
               {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
-            <div>
+            <div className="min-w-0 hidden sm:block">
               <div className="text-[11px] text-slate-500 font-medium">
                 Acme Technologies <span className="text-slate-300 mx-1">/</span> Workforce Analytics
               </div>
-              <h1 className="text-sm md:text-base font-semibold text-slate-900 leading-tight">
+              <h1 className="text-sm md:text-base font-semibold text-slate-900 leading-tight truncate">
                 {title}
               </h1>
             </div>
           </div>
 
           {/* Center: Global Search Bar */}
-          <div className="flex-1 max-w-md hidden md:block">
+          <div className="flex-1 max-w-[280px] xl:max-w-md hidden lg:block">
             <button
               onClick={onOpenCommandPalette}
               className="w-full flex items-center justify-between px-3 py-1.5 bg-slate-50 rounded-md border border-slate-200 hover:border-slate-300 text-slate-500 text-xs transition-colors"
@@ -538,9 +563,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Right: Workspace Switcher, Notifications, Mode Switch, Profile */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 shrink-0">
             {/* Workspace Switcher */}
-            <div className="relative hidden lg:block">
+            <div className="relative hidden xl:block">
               <button
                 onClick={() => setWorkspaceMenuOpen(!workspaceMenuOpen)}
                 className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded border border-slate-200 transition-colors"
@@ -551,38 +576,55 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               {workspaceMenuOpen && (
-                <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-md shadow-lg py-1 z-50 text-xs">
-                  <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Workspaces
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setWorkspaceMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 rounded-md shadow-lg py-1 z-50 text-xs">
+                    <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Workspaces
+                    </div>
+                    {['Global Operations', 'Engineering & Tech', 'Product Operations'].map((ws) => (
+                      <button
+                        key={ws}
+                        onClick={() => {
+                          setSelectedWorkspace(ws)
+                          setWorkspaceMenuOpen(false)
+                        }}
+                        className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between text-slate-700"
+                      >
+                        <span>{ws}</span>
+                        {selectedWorkspace === ws && <Check size={12} className="text-blue-600" />}
+                      </button>
+                    ))}
                   </div>
-                  {['Global Operations', 'Engineering & Tech', 'Product Operations'].map((ws) => (
-                    <button
-                      key={ws}
-                      onClick={() => {
-                        setSelectedWorkspace(ws)
-                        setWorkspaceMenuOpen(false)
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between text-slate-700"
-                    >
-                      <span>{ws}</span>
-                      {selectedWorkspace === ws && <Check size={12} className="text-blue-600" />}
-                    </button>
-                  ))}
-                </div>
+                </>
               )}
             </div>
 
             {/* Compact Mode Switcher */}
             <ThemeModeSwitch variant="compact" />
 
+            {/* Mobile / Tablet search trigger */}
+            <button
+              onClick={onOpenCommandPalette}
+              className="lg:hidden flex items-center justify-center p-1.5 sm:px-2 sm:py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+              aria-label="Search"
+              title="Search"
+            >
+              <Search size={16} className="text-slate-500 shrink-0" />
+            </button>
+
             {/* Notifications Trigger */}
             <button
               onClick={onOpenNotifications}
-              className="relative p-2 text-slate-500 hover:text-slate-800 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+              className="relative p-1.5 sm:p-2 text-slate-500 hover:text-slate-800 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Notifications"
               title="Notifications"
             >
               <Bell size={17} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-600" />
+              <span className="absolute top-1 sm:top-1.5 right-1 sm:right-1.5 w-2 h-2 rounded-full bg-blue-600" />
             </button>
 
             {/* User Profile / Login Button */}
@@ -590,78 +632,87 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 pl-2 border-l border-slate-200 text-left hover:opacity-85 transition-opacity cursor-pointer"
+                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:pl-2 rounded-lg sm:rounded-none sm:border-l sm:border-slate-200 text-left hover:opacity-85 transition-opacity cursor-pointer min-w-[36px] min-h-[36px] justify-center"
+                  aria-label="Profile"
+                  title={`Profile: ${user.name}`}
+                  data-testid="profile-button"
                 >
-                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-xs shadow-2xs">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold text-xs shadow-2xs shrink-0">
                     {user.avatarInitials || 'OP'}
                   </div>
                   <div className="text-left text-xs leading-none hidden xl:block">
                     <div className="font-semibold text-slate-800">{user.name}</div>
                     <div className="text-[10px] text-slate-500 mt-0.5">{user.role}</div>
                   </div>
-                  <ChevronDown size={13} className="text-slate-400 hidden xl:block" />
+                  <ChevronDown size={13} className="text-slate-400 hidden xl:block shrink-0" />
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-xl py-2 z-50 text-xs">
-                    <div className="px-3 py-1.5 border-b border-slate-100">
-                      <div className="font-semibold text-slate-900">{user.name}</div>
-                      <div className="text-[11px] text-slate-500 truncate">{user.email}</div>
-                      <div className="text-[10px] mt-1 inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded font-semibold font-mono">
-                        {user.role}
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setUserMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-white border border-slate-200 rounded-lg shadow-xl py-2 z-50 text-xs">
+                      <div className="px-3 py-1.5 border-b border-slate-100">
+                        <div className="font-semibold text-slate-900">{user.name}</div>
+                        <div className="text-[11px] text-slate-500 truncate">{user.email}</div>
+                        <div className="text-[10px] mt-1 inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded font-semibold font-mono">
+                          {user.role}
+                        </div>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false)
-                        onNavigate(user.role === 'CANDIDATE' ? 'candidate-dossier' : 'employer-dashboard')
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
-                    >
-                      <User size={13} />
-                      <span>{user.role === 'CANDIDATE' ? 'My Candidate Dossier' : 'Employer Dashboard'}</span>
-                    </button>
-                    {(user.role === 'RECRUITER' || user.role === 'EMPLOYER_ADMIN' || user.role === 'ADMIN') && (
                       <button
                         onClick={() => {
                           setUserMenuOpen(false)
-                          onNavigate('company-profile')
+                          onNavigate(user.role === 'CANDIDATE' ? 'candidate-dossier' : 'employer-dashboard')
                         }}
                         className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
                       >
-                        <Building2 size={13} />
-                        <span>Company Profile & Settings</span>
+                        <User size={13} />
+                        <span>{user.role === 'CANDIDATE' ? 'My Candidate Dossier' : 'Employer Dashboard'}</span>
                       </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false)
-                        onNavigate('login')
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
-                    >
-                      <KeyRound size={13} />
-                      <span>Switch Operative Clearance</span>
-                    </button>
-                    <div className="border-t border-slate-100 my-1" />
-                    <button
-                      onClick={() => {
-                        setUserMenuOpen(false)
-                        logout()
-                        onNavigate('login')
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
-                    >
-                      <LogOut size={13} />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
+                      {(user.role === 'RECRUITER' || user.role === 'EMPLOYER_ADMIN' || user.role === 'ADMIN') && (
+                        <button
+                          onClick={() => {
+                            setUserMenuOpen(false)
+                            onNavigate('company-profile')
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
+                        >
+                          <Building2 size={13} />
+                          <span>Company Profile & Settings</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          onNavigate('login')
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2 cursor-pointer"
+                      >
+                        <KeyRound size={13} />
+                        <span>Switch Operative Clearance</span>
+                      </button>
+                      <div className="border-t border-slate-100 my-1" />
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          logout()
+                          onNavigate('login')
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 flex items-center gap-2 cursor-pointer"
+                      >
+                        <LogOut size={13} />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             ) : (
               <button
                 onClick={() => onNavigate('login')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-2xs transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 shadow-2xs transition-colors cursor-pointer"
               >
                 <User size={13} />
                 <span>Sign In</span>
@@ -680,29 +731,29 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-30 border-b border-burgundy/20 bg-charcoal/80 backdrop-blur-md">
-      <div className="flex items-center justify-between px-4 md:px-6 py-2.5">
+      <div className="flex items-center justify-between px-3 sm:px-4 md:px-6 py-2.5 gap-2 sm:gap-4">
         {/* Mobile menu & current operation */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             onClick={onMenuClick}
-            className="md:hidden text-warm-ivory/80 hover:text-crimson p-1.5 -ml-1 rounded-lg hover:bg-burgundy/20"
+            className="md:hidden text-warm-ivory/80 hover:text-crimson p-1.5 -ml-1 rounded-lg hover:bg-burgundy/20 shrink-0"
             aria-label="Toggle navigation menu"
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
-          <button onClick={() => onNavigate('war-room')} className="hidden sm:block text-left group">
+          <button onClick={() => onNavigate('war-room')} className="hidden sm:block text-left group min-w-0">
             <span className="text-[10px] font-mono text-crimson font-bold uppercase tracking-wider block group-hover:underline header-op-tag">
               OPERATION // ACTIVE
             </span>
-            <h2 className="text-xs md:text-sm font-heading font-bold text-warm-ivory tracking-wide header-title-text">
+            <h2 className="text-xs md:text-sm font-heading font-bold text-warm-ivory tracking-wide header-title-text truncate">
               {currentTitle}
             </h2>
           </button>
         </div>
 
         {/* Global Search Button / Trigger */}
-        <div className="flex-1 max-w-sm mx-4 hidden md:block">
+        <div className="flex-1 max-w-[260px] xl:max-w-sm mx-3 xl:mx-4 hidden lg:block">
           <button
             onClick={onOpenCommandPalette}
             className="w-full flex items-center justify-between px-3.5 py-2 bg-[#17171B] rounded-lg border border-[#2C2C34] hover:border-crimson/70 text-white text-xs font-mono transition-all shadow-sm group header-search-box"
@@ -720,28 +771,30 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right Action Icons & Visual Mode Switcher */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 shrink-0">
           {/* Dual Visual Mode Switcher */}
           <ThemeModeSwitch variant="compact" />
 
-          {/* Mobile search trigger */}
+          {/* Mobile / Tablet search trigger */}
           <button
             onClick={onOpenCommandPalette}
-            className="md:hidden flex items-center gap-1.5 px-2.5 py-1.5 bg-[#17171B] border border-[#2C2C34] rounded-lg text-white hover:text-crimson transition-colors header-search-box"
-            aria-label="Open search palette"
+            className="lg:hidden flex items-center justify-center p-1.5 sm:px-2 sm:py-1.5 bg-[#17171B] border border-[#2C2C34] rounded-lg text-white hover:text-crimson transition-colors header-search-box cursor-pointer"
+            aria-label="Search"
+            title="Search"
           >
-            <Search size={15} className="text-crimson header-search-icon" />
-            <span className="text-[10px] font-mono text-[#D0D0DC] font-semibold header-search-text">SEARCH</span>
+            <Search size={16} className="text-crimson header-search-icon shrink-0" />
+            <span className="text-[10px] font-mono text-[#D0D0DC] font-semibold header-search-text hidden sm:inline ml-1">SEARCH</span>
           </button>
 
           {/* Notifications Trigger */}
           <button
             onClick={onOpenNotifications}
-            className="relative p-2 text-warm-ivory/70 hover:text-crimson rounded-lg hover:bg-burgundy/20 transition-colors header-bell-btn cursor-pointer"
+            className="relative p-1.5 sm:p-2 text-warm-ivory/70 hover:text-crimson rounded-lg hover:bg-burgundy/20 transition-colors header-bell-btn cursor-pointer"
+            aria-label="Notifications"
             title="Intelligence Alerts"
           >
             <Bell size={18} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-crimson animate-pulse" />
+            <span className="absolute top-1 sm:top-1.5 right-1 sm:right-1.5 w-2 h-2 rounded-full bg-crimson animate-pulse" />
           </button>
 
           {/* User Profile / Login Button in Heist Mode */}
@@ -749,9 +802,12 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative">
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center gap-2 pl-2 border-l border-burgundy/30 text-left hover:opacity-90 transition-opacity cursor-pointer"
+                className="flex items-center gap-1.5 sm:gap-2 p-1 sm:pl-2 rounded-lg sm:rounded-none sm:border-l sm:border-burgundy/30 text-left hover:opacity-90 transition-opacity cursor-pointer min-w-[36px] min-h-[36px] justify-center"
+                aria-label="Profile"
+                title={`Profile: ${user.name}`}
+                data-testid="profile-button"
               >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-crimson to-blood-red text-white flex items-center justify-center font-bold text-xs shadow-glow-crimson border border-crimson/60">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-crimson to-blood-red text-white flex items-center justify-center font-bold text-xs shadow-glow-crimson border border-crimson/60 shrink-0">
                   {user.avatarInitials || 'OP'}
                 </div>
                 <div className="text-left text-xs leading-none hidden xl:block font-mono">
@@ -761,72 +817,78 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                   <div className="text-[9px] text-crimson font-bold mt-0.5">[{user.role}]</div>
                 </div>
-                <ChevronDown size={13} className="text-warm-ivory/40 hidden xl:block" />
+                <ChevronDown size={13} className="text-warm-ivory/40 hidden xl:block shrink-0" />
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-60 bg-charcoal/95 border border-burgundy/60 rounded-xl shadow-glow-crimson py-2 z-50 text-xs font-mono backdrop-blur-md">
-                  <div className="px-3.5 py-2 border-b border-burgundy/30">
-                    <div className="font-bold text-warm-ivory">{user.name}</div>
-                    <div className="text-[10px] text-warm-ivory/50 truncate">{user.email}</div>
-                    <div className="text-[9px] mt-1 inline-block px-1.5 py-0.5 bg-crimson/20 text-crimson border border-crimson/40 rounded font-bold">
-                      CLEARANCE: {user.role}
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setUserMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-60 max-w-[calc(100vw-2rem)] bg-charcoal/95 border border-burgundy/60 rounded-xl shadow-glow-crimson py-2 z-50 text-xs font-mono backdrop-blur-md">
+                    <div className="px-3.5 py-2 border-b border-burgundy/30">
+                      <div className="font-bold text-warm-ivory">{user.name}</div>
+                      <div className="text-[10px] text-warm-ivory/50 truncate">{user.email}</div>
+                      <div className="text-[9px] mt-1 inline-block px-1.5 py-0.5 bg-crimson/20 text-crimson border border-crimson/40 rounded font-bold">
+                        CLEARANCE: {user.role}
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setUserMenuOpen(false)
-                      onNavigate(user.role === 'CANDIDATE' ? 'candidate-dossier' : 'employer-dashboard')
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-burgundy/20 text-warm-ivory flex items-center gap-2 cursor-pointer"
-                  >
-                    <User size={13} className="text-crimson" />
-                    <span>{user.role === 'CANDIDATE' ? 'Candidate Dossier' : 'Mastermind Console'}</span>
-                  </button>
-                  {(user.role === 'RECRUITER' || user.role === 'EMPLOYER_ADMIN' || user.role === 'ADMIN') && (
                     <button
                       onClick={() => {
                         setUserMenuOpen(false)
-                        onNavigate('company-profile')
+                        onNavigate(user.role === 'CANDIDATE' ? 'candidate-dossier' : 'employer-dashboard')
                       }}
                       className="w-full text-left px-3.5 py-2 hover:bg-burgundy/20 text-warm-ivory flex items-center gap-2 cursor-pointer"
                     >
-                      <Building2 size={13} className="text-crimson" />
-                      <span>Syndicate Dossier & Settings</span>
+                      <User size={13} className="text-crimson" />
+                      <span>{user.role === 'CANDIDATE' ? 'Candidate Dossier' : 'Mastermind Console'}</span>
                     </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setUserMenuOpen(false)
-                      onNavigate('login')
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-burgundy/20 text-warm-ivory flex items-center gap-2 cursor-pointer"
-                  >
-                    <KeyRound size={13} className="text-crimson" />
-                    <span>Switch Operative Clearance</span>
-                  </button>
-                  <div className="border-t border-burgundy/30 my-1" />
-                  <button
-                    onClick={() => {
-                      setUserMenuOpen(false)
-                      logout()
-                      onNavigate('login')
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-crimson/20 text-crimson font-bold flex items-center gap-2 cursor-pointer"
-                  >
-                    <LogOut size={13} />
-                    <span>TERMINATE SESSION</span>
-                  </button>
-                </div>
+                    {(user.role === 'RECRUITER' || user.role === 'EMPLOYER_ADMIN' || user.role === 'ADMIN') && (
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          onNavigate('company-profile')
+                        }}
+                        className="w-full text-left px-3.5 py-2 hover:bg-burgundy/20 text-warm-ivory flex items-center gap-2 cursor-pointer"
+                      >
+                        <Building2 size={13} className="text-crimson" />
+                        <span>Syndicate Dossier & Settings</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false)
+                        onNavigate('login')
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-burgundy/20 text-warm-ivory flex items-center gap-2 cursor-pointer"
+                    >
+                      <KeyRound size={13} className="text-crimson" />
+                      <span>Switch Operative Clearance</span>
+                    </button>
+                    <div className="border-t border-burgundy/30 my-1" />
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false)
+                        logout()
+                        onNavigate('login')
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-crimson/20 text-crimson font-bold flex items-center gap-2 cursor-pointer"
+                    >
+                      <LogOut size={13} />
+                      <span>TERMINATE SESSION</span>
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           ) : (
             <button
               onClick={() => onNavigate('login')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-crimson to-blood-red text-white text-xs font-mono font-bold shadow-glow-crimson hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-gradient-to-r from-crimson to-blood-red text-white text-xs font-mono font-bold shadow-glow-crimson hover:brightness-110 active:scale-95 transition-all cursor-pointer"
             >
               <Shield size={13} />
-              <span>AUTHORIZE // LOGIN</span>
+              <span><span className="hidden xs:inline">AUTHORIZE // </span>LOGIN</span>
             </button>
           )}
         </div>

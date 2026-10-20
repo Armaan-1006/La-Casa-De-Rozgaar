@@ -1479,7 +1479,7 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
               </span>
             </div>
 
-            <div className="grid grid-cols-10 sm:grid-cols-20 gap-1.5">
+            <div className="grid grid-cols-5 xs:grid-cols-10 sm:grid-cols-20 gap-1.5">
               {questions.map((_, idx) => {
                 const isAnswered = selectedAnswers[idx] !== undefined
                 const isCurrent = idx === currentIndex
@@ -1577,7 +1577,7 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
             </div>
 
             {/* Bottom Navigator — Strictly Linear */}
-            <div className="flex items-center justify-between pt-4 border-t border-burgundy/20">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-burgundy/20">
               <div className="flex items-center gap-1.5 text-[11px] font-mono text-warm-ivory/40">
                 <Lock size={12} className="text-crimson/70" />
                 <span>PREVIOUS QUESTIONS LOCKED (LINEAR MODE)</span>

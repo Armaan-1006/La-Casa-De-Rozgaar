@@ -168,13 +168,28 @@ export const CommandPalette: FC<CommandPaletteProps> = ({ isOpen, onClose, onNav
     return () => window.removeEventListener('keydown', handleNavKeys)
   }, [isOpen, filtered, selectedIndex])
 
+  // Prevent body scrolling when command palette is open
+  useEffect(() => {
+    if (!isOpen) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = originalOverflow
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-start justify-center pt-16 md:pt-24 p-4">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+      className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-start justify-center pt-8 sm:pt-16 md:pt-24 p-2.5 sm:p-4"
+    >
       <div
         className={cn(
-          'card max-w-2xl w-full p-0 overflow-hidden flex flex-col max-h-[80vh] transition-colors',
+          'card max-w-2xl w-full p-0 overflow-hidden flex flex-col max-h-[85vh] transition-colors',
           isHeist
             ? 'bg-charcoal border-crimson/50 shadow-glow-crimson'
             : 'bg-white border-slate-200 shadow-2xl rounded-xl'
@@ -309,13 +324,13 @@ export const CommandPalette: FC<CommandPaletteProps> = ({ isOpen, onClose, onNav
         {/* Footer */}
         <div
           className={cn(
-            'p-2.5 border-t flex items-center justify-between text-[11px]',
+            'p-2.5 border-t flex flex-wrap items-center justify-between gap-2 text-[11px]',
             isHeist
               ? 'bg-obsidian/80 border-burgundy/30 font-mono text-warm-ivory/40'
               : 'bg-slate-50 border-slate-200 font-sans text-slate-500'
           )}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <span>
               <kbd
                 className={cn(

@@ -819,7 +819,7 @@ export const FallingOfferLetters: React.FC = () => {
           onPointerCancel={(e) => handlePointerCancel(item.id, e)}
           onPointerEnter={() => handlePointerEnter(item.id)}
           onPointerLeave={() => handlePointerLeave(item.id)}
-          className="absolute top-0 left-0 will-change-transform pointer-events-auto cursor-grab touch-none select-none"
+          className="absolute top-0 left-0 will-change-transform pointer-events-none md:pointer-events-auto cursor-grab touch-none select-none"
           style={{
             width: '148px',
             height: '198px',

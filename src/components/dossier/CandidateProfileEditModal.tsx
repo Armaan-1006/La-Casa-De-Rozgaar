@@ -322,14 +322,14 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
             {/* Modal Header */}
             <div
               className={cn(
-                'px-6 py-4 flex items-center justify-between border-b shrink-0',
+                'px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between border-b shrink-0 gap-3',
                 isHeist ? 'border-burgundy/30 bg-black/40' : 'border-slate-200 bg-slate-50/80'
               )}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 <div
                   className={cn(
-                    'w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden',
+                    'w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 overflow-hidden',
                     isHeist
                       ? 'bg-crimson text-warm-ivory shadow-glow-crimson'
                       : 'bg-[#1E3A8A] text-white shadow-2xs'
@@ -341,17 +341,17 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
                     <span>{initials}</span>
                   )}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2
                     className={cn(
-                      'text-base font-bold flex items-center gap-2',
+                      'text-sm sm:text-base font-bold flex flex-wrap items-center gap-1.5 sm:gap-2 leading-tight',
                       isHeist ? 'text-warm-ivory' : 'text-slate-900'
                     )}
                   >
-                    {isHeist ? 'OPERATIVE DOSSIER CONFIGURATION' : 'Comprehensive Candidate Profile Editor'}
+                    <span>{isHeist ? 'OPERATIVE DOSSIER CONFIGURATION' : 'Candidate Profile Editor'}</span>
                     <span
                       className={cn(
-                        'text-[10px] px-2 py-0.5 rounded font-normal uppercase',
+                        'text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded font-normal uppercase',
                         isHeist
                           ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30'
                           : 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
@@ -360,7 +360,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
                       Live Sync
                     </span>
                   </h2>
-                  <p className={cn('text-xs mt-0.5', isHeist ? 'text-warm-ivory/60' : 'text-slate-500')}>
+                  <p className={cn('text-[11px] sm:text-xs mt-0.5 truncate max-w-xl', isHeist ? 'text-warm-ivory/60' : 'text-slate-500')}>
                     {isHeist
                       ? 'Fine-tune telemetry benchmarks, operative arsenal, blueprints & comp expectations.'
                       : 'Manage personal identity, verified competencies, portfolio projects, certifications, and compensation preferences.'}
@@ -371,7 +371,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
               <button
                 onClick={handleClose}
                 className={cn(
-                  'p-1.5 rounded-lg transition-colors cursor-pointer',
+                  'p-1.5 rounded-lg transition-colors cursor-pointer shrink-0',
                   isHeist
                     ? 'text-warm-ivory/60 hover:text-crimson hover:bg-black/50'
                     : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
@@ -384,7 +384,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
             {/* Modal Tabs Navigation */}
             <div
               className={cn(
-                'flex items-center gap-1 sm:gap-2 px-6 border-b text-xs overflow-x-auto shrink-0 scrollbar-none',
+                'flex items-center gap-1 sm:gap-2 px-3 sm:px-6 border-b text-xs overflow-x-auto shrink-0 scrollbar-none',
                 isHeist ? 'border-burgundy/20 bg-obsidian/60' : 'border-slate-200 bg-slate-100/50'
               )}
             >
@@ -1470,7 +1470,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
             {/* Modal Footer */}
             <div
               className={cn(
-                'px-6 py-3.5 border-t flex items-center justify-between shrink-0',
+                'px-4 sm:px-6 py-3 sm:py-3.5 border-t flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-0 shrink-0',
                 isHeist ? 'border-burgundy/30 bg-black/40' : 'border-slate-200 bg-slate-50'
               )}
             >
@@ -1479,7 +1479,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
                   type="button"
                   onClick={() => setFormData(JSON.parse(JSON.stringify(candidate)))}
                   className={cn(
-                    'px-3 py-1.5 text-xs rounded transition-colors flex items-center gap-1.5 cursor-pointer',
+                    'w-full sm:w-auto justify-center px-3 py-1.5 text-xs rounded transition-colors flex items-center gap-1.5 cursor-pointer',
                     isHeist
                       ? 'text-warm-ivory/60 hover:text-warm-ivory bg-obsidian border border-burgundy/20'
                       : 'text-slate-600 hover:bg-slate-200 bg-slate-100 border border-slate-200'
@@ -1494,7 +1494,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
                   type="button"
                   onClick={handleClose}
                   className={cn(
-                    'px-4 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer',
+                    'flex-1 sm:flex-initial text-center px-4 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer',
                     isHeist
                       ? 'text-warm-ivory/70 hover:text-warm-ivory hover:bg-obsidian'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
@@ -1507,7 +1507,7 @@ export const CandidateProfileEditModal: React.FC<CandidateProfileEditModalProps>
                   onClick={handleSave}
                   disabled={isSaving}
                   className={cn(
-                    'px-5 py-1.5 text-xs font-bold rounded shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50',
+                    'flex-1 sm:flex-initial justify-center px-5 py-1.5 text-xs font-bold rounded shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50',
                     isHeist
                       ? 'bg-crimson hover:bg-crimson/80 text-white shadow-crimson/20 border border-crimson/50'
                       : 'bg-[#1E3A8A] hover:bg-[#1E40AF] text-white shadow-sm'

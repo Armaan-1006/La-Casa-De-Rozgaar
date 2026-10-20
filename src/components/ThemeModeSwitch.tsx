@@ -41,7 +41,7 @@ export const ThemeModeSwitch: React.FC<ThemeModeSwitchProps> = ({
           type="button"
           onClick={() => handleSelect('heist')}
           className={cn(
-            'relative z-10 flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-all duration-150 cursor-pointer',
+            'relative z-10 flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 text-xs rounded-md transition-all duration-150 cursor-pointer shrink-0',
             isHeist
               ? 'bg-gradient-crimson text-white font-mono font-bold shadow-glow-crimson'
               : 'text-slate-500 hover:text-slate-800 dark:text-warm-ivory/60 dark:hover:text-warm-ivory font-mono'
@@ -49,7 +49,7 @@ export const ThemeModeSwitch: React.FC<ThemeModeSwitchProps> = ({
           title="Switch to Heist Mode (Money Heist Classified Operations)"
         >
           <Shield size={12} className={cn(isHeist ? 'text-white' : 'text-crimson/70')} />
-          <span className="tracking-wider uppercase text-[11px]">HEIST</span>
+          <span className="tracking-wider uppercase text-[10px] sm:text-[11px]">HEIST</span>
         </button>
 
         {/* Professional Option */}
@@ -57,7 +57,7 @@ export const ThemeModeSwitch: React.FC<ThemeModeSwitchProps> = ({
           type="button"
           onClick={() => handleSelect('professional')}
           className={cn(
-            'relative z-10 flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-all duration-150 cursor-pointer',
+            'relative z-10 flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 text-xs rounded-md transition-all duration-150 cursor-pointer shrink-0',
             isProfessional
               ? 'bg-white text-slate-900 font-sans font-semibold shadow-sm border border-slate-200/80'
               : 'text-warm-ivory/60 hover:text-warm-ivory font-sans'
@@ -65,7 +65,8 @@ export const ThemeModeSwitch: React.FC<ThemeModeSwitchProps> = ({
           title="Switch to Professional Mode (Enterprise Talent Intelligence)"
         >
           <Briefcase size={12} className={cn(isProfessional ? 'text-slate-800' : 'text-slate-400')} />
-          <span className="text-[11px]">PROFESSIONAL</span>
+          <span className="text-[10px] sm:text-[11px] hidden sm:inline">PROFESSIONAL</span>
+          <span className="text-[10px] sm:hidden font-semibold">PRO</span>
         </button>
       </div>
     )

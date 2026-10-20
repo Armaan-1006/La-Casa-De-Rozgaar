@@ -85,6 +85,21 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({ isOpen, onClos
     return () => { mounted = false }
   }, [isOpen])
 
+  // Escape listener and body scroll lock
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   const markAllRead = () => {
@@ -123,10 +138,15 @@ export const NotificationCenter: FC<NotificationCenterProps> = ({ isOpen, onClos
   const unreadCount = notifications.filter((n) => n.unread).length
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-end"
+    >
       <div
         className={cn(
-          'w-full max-w-md h-full flex flex-col transition-colors',
+          'w-full max-w-full sm:max-w-md h-full flex flex-col transition-colors',
           isHeist
             ? 'bg-charcoal border-l border-burgundy/40 shadow-glow-crimson'
             : 'bg-white border-l border-slate-200 shadow-2xl'

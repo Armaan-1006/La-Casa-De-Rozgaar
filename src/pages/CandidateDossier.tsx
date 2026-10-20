@@ -105,7 +105,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
   return (
     <div className="space-y-6">
       {/* 1. Enterprise Profile Header */}
-      <div className="p-6 bg-white rounded-lg border border-slate-200 shadow-2xs">
+      <div className="p-4 sm:p-6 bg-white rounded-lg border border-slate-200 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-xl bg-[#1E3A8A] flex items-center justify-center text-white font-bold text-xl shrink-0 shadow-sm overflow-hidden">
@@ -169,7 +169,7 @@ const EnterpriseCandidateProfile: FC<CandidateDossierProps> = ({ onNavigate }) =
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-t border-slate-100 mt-6 pt-3 text-xs font-medium text-slate-500 overflow-x-auto">
+        <div className="flex items-center gap-2 border-t border-slate-100 mt-6 pt-3 text-xs font-medium text-slate-500 overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
           {[
             { id: 'overview', label: 'Overview & Bio' },
             { id: 'skills', label: 'Skills & Competency Matrix' },
@@ -677,7 +677,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <section className="relative overflow-hidden rounded-xl border border-burgundy/30 bg-gradient-obsidian p-6 md:p-8 shadow-glow-crimson">
+      <section className="relative overflow-hidden rounded-xl border border-burgundy/30 bg-gradient-obsidian p-4 sm:p-6 md:p-8 shadow-glow-crimson">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -786,7 +786,7 @@ export const CandidateDossier: FC<CandidateDossierProps> = ({ onNavigate }) => {
               <h3 className="heading-xs text-warm-ivory flex items-center gap-2">
                 <DollarSign size={14} className="text-crimson" /> COMPENSATION PARAMETERS
               </h3>
-              <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 pt-1">
                 <div className="p-2.5 bg-burgundy/10 rounded border border-burgundy/20">
                   <span className="text-warm-ivory/50 text-[10px] block">CURRENT CTC</span>
                   <span className="text-warm-ivory font-bold">{candidate.compensation.currentCtc || '₹22 LPA'}</span>

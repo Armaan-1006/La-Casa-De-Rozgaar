@@ -121,7 +121,7 @@ export const SharedDossierPage: React.FC<SharedDossierPageProps> = ({ onNavigate
               <div>
                 <h1
                   className={cn(
-                    'font-mono font-bold text-sm tracking-wider uppercase',
+                    'font-mono font-bold text-xs sm:text-sm tracking-wider uppercase',
                     isHeist ? 'text-warm-ivory' : 'text-slate-900'
                   )}
                 >
@@ -129,7 +129,7 @@ export const SharedDossierPage: React.FC<SharedDossierPageProps> = ({ onNavigate
                 </h1>
                 <p
                   className={cn(
-                    'text-[10px] font-mono tracking-widest',
+                    'text-[9px] sm:text-[10px] font-mono tracking-widest',
                     isHeist ? 'text-warm-ivory/50' : 'text-slate-500'
                   )}
                 >
@@ -285,7 +285,7 @@ export const SharedDossierPage: React.FC<SharedDossierPageProps> = ({ onNavigate
         {/* Candidate Profile Hero Card */}
         <div
           className={cn(
-            'p-6 sm:p-8 rounded-xl border relative overflow-hidden transition-all',
+            'p-4 sm:p-8 rounded-xl border relative overflow-hidden transition-all',
             isHeist
               ? 'bg-gradient-obsidian border-burgundy/30 shadow-glow-crimson'
               : 'bg-white border-slate-200 shadow-2xs'

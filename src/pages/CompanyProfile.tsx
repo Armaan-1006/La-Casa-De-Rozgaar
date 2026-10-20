@@ -240,7 +240,7 @@ export const CompanyProfile: React.FC<CompanyProfileProps> = ({ onNavigate }) =>
         </div>
 
         {/* Hero Card */}
-        <div className="p-6 bg-white rounded-lg border border-slate-200 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="p-4 sm:p-6 bg-white rounded-lg border border-slate-200 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
             <div className="relative group">
               <input
@@ -312,7 +312,7 @@ export const CompanyProfile: React.FC<CompanyProfileProps> = ({ onNavigate }) =>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 gap-6 text-xs font-medium">
+        <div className="flex border-b border-slate-200 gap-4 sm:gap-6 text-xs font-medium overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
           {[
             { id: 'overview', label: 'Company Overview & Identity' },
             { id: 'tech', label: 'Tech Stack & Core Blueprints' },
@@ -751,7 +751,7 @@ export const CompanyProfile: React.FC<CompanyProfileProps> = ({ onNavigate }) =>
       </div>
 
       {/* Hero Syndicate Card */}
-      <div className="p-6 bg-charcoal/80 backdrop-blur-md rounded-lg border border-white/10 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="p-4 sm:p-6 bg-charcoal/80 backdrop-blur-md rounded-lg border border-white/10 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="absolute top-0 right-0 w-48 h-48 bg-crimson/5 rounded-full blur-2xl pointer-events-none" />
         <div className="flex items-start gap-4">
           <div className="relative group shrink-0">
@@ -817,7 +817,7 @@ export const CompanyProfile: React.FC<CompanyProfileProps> = ({ onNavigate }) =>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-white/10 gap-6 text-xs font-mono">
+      <div className="flex border-b border-white/10 gap-4 sm:gap-6 text-xs font-mono overflow-x-auto whitespace-nowrap scrollbar-none pb-0.5">
         {[
           { id: 'overview', label: '// 01. ENTITY OVERVIEW' },
           { id: 'tech', label: '// 02. TECH STACK BLUEPRINTS' },
