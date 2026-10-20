@@ -77,6 +77,8 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   // Refs
+  const isFullscreenRef = useRef(false)
+  const lastBlurTimeRef = useRef<number>(0)
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null)
   const videoHudRef = useRef<HTMLVideoElement | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -124,9 +126,17 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
     }
 
     // Exit Fullscreen if active
-    if (document.fullscreenElement && document.exitFullscreen) {
-      document.exitFullscreen().catch(() => {})
-    }
+    try {
+      const fsEl = document.fullscreenElement || (document as any).webkitFullscreenElement
+      if (fsEl) {
+        const exitFs = document.exitFullscreen || (document as any).webkitExitFullscreen
+        if (exitFs) {
+          exitFs.call(document).catch(() => {})
+        }
+      }
+    } catch {}
+    isFullscreenRef.current = false
+    setIsFullscreen(false)
 
     setPhase('SUBMITTED')
 
@@ -167,6 +177,11 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
   const initializeCamera = useCallback(async () => {
     try {
       setCameraError(null)
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        setCameraError('Camera API is unavailable. Mobile browsers require a secure origin (HTTPS or localhost) to access the camera.')
+        setCameraActive(false)
+        return
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 640 },
@@ -188,7 +203,15 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
       }
     } catch (err: any) {
       console.error('Camera access denied or unavailable:', err)
-      setCameraError('Camera access is required for AI-proctored verification. Please allow camera permissions.')
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('Camera permission was denied. Please tap the lock / settings icon in your browser address bar to allow camera access, then retry.')
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraError('No camera found on this device. A front-facing camera is required for AI-proctored assessment.')
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setCameraError('Camera is already in use by another application. Please close other camera apps and retry.')
+      } else {
+        setCameraError('Camera access is required for AI-proctored verification. Please allow camera permissions.')
+      }
       setCameraActive(false)
     }
   }, [])
@@ -387,6 +410,10 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
     const interval = setInterval(async () => {
       const activeVideo = phase === 'BRIEFING' ? videoPreviewRef.current : videoHudRef.current
       if (!activeVideo || activeVideo.readyState < 2) return
+      if (!activeVideo.videoWidth || !activeVideo.videoHeight) return
+
+      // Guard: Do not issue absence strikes or pause the exam while MediaPipe neural model is still downloading/initializing
+      if (!mediaPipeDetectorRef.current || !modelReady) return
 
       try {
         const now = Date.now()
@@ -636,10 +663,38 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
     return () => clearInterval(interval)
   }, [cameraActive, phase, addViolation, triggerProctorToast, isExamPaused, strikes, handleFinalizeSubmit, modelReady])
 
+  // Helper to safely request fullscreen across mobile and desktop browsers
+  const requestFullscreenSafe = useCallback(async () => {
+    try {
+      const docEl = document.documentElement as any
+      const requestFs =
+        docEl.requestFullscreen ||
+        docEl.webkitRequestFullscreen ||
+        docEl.mozRequestFullScreen ||
+        docEl.msRequestFullscreen
+      if (requestFs) {
+        await requestFs.call(docEl)
+        isFullscreenRef.current = true
+        setIsFullscreen(true)
+      } else {
+        isFullscreenRef.current = false
+        setIsFullscreen(false)
+      }
+    } catch (err) {
+      console.warn('Fullscreen request bypassed by browser policy:', err)
+      isFullscreenRef.current = false
+      setIsFullscreen(false)
+    }
+  }, [])
+
   // Start Assessment Flow with Lock & MediaRecorder
   const handleStartAssessment = async () => {
     // Ensure camera is active
     if (!streamRef.current) {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        setCameraError('Camera API is unavailable. Mobile browsers require a secure origin (HTTPS or localhost) to access the camera.')
+        return
+      }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
@@ -647,31 +702,39 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
         })
         streamRef.current = stream
         setCameraActive(true)
-      } catch (err) {
-        setCameraError('You must grant camera permissions before initiating the locked assessment.')
+      } catch (err: any) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setCameraError('Camera permission was denied. Please tap the lock / settings icon in your browser address bar to allow camera access, then retry.')
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setCameraError('No camera found on this device. A front-facing camera is required for AI-proctored assessment.')
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setCameraError('Camera is already in use by another application. Please close other camera apps and retry.')
+        } else {
+          setCameraError('You must grant camera permissions before initiating the locked assessment.')
+        }
         return
       }
     }
 
-    // Try Fullscreen mode
-    try {
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen()
-        setIsFullscreen(true)
-      }
-    } catch (err) {
-      console.warn('Fullscreen request bypassed by browser policy:', err)
-    }
+    // Try Fullscreen mode safely
+    await requestFullscreenSafe()
 
-    // Initialize MediaRecorder
+    // Initialize MediaRecorder with cross-browser mime type support (including iOS Safari)
     if (streamRef.current) {
       try {
         recordedChunksRef.current = []
-        const recorder = new MediaRecorder(streamRef.current, {
-          mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-            ? 'video/webm;codecs=vp9'
-            : 'video/webm',
-        })
+        let mimeType = ''
+        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported) {
+          if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+            mimeType = 'video/webm;codecs=vp9'
+          } else if (MediaRecorder.isTypeSupported('video/webm')) {
+            mimeType = 'video/webm'
+          } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+            mimeType = 'video/mp4'
+          }
+        }
+        const recorderOptions = mimeType ? { mimeType } : undefined
+        const recorder = new MediaRecorder(streamRef.current, recorderOptions)
 
         recorder.ondataavailable = (e) => {
           if (e.data && e.data.size > 0) {
@@ -681,7 +744,8 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
 
         recorder.onstop = () => {
           if (recordedChunksRef.current.length > 0) {
-            const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
+            const blobType = mimeType || 'video/webm'
+            const blob = new Blob(recordedChunksRef.current, { type: blobType })
             const url = URL.createObjectURL(blob)
             setRecordedVideoUrl(url)
           }
@@ -724,6 +788,17 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
     if (phase !== 'IN_PROGRESS') return
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Allow physical volume buttons on mobile devices without penalty
+      if (
+        e.key === 'AudioVolumeUp' ||
+        e.key === 'AudioVolumeDown' ||
+        e.key === 'VolumeUp' ||
+        e.key === 'VolumeDown' ||
+        e.key === 'VolumeMute'
+      ) {
+        return
+      }
+
       e.preventDefault()
       e.stopPropagation()
 
@@ -731,7 +806,7 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
       if (now - lastKeyTimeRef.current > 600) {
         lastKeyTimeRef.current = now
         const keyLabel = e.key.length === 1 ? `'${e.key}'` : e.code || e.key
-        setKeyboardWarning(`⚠️ KEYBOARD LOCKED: Key press [${keyLabel}] was blocked. Use mouse only.`)
+        setKeyboardWarning(`⚠️ KEYBOARD LOCKED: Key press [${keyLabel}] was blocked. Tap options directly.`)
 
         if (keyboardWarningTimerRef.current) clearTimeout(keyboardWarningTimerRef.current)
         keyboardWarningTimerRef.current = setTimeout(() => {
@@ -744,6 +819,15 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (
+        e.key === 'AudioVolumeUp' ||
+        e.key === 'AudioVolumeDown' ||
+        e.key === 'VolumeUp' ||
+        e.key === 'VolumeDown' ||
+        e.key === 'VolumeMute'
+      ) {
+        return
+      }
       e.preventDefault()
       e.stopPropagation()
       return false
@@ -807,14 +891,28 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
     }
 
     const handleBlur = () => {
+      // If the document is hidden, visibilitychange already logged the Tab Switch
+      if (document.hidden) return
+      const now = Date.now()
+      // Debounce blur so mobile virtual keyboard or system popups don't duplicate penalties
+      if (now - lastBlurTimeRef.current < 2500) return
+      lastBlurTimeRef.current = now
       addViolation('FOCUS_LOST', 'Window focus lost to external application', 15)
     }
 
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        setIsFullscreen(false)
-        addViolation('FULLSCREEN_EXIT', 'Fullscreen mode exited by user', 20)
+      const fsElement = document.fullscreenElement || (document as any).webkitFullscreenElement
+      if (!fsElement) {
+        // Only log violation if we were previously in fullscreen!
+        if (isFullscreenRef.current) {
+          isFullscreenRef.current = false
+          setIsFullscreen(false)
+          addViolation('FULLSCREEN_EXIT', 'Fullscreen mode exited by user', 20)
+        } else {
+          setIsFullscreen(false)
+        }
       } else {
+        isFullscreenRef.current = true
         setIsFullscreen(true)
       }
     }
@@ -1246,19 +1344,19 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
 
           {/* Biometric Lockdown Full-Screen Auto-Pause (Face Lost or Multiple Persons) */}
           {isExamPaused && strikes < 3 && (
-            <div className="fixed inset-0 z-50 bg-black/92 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-5 animate-fadeIn">
+            <div className="fixed inset-0 z-50 bg-black/92 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-4 overflow-y-auto max-h-[100dvh] animate-fadeIn">
               <div className={cn(
-                "w-20 h-20 rounded-full border-2 flex items-center justify-center animate-pulse",
+                "w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 flex items-center justify-center animate-pulse shrink-0",
                 pauseReason === 'MULTIPLE_FACES' || faceCount > 1
                   ? "bg-purple-950/90 border-purple-500 text-purple-400 shadow-[0_0_35px_rgba(168,85,247,0.5)]"
                   : "bg-red-950/90 border-red-500 text-red-400 shadow-[0_0_35px_rgba(239,68,68,0.5)]"
               )}>
-                {pauseReason === 'MULTIPLE_FACES' || faceCount > 1 ? <Users size={40} /> : <VideoOff size={40} />}
+                {pauseReason === 'MULTIPLE_FACES' || faceCount > 1 ? <Users size={32} /> : <VideoOff size={32} />}
               </div>
 
-              <div className="space-y-2 max-w-md">
+              <div className="space-y-1.5 max-w-md">
                 <span className={cn(
-                  "stamp-classified text-xs px-3 py-1 font-mono font-bold border",
+                  "stamp-classified text-[10px] sm:text-xs px-2.5 py-0.5 sm:py-1 font-mono font-bold border",
                   pauseReason === 'MULTIPLE_FACES' || faceCount > 1
                     ? "bg-purple-950 text-purple-300 border-purple-500"
                     : "bg-red-950 text-red-300 border-red-500"
@@ -1268,21 +1366,21 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                     : "BIOMETRIC LOCKDOWN // TEST PAUSED"}
                 </span>
                 <h2 className={cn(
-                  "heading-lg font-mono font-bold",
+                  "heading-md sm:heading-lg font-mono font-bold",
                   pauseReason === 'MULTIPLE_FACES' || faceCount > 1 ? "text-purple-400" : "text-red-400"
                 )}>
                   {pauseReason === 'MULTIPLE_FACES' || faceCount > 1
                     ? "MULTIPLE PERSONS DETECTED"
                     : "FACE NOT DETECTED IN FRAME"}
                 </h2>
-                <p className="text-xs font-mono text-warm-ivory/80 leading-relaxed">
+                <p className="text-[11px] sm:text-xs font-mono text-warm-ivory/80 leading-relaxed">
                   {pauseReason === 'MULTIPLE_FACES' || faceCount > 1
                     ? "The assessment and countdown timer are suspended because multiple individuals were detected in your camera stream. Ensure only you are in the frame to automatically resume the exam."
                     : "The assessment and countdown timer are suspended. Realign your face inside the camera viewfinder below to automatically resume the exam."}
                 </p>
               </div>
 
-              <div className="p-3 bg-burgundy/25 rounded-lg border border-red-500/40 text-xs font-mono flex items-center gap-4">
+              <div className="p-2.5 sm:p-3 bg-burgundy/25 rounded-lg border border-red-500/40 text-[11px] sm:text-xs font-mono flex items-center gap-3 sm:gap-4">
                 <span>STRIKE RECORDED: <strong className="text-red-400 font-bold">{strikes} of 3</strong></span>
                 <span className="text-warm-ivory/40">|</span>
                 <span className="text-amber-400">3 Strikes = Automatic Failure</span>
@@ -1290,7 +1388,7 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
 
               {/* Viewfinder Preview */}
               <div className={cn(
-                "relative w-72 aspect-video rounded-xl overflow-hidden border-2 shadow-2xl bg-charcoal",
+                "relative w-64 sm:w-72 aspect-video rounded-xl overflow-hidden border-2 shadow-2xl bg-charcoal shrink-0",
                 pauseReason === 'MULTIPLE_FACES' || faceCount > 1 ? "border-purple-500/80" : "border-red-500/80"
               )}>
                 <video
@@ -1306,11 +1404,11 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                   className="w-full h-full object-cover transform -scale-x-100"
                 />
                 <div className={cn(
-                  "absolute inset-3 border-2 border-dashed rounded-lg flex items-center justify-center pointer-events-none text-center px-2",
+                  "absolute inset-2 sm:inset-3 border-2 border-dashed rounded-lg flex items-center justify-center pointer-events-none text-center px-2",
                   pauseReason === 'MULTIPLE_FACES' || faceCount > 1 ? "border-purple-400/70" : "border-red-400/70"
                 )}>
                   <span className={cn(
-                    "text-[10px] font-mono px-2.5 py-1 rounded border",
+                    "text-[9px] sm:text-[10px] font-mono px-2 py-0.5 rounded border",
                     pauseReason === 'MULTIPLE_FACES' || faceCount > 1
                       ? "text-purple-200 bg-black/85 border-purple-500/50"
                       : "text-red-200 bg-black/85 border-red-500/50"
@@ -1326,23 +1424,23 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
 
           {/* Violation Strike Alert Modal */}
           {showViolationModal && (
-            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="card max-w-md w-full p-6 border-red-500 bg-obsidian text-center space-y-4 shadow-2xl">
-                <div className="w-14 h-14 mx-auto rounded-full bg-red-950 border border-red-500 flex items-center justify-center text-red-400 animate-pulse">
-                  <ShieldAlert size={28} />
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+              <div className="card max-w-md w-full p-5 sm:p-6 border-red-500 bg-obsidian text-center space-y-3.5 sm:space-y-4 shadow-2xl max-h-[90dvh] overflow-y-auto">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-full bg-red-950 border border-red-500 flex items-center justify-center text-red-400 animate-pulse">
+                  <ShieldAlert size={26} />
                 </div>
-                <h3 className="heading-md text-red-400 font-mono font-bold">SECURITY VIOLATION DETECTED</h3>
+                <h3 className="heading-sm sm:heading-md text-red-400 font-mono font-bold">SECURITY VIOLATION DETECTED</h3>
                 <p className="text-xs font-mono text-warm-ivory/80 leading-relaxed">
                   {violationModalMessage}
                 </p>
-                <div className="p-3 bg-burgundy/20 rounded border border-burgundy/30 text-xs font-mono">
+                <div className="p-2.5 sm:p-3 bg-burgundy/20 rounded border border-burgundy/30 text-xs font-mono">
                   <span className="text-warm-ivory/60">INTEGRITY STRIKES: </span>
                   <span className="text-red-400 font-bold">{strikes} of 3</span>
                 </div>
                 {strikes < 3 && (
                   <button
                     onClick={() => setShowViolationModal(false)}
-                    className="btn-primary text-xs font-mono py-2.5 px-6 w-full"
+                    className="btn-primary text-xs font-mono py-2.5 px-6 w-full cursor-pointer"
                   >
                     ACKNOWLEDGE & RESUME EXAM
                   </button>
@@ -1456,15 +1554,27 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                 )}>
                   FOV: {fovQuality}
                 </span>
-                <span className={isFullscreen ? 'text-emerald-400' : 'text-amber-400'}>
-                  {isFullscreen ? 'FULLSCREEN' : 'WINDOWED'}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={isFullscreen ? 'text-emerald-400' : 'text-amber-400'}>
+                    {isFullscreen ? 'FULLSCREEN' : 'WINDOWED'}
+                  </span>
+                  {!isFullscreen && (
+                    <button
+                      type="button"
+                      onClick={requestFullscreenSafe}
+                      className="px-1.5 py-0.5 rounded bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[9px] font-mono cursor-pointer transition-colors"
+                      title="Enter Fullscreen"
+                    >
+                      MAXIMIZE
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Linear Question Palette / Forward-Jump Grid */}
-          <div className="card p-3.5 bg-obsidian/70 border-burgundy/20 space-y-2">
+          <div className="card p-3 sm:p-3.5 bg-obsidian/70 border-burgundy/20 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono text-warm-ivory/70 uppercase tracking-wider font-bold">
@@ -1479,7 +1589,7 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
               </span>
             </div>
 
-            <div className="grid grid-cols-5 xs:grid-cols-10 sm:grid-cols-20 gap-1.5">
+            <div className="grid grid-cols-10 sm:grid-cols-20 gap-1 sm:gap-1.5">
               {questions.map((_, idx) => {
                 const isAnswered = selectedAnswers[idx] !== undefined
                 const isCurrent = idx === currentIndex
@@ -1501,7 +1611,7 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                         : `Jump forward to Question ${idx + 1} (seals prior questions)`
                     }
                     className={cn(
-                      'h-7 rounded text-xs font-mono font-bold transition-all flex items-center justify-center border',
+                      'h-7 rounded text-[11px] sm:text-xs font-mono font-bold transition-all flex items-center justify-center border',
                       isCurrent
                         ? 'border-crimson bg-crimson text-warm-ivory shadow-glow-crimson scale-105'
                         : isPastLocked
@@ -1527,33 +1637,33 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
           </div>
 
           {/* Question Card */}
-          <div className="card space-y-6">
-            <div className="flex items-center justify-between border-b border-burgundy/20 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-crimson font-bold">
+          <div className="card space-y-5 sm:space-y-6 p-4 sm:p-6">
+            <div className="flex items-center justify-between border-b border-burgundy/20 pb-3 gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <span className="text-xs font-mono text-crimson font-bold truncate">
                   Q{currentIndex + 1} // {currentQ.skill}
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-burgundy/20 text-warm-ivory/70 uppercase">
-                  WEIGHT: 0.5 MARKS
+                <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded bg-burgundy/20 text-warm-ivory/70 uppercase shrink-0">
+                  0.5 MARKS
                 </span>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-burgundy/20 text-warm-ivory/70 uppercase">
-                DIFFICULTY: {currentQ.difficulty}
+              <span className="text-[9px] sm:text-[10px] font-mono px-1.5 sm:px-2 py-0.5 rounded bg-burgundy/20 text-warm-ivory/70 uppercase shrink-0">
+                {currentQ.difficulty}
               </span>
             </div>
 
-            <h2 className="text-sm md:text-base font-semibold text-warm-ivory font-mono leading-relaxed">
+            <h2 className="text-sm md:text-base font-semibold text-warm-ivory font-mono leading-relaxed break-words">
               {currentQ.question}
             </h2>
 
             {currentQ.codeSnippet && (
-              <pre className="p-4 bg-obsidian border border-burgundy/30 rounded-lg text-warm-ivory/90 text-xs font-mono overflow-x-auto leading-relaxed">
+              <pre className="p-3 sm:p-4 bg-obsidian border border-burgundy/30 rounded-lg text-warm-ivory/90 text-[11px] sm:text-xs font-mono overflow-x-auto leading-relaxed max-w-full">
                 <code>{currentQ.codeSnippet}</code>
               </pre>
             )}
 
-            {/* MCQ Options — Mouse click only */}
-            <div className="space-y-3">
+            {/* MCQ Options — Mouse click / Mobile Touch friendly */}
+            <div className="space-y-2.5 sm:space-y-3">
               {currentQ.options.map((option: string, optIdx: number) => {
                 const isSelected = selectedAnswers[currentIndex] === optIdx
                 return (
@@ -1561,16 +1671,16 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
                     key={optIdx}
                     onClick={() => handleSelectOption(optIdx)}
                     className={cn(
-                      'w-full text-left p-3.5 rounded-lg border transition-all flex items-start gap-3 text-xs font-mono cursor-pointer',
+                      'w-full text-left p-3 sm:p-3.5 min-h-[48px] rounded-lg border transition-all flex items-start gap-2.5 sm:gap-3 text-xs font-mono cursor-pointer active:scale-[0.99] touch-manipulation',
                       isSelected
                         ? 'bg-gradient-crimson border-crimson text-warm-ivory font-bold shadow-glow-crimson'
                         : 'bg-burgundy/10 border-burgundy/20 text-warm-ivory/80 hover:bg-burgundy/20 hover:border-crimson/40'
                     )}
                   >
-                    <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center shrink-0 text-[10px]">
+                    <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center shrink-0 text-[10px] mt-0.5">
                       {String.fromCharCode(65 + optIdx)}
                     </span>
-                    <span className="flex-1 leading-relaxed">{option}</span>
+                    <span className="flex-1 leading-relaxed break-words">{option}</span>
                   </button>
                 )
               })}
@@ -1578,33 +1688,33 @@ export const SecureAssessment: React.FC<SecureAssessmentProps> = ({ onNavigate }
 
             {/* Bottom Navigator — Strictly Linear */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-burgundy/20">
-              <div className="flex items-center gap-1.5 text-[11px] font-mono text-warm-ivory/40">
-                <Lock size={12} className="text-crimson/70" />
-                <span>PREVIOUS QUESTIONS LOCKED (LINEAR MODE)</span>
+              <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono text-warm-ivory/40">
+                <Lock size={12} className="text-crimson/70 shrink-0" />
+                <span className="truncate">PREVIOUS QUESTIONS LOCKED (LINEAR MODE)</span>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="text-[11px] font-mono text-warm-ivory/50 hidden sm:block">
+              <div className="flex items-center justify-between sm:justify-end gap-3">
+                <div className="text-[11px] font-mono text-warm-ivory/50">
                   {selectedAnswers[currentIndex] !== undefined ? (
                     <span className="text-emerald-400 flex items-center gap-1">
-                      <Check size={12} /> Option selected
+                      <Check size={12} /> <span className="hidden xs:inline">Option </span>Selected
                     </span>
                   ) : (
-                    <span>Select an option with mouse</span>
+                    <span>Tap option to select</span>
                   )}
                 </div>
 
                 {currentIndex < questions.length - 1 ? (
                   <button
                     onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
-                    className="btn-primary text-xs font-mono py-2 px-5"
+                    className="btn-primary text-xs font-mono py-2.5 px-5 min-h-[40px] flex items-center justify-center cursor-pointer"
                   >
                     NEXT QUESTION →
                   </button>
                 ) : (
                   <button
                     onClick={handleFinalizeSubmit}
-                    className="btn-primary text-xs font-mono py-2 px-6 bg-emerald-600 hover:bg-emerald-500 flex items-center gap-1.5 shadow-glow-emerald"
+                    className="btn-primary text-xs font-mono py-2.5 px-6 min-h-[40px] bg-emerald-600 hover:bg-emerald-500 flex items-center justify-center gap-1.5 shadow-glow-emerald cursor-pointer"
                   >
                     <CheckCircle2 size={13} /> FINALIZE & SUBMIT EXAM
                   </button>

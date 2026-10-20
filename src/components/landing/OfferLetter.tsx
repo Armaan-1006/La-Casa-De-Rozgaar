@@ -59,7 +59,7 @@ export function OfferLetter({
   variant: "inside" | "macro";
   onJoin?: () => void;
   onNotYet?: () => void;
-  scrollRef?: React.RefObject<HTMLDivElement | null>;
+  scrollRef?: React.Ref<HTMLDivElement>;
 }) {
   const inside = variant === "inside";
 
@@ -138,67 +138,68 @@ export function OfferLetter({
       }}
     >
       {/* Distressed Paper Top Bar & Stamps */}
-      <div className="flex flex-wrap items-center justify-between border-b-2 border-paper-ink/30 px-6 sm:px-10 py-4 bg-black/5">
-        <div className="flex items-center gap-3">
-          <span className="inline-block h-3 w-3 rounded-full bg-crimson shadow-[0_0_8px_rgba(201,24,43,0.8)]" />
-          <p className="font-mono text-xs sm:text-sm tracking-[0.25em] text-crimson font-bold uppercase">
+      <div className="flex flex-wrap items-center justify-between border-b-2 border-paper-ink/30 px-3.5 sm:px-8 md:px-10 py-3 sm:py-4 bg-black/5 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <span className="inline-block h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-crimson shadow-[0_0_8px_rgba(201,24,43,0.8)] shrink-0" />
+          <p className="font-mono text-[10px] sm:text-xs md:text-sm tracking-wider sm:tracking-[0.25em] text-crimson font-bold uppercase truncate">
             CLASSIFIED EMPLOYMENT DOSSIER · EXP. LCDR-1949
           </p>
         </div>
-        <div className="flex items-center gap-4 mt-2 sm:mt-0 font-mono text-[11px] sm:text-xs tracking-widest text-paper-ink/75 uppercase">
-          <span className="border border-paper-ink/40 px-2.5 py-0.5 font-semibold bg-black/5">
+        <div className="flex items-center gap-2 sm:gap-4 font-mono text-[10px] sm:text-xs tracking-wider sm:tracking-widest text-paper-ink/75 uppercase shrink-0">
+          <span className="border border-paper-ink/40 px-2 py-0.5 font-semibold bg-black/5">
             CLEARANCE: LEVEL 5
           </span>
           <span className="text-crimson font-bold">CONFIDENTIAL</span>
         </div>
       </div>
 
-      {/* Main Dossier Scrollable / Responsive Content without visible scrollbars */}
+      {/* Main Dossier Scrollable / Responsive Content with delicate touch-friendly scrollbar */}
       <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-6 sm:px-12 py-6 sm:py-8 space-y-6 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        ref={scrollRef as any}
+        className="flex-1 overflow-y-auto px-4 sm:px-8 md:px-12 pt-5 pb-12 sm:pt-8 sm:pb-16 space-y-5 sm:space-y-6 overscroll-contain touch-pan-y dossier-scrollbar"
+        style={{ touchAction: "pan-y" }}
       >
         {/* Title Header */}
-        <div className="flex flex-col border-b border-paper-ink/20 pb-5">
-          <p className="font-mono text-xs tracking-[0.3em] text-[#8a1d27] uppercase font-bold">
+        <div className="flex flex-col border-b border-paper-ink/20 pb-4 sm:pb-5">
+          <p className="font-mono text-[10px] sm:text-xs tracking-[0.2em] sm:tracking-[0.3em] text-[#8a1d27] uppercase font-bold">
             CENTRAL COMMAND · OPERATIONAL BLUEPRINT
           </p>
-          <h1 className="mt-1 font-display text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-paper-ink leading-[0.95]">
+          <h1 className="mt-1 font-display text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black uppercase tracking-tight text-paper-ink leading-[0.95]">
             YOU HAVE BEEN SELECTED
             <br />
             <span className="text-crimson">FOR THE OPERATION.</span>
           </h1>
-          <p className="mt-3 font-mono text-xs sm:text-sm tracking-wide text-paper-ink/80 max-w-3xl leading-relaxed">
+          <p className="mt-2.5 sm:mt-3 font-mono text-xs sm:text-sm tracking-wide text-paper-ink/80 max-w-3xl leading-relaxed">
             Welcome to <strong>La Casa De Rozgaar</strong> (The House of Employment). You are invited into an intelligent talent and workforce ecosystem designed to orchestrate careers, master market demand, and execute mission-critical talent matching.
           </p>
         </div>
 
         {/* Section Heading */}
         <div className="flex items-center justify-between">
-          <h2 className="font-mono text-xs sm:text-sm tracking-[0.25em] text-crimson uppercase font-bold">
+          <h2 className="font-mono text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.25em] text-crimson uppercase font-bold">
             WHAT YOU RECEIVE BY JOINING THE ECOSYSTEM
           </h2>
-          <span className="font-mono text-[11px] tracking-widest text-paper-ink/60 uppercase">
+          <span className="font-mono text-[10px] sm:text-[11px] tracking-widest text-paper-ink/60 uppercase">
             8 CORE PILLARS
           </span>
         </div>
 
         {/* 8 Elaborated Pillars Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 font-mono">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 sm:gap-y-4 font-mono">
           {OPERATION_PILLARS.map((pillar, idx) => (
             <div
               key={pillar.title}
-              className="flex flex-col border-l-2 border-crimson/60 pl-3.5 py-1.5 bg-paper-ink/[0.04] transition-colors hover:bg-paper-ink/[0.08]"
+              className="flex flex-col border-l-2 border-crimson/60 pl-3 py-1.5 bg-paper-ink/[0.04] transition-colors hover:bg-paper-ink/[0.08]"
             >
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-crimson font-bold">
+              <div className="flex items-baseline gap-2">
+                <span className="font-mono text-xs text-crimson font-bold shrink-0">
                   0{idx + 1}.
                 </span>
-                <h3 className="font-display text-sm sm:text-base font-bold text-paper-ink uppercase tracking-wide">
+                <h3 className="font-display text-xs sm:text-sm md:text-base font-bold text-paper-ink uppercase tracking-wide break-words">
                   {pillar.title}
                 </h3>
               </div>
-              <p className="mt-1 text-[11px] sm:text-xs leading-relaxed text-paper-ink/80">
+              <p className="mt-1 text-[11px] sm:text-xs leading-relaxed text-paper-ink/80 break-words">
                 {pillar.detail}
               </p>
             </div>
@@ -206,61 +207,61 @@ export function OfferLetter({
         </div>
 
         {/* Sign-off, Stamps, and Official Authorization */}
-        <div className="pt-4 border-t-2 border-paper-ink/25 flex flex-wrap items-end justify-between gap-6">
+        <div className="pt-4 border-t-2 border-paper-ink/25 flex flex-wrap items-center sm:items-end justify-between gap-4 sm:gap-6">
           <div className="flex flex-col">
-            <p className="font-display italic text-2xl sm:text-3xl text-paper-ink">
+            <p className="font-display italic text-xl sm:text-3xl text-paper-ink">
               El Profesor
             </p>
-            <div className="mt-1 w-36 border-t-2 border-paper-ink/60" />
-            <p className="mt-1.5 font-mono text-xs tracking-[0.25em] text-crimson font-bold uppercase">
+            <div className="mt-1 w-28 sm:w-36 border-t-2 border-paper-ink/60" />
+            <p className="mt-1.5 font-mono text-[10px] sm:text-xs tracking-wider sm:tracking-[0.25em] text-crimson font-bold uppercase">
               OPERATIONAL COMMAND · AUTHORIZED
             </p>
           </div>
 
           {/* Red Ink Authorization Stamp */}
           <div
-            className="flex flex-col items-center justify-center rounded-full border-2 border-dashed border-crimson px-6 py-3 text-center font-mono font-black text-crimson uppercase select-none shadow-[0_0_20px_rgba(201,24,43,0.15)]"
+            className="flex flex-col items-center justify-center rounded-full border-2 border-dashed border-crimson px-4 sm:px-6 py-2 sm:py-3 text-center font-mono font-black text-crimson uppercase select-none shadow-[0_0_20px_rgba(201,24,43,0.15)]"
             style={{
               transform: "rotate(-6deg)",
               borderColor: "rgba(201, 24, 43, 0.8)",
               color: "rgba(201, 24, 43, 0.9)",
             }}
           >
-            <span className="text-[10px] tracking-widest font-bold">OFFICIAL SEAL</span>
-            <span className="text-sm sm:text-base font-extrabold tracking-wider leading-none my-0.5">
+            <span className="text-[8px] sm:text-[10px] tracking-widest font-bold">OFFICIAL SEAL</span>
+            <span className="text-xs sm:text-base font-extrabold tracking-wider leading-none my-0.5">
               LA CASA DE ROZGAAR
             </span>
-            <span className="text-[9px] tracking-widest">VERIFIED OPERATION</span>
+            <span className="text-[8px] sm:text-[9px] tracking-widest">VERIFIED OPERATION</span>
           </div>
         </div>
 
         {/* EMBEDDED FINAL HEIST RECRUITMENT DECISION */}
-        <div className="mt-6 rounded-md border-2 border-crimson/50 bg-[#120506]/90 p-6 sm:p-8 text-center text-white shadow-[0_10px_35px_rgba(201,24,43,0.25)]">
+        <div className="mt-4 sm:mt-6 rounded-md border-2 border-crimson/50 bg-[#120506]/90 p-4 sm:p-8 text-center text-white shadow-[0_10px_35px_rgba(201,24,43,0.25)]">
           <div className="flex items-center justify-center gap-2 mb-2">
             <span className="h-2 w-2 rounded-full bg-crimson animate-pulse" />
-            <p className="font-mono text-xs tracking-[0.3em] text-crimson font-bold uppercase">
+            <p className="font-mono text-[10px] sm:text-xs tracking-widest sm:tracking-[0.3em] text-crimson font-bold uppercase">
               FINAL CALL · RECRUITMENT DECISION
             </p>
           </div>
-          <h2 className="font-display text-2xl sm:text-4xl font-black uppercase tracking-tight text-white">
+          <h2 className="font-display text-xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-white">
             Do you want to be a part of this heist?
           </h2>
-          <p className="mt-2 font-mono text-xs sm:text-sm text-paper-ink/80 max-w-xl mx-auto leading-relaxed">
+          <p className="mt-2 font-mono text-[11px] sm:text-xs md:text-sm text-paper-ink/80 max-w-xl mx-auto leading-relaxed">
             By joining the operation, you unlock market-aware intelligence, direct role matching, verified assessments, and workforce command.
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+          <div className="mt-5 sm:mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4">
             <button
               type="button"
               onClick={onJoin}
-              className="cursor-pointer rounded bg-crimson px-8 py-3.5 font-mono text-xs sm:text-sm font-bold tracking-widest text-white uppercase transition-all duration-200 hover:bg-crimson-bright hover:shadow-[0_0_24px_rgba(201,24,43,0.8)] active:scale-95"
+              className="cursor-pointer rounded bg-crimson px-6 sm:px-8 py-3.5 font-mono text-xs sm:text-sm font-bold tracking-widest text-white uppercase transition-all duration-200 hover:bg-crimson-bright hover:shadow-[0_0_24px_rgba(201,24,43,0.8)] active:scale-95"
             >
               [ Yes, I&apos;m in ] — Enter Operation
             </button>
             <button
               type="button"
               onClick={onNotYet}
-              className="cursor-pointer rounded border border-white/20 bg-white/5 px-6 py-3.5 font-mono text-xs sm:text-sm font-semibold tracking-widest text-white/80 uppercase transition-all duration-200 hover:border-white/50 hover:bg-white/10 hover:text-white active:scale-95"
+              className="cursor-pointer rounded border border-white/20 bg-white/5 px-5 sm:px-6 py-3.5 font-mono text-xs sm:text-sm font-semibold tracking-widest text-white/80 uppercase transition-all duration-200 hover:border-white/50 hover:bg-white/10 hover:text-white active:scale-95"
             >
               [ Not yet ] — Return to Table
             </button>
@@ -270,3 +271,4 @@ export function OfferLetter({
     </div>
   );
 }
+

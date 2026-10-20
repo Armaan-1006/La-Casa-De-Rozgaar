@@ -895,6 +895,21 @@ export function ThreeBriefcaseScene({
 
     // CAMERA: Starts at natural chest/eye-level (Y = 0.80, Z = 7.5) with shallow downward pitch looking at table center
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
+    const updateCameraFov = (w: number, h: number) => {
+      const aspect = w / h;
+      camera.aspect = aspect;
+      // On portrait mobile (aspect < 1.0), adapt vertical FOV so the full table width is preserved
+      const baseFov = 42;
+      if (aspect < 1.0) {
+        const hFovRad = 2 * Math.atan(Math.tan((baseFov * Math.PI) / 360) * 1.55);
+        const vFovRad = 2 * Math.atan(Math.tan(hFovRad / 2) / aspect);
+        camera.fov = Math.min(75, (vFovRad * 180) / Math.PI);
+      } else {
+        camera.fov = baseFov;
+      }
+      camera.updateProjectionMatrix();
+    };
+    updateCameraFov(width, height);
     camera.position.set(0, 0.80, 7.5);
     camera.lookAt(0, -1.35, tableZ);
 
@@ -1264,7 +1279,6 @@ export function ThreeBriefcaseScene({
 
     const caseW = 1.62;
     const caseD = 1.08;
-    const caseH = 0.18;
     const trayHeight = 0.09;
 
     // Contact shadow plane directly beneath the suitcase onto the table
@@ -1468,16 +1482,13 @@ export function ThreeBriefcaseScene({
     }
 
     let animId = 0;
-    let prevTime = performance.now();
 
     const cwX = -0.15;
     const cwY = tableTopY;
     const cwZ = tableZ + 0.15;
 
-    const renderLoop = (timeNow: number) => {
+    const renderLoop = () => {
       animId = requestAnimationFrame(renderLoop);
-      const dt = (timeNow - prevTime) / 1000;
-      prevTime = timeNow;
 
       const p = Math.max(0, Math.min(1, scrollProgressRef.current));
 
@@ -1576,8 +1587,7 @@ export function ThreeBriefcaseScene({
       if (!mount) return;
       width = mount.clientWidth || window.innerWidth;
       height = mount.clientHeight || window.innerHeight;
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      updateCameraFov(width, height);
       renderer.setSize(width, height);
     };
     window.addEventListener("resize", handleResize);
@@ -1596,7 +1606,7 @@ export function ThreeBriefcaseScene({
     <div
       ref={mountRef}
       className="absolute inset-0 h-full w-full pointer-events-none"
-      style={{ touchAction: "none" }}
+      style={{ touchAction: "pan-y" }}
     />
   );
 }

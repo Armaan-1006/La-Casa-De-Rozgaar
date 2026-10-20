@@ -85,3 +85,24 @@
     rgba(10, 8, 8, 0.95) 100%
   );
 }
+
+/* Custom subtle scrollbar for the classified dossier */
+.dossier-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 24, 43, 0.45) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dossier-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.dossier-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dossier-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(201, 24, 43, 0.45);
+  border-radius: 9999px;
+}
+

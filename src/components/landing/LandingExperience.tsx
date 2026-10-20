@@ -52,10 +52,18 @@ export function LandingExperience({
         "(prefers-reduced-motion: reduce)",
       ).matches;
 
+      const isMobile = window.innerWidth < 768;
+      const isTouch = 'ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+
       let lenis: InstanceType<typeof LenisMod.default> | null = null;
       let tickerCb: ((time: number) => void) | null = null;
       if (!prefersReduced) {
-        lenis = new LenisMod.default({ duration: 1.1, smoothWheel: true });
+        lenis = new LenisMod.default({
+          duration: 1.1,
+          smoothWheel: true,
+          syncTouch: true,
+          touchMultiplier: 1.25,
+        });
         (window as any).__lenis = lenis;
         lenis.on("scroll", ScrollTrigger.update);
         tickerCb = (time: number) => {
@@ -65,6 +73,12 @@ export function LandingExperience({
         gsap.ticker.lagSmoothing(0);
       }
 
+      // Also listen to window scroll to guarantee ScrollTrigger updates on native touch
+      const handleWindowScroll = () => {
+        ScrollTrigger.update();
+      };
+      window.addEventListener("scroll", handleWindowScroll, { passive: true });
+
       const ctx = gsap.context(() => {
         const ease = "power2.inOut";
         const tl = gsap.timeline({
@@ -73,7 +87,7 @@ export function LandingExperience({
             trigger: wrapRef.current,
             start: "top top",
             end: "bottom bottom",
-            scrub: prefersReduced ? true : 1.0,
+            scrub: prefersReduced ? true : isMobile || isTouch ? 0.35 : 0.8,
             onUpdate: (self) => {
               scrollProgressRef.current = self.progress;
             },
@@ -83,8 +97,8 @@ export function LandingExperience({
         // 0.00 – 0.14 · Hero Title "LA CASA DE ROZGAAR" fades out smoothly as scroll starts
         tl.fromTo(
           "[data-hero-title]",
-          { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" },
-          { opacity: 0, y: -45, scale: 0.94, filter: "blur(10px)", duration: 0.14 },
+          { autoAlpha: 1, y: 0, scale: 1, filter: "blur(0px)" },
+          { autoAlpha: 0, y: -45, scale: 0.94, filter: "blur(10px)", duration: 0.14 },
           0.0,
         )
 
@@ -99,22 +113,22 @@ export function LandingExperience({
           // 0.20 – 0.40 · CRT Connection Prompt appears as we approach the desk
           .fromTo(
             "[data-connect]",
-            { opacity: 0, y: 35, pointerEvents: "none" },
-            { opacity: 1, y: 0, pointerEvents: "auto", duration: 0.1 },
+            { autoAlpha: 0, y: 35, pointerEvents: "none" },
+            { autoAlpha: 1, y: 0, pointerEvents: "auto", duration: 0.1 },
             0.2,
           )
           .to(
             "[data-connect]",
-            { opacity: 0, y: -20, pointerEvents: "none", duration: 0.08 },
+            { autoAlpha: 0, y: -20, pointerEvents: "none", duration: 0.08 },
             0.4,
           )
 
           // 0.64 – 0.76 · Document pops out directly from the centered top-down view to cover the viewport
           .fromTo(
             "[data-macro-container]",
-            { opacity: 0, scale: 0.32, y: "0vh", rotateX: 0, pointerEvents: "none" },
+            { autoAlpha: 0, scale: 0.32, y: "0vh", rotateX: 0, pointerEvents: "none" },
             {
-              opacity: 1,
+              autoAlpha: 1,
               scale: 1,
               y: "0vh",
               rotateX: 0,
@@ -126,7 +140,7 @@ export function LandingExperience({
           )
           .to(
             "[data-darken]",
-            { opacity: 0.85, duration: 0.12 },
+            { opacity: 1.0, duration: 0.12 },
             0.64,
           )
           // Pad timeline to 1.00
@@ -147,6 +161,7 @@ export function LandingExperience({
       window.addEventListener("resize", handleResize);
 
       cleanup = () => {
+        window.removeEventListener("scroll", handleWindowScroll);
         window.removeEventListener("resize", handleResize);
         if (tickerCb) {
           gsap.ticker.remove(tickerCb);
@@ -166,9 +181,10 @@ export function LandingExperience({
     };
   }, []);
 
-  /* ---- Silky Smooth Momentum Scrolling for Macro Document (starts only when fully covering screen) ---- */
+  /* ---- Silky Smooth Momentum & Touch Scrolling for Macro Document ---- */
   const targetScrollRef = useRef(0);
   const currentScrollRef = useRef(0);
+  const isTouchActiveRef = useRef(false);
 
   useEffect(() => {
     const el = docScrollRef.current;
@@ -187,10 +203,21 @@ export function LandingExperience({
         return;
       }
 
+      const isTouchDevice =
+        typeof window !== "undefined" &&
+        ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
+      // On mobile/touch devices, allow native GPU touch scrolling with momentum
+      if (isTouchDevice || isTouchActiveRef.current) {
+        currentScrollRef.current = el.scrollTop;
+        targetScrollRef.current = el.scrollTop;
+        return;
+      }
+
       const diff = targetScrollRef.current - currentScrollRef.current;
       if (Math.abs(diff) > 0.25) {
-        // High-fidelity smooth lerp damping for zero-jitter, buttery inertia
-        currentScrollRef.current += diff * 0.12;
+        // High-fidelity smooth lerp damping for zero-jitter, buttery inertia on wheel
+        currentScrollRef.current += diff * 0.14;
         el.scrollTop = currentScrollRef.current;
       } else if (currentScrollRef.current !== targetScrollRef.current) {
         currentScrollRef.current = targetScrollRef.current;
@@ -227,10 +254,46 @@ export function LandingExperience({
       }
     };
 
+    // Touch handlers for mobile devices
+    const handleTouchStart = () => {
+      if (scrollProgressRef.current < 0.76) return;
+      isTouchActiveRef.current = true;
+      currentScrollRef.current = el.scrollTop;
+      targetScrollRef.current = el.scrollTop;
+    };
+
+    const handleTouchMove = () => {
+      if (scrollProgressRef.current < 0.76) return;
+      currentScrollRef.current = el.scrollTop;
+      targetScrollRef.current = el.scrollTop;
+    };
+
+    const handleTouchEnd = () => {
+      isTouchActiveRef.current = false;
+      currentScrollRef.current = el.scrollTop;
+      targetScrollRef.current = el.scrollTop;
+    };
+
+    const handleNativeScroll = () => {
+      if (scrollProgressRef.current >= 0.76) {
+        currentScrollRef.current = el.scrollTop;
+        targetScrollRef.current = el.scrollTop;
+      }
+    };
+
     el.addEventListener("wheel", handleWheel, { passive: false });
+    el.addEventListener("touchstart", handleTouchStart, { passive: true });
+    el.addEventListener("touchmove", handleTouchMove, { passive: true });
+    el.addEventListener("touchend", handleTouchEnd, { passive: true });
+    el.addEventListener("scroll", handleNativeScroll, { passive: true });
+
     return () => {
       cancelAnimationFrame(animId);
       el.removeEventListener("wheel", handleWheel);
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+      el.removeEventListener("touchend", handleTouchEnd);
+      el.removeEventListener("scroll", handleNativeScroll);
     };
   }, []);
 
@@ -266,6 +329,7 @@ export function LandingExperience({
       <div
         ref={stageRef}
         className="grain vignette fixed inset-0 overflow-hidden"
+        style={{ touchAction: "pan-y" }}
       >
         <BasementScene reducedMotion={reduced} />
 
@@ -292,7 +356,7 @@ export function LandingExperience({
           data-hero-title
           className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center select-none"
         >
-          <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tight text-white uppercase font-black leading-[0.9] drop-shadow-[0_6px_36px_rgba(201,24,43,0.55)]">
+          <h1 className="font-display text-4xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tight text-white uppercase font-black leading-[0.9] drop-shadow-[0_6px_36px_rgba(201,24,43,0.55)]">
             LA CASA DE <span className="text-crimson">ROZGAAR</span>
           </h1>
 
@@ -309,7 +373,7 @@ export function LandingExperience({
         {/* The Professor CRT Connection Prompt (All in English except 'Si') */}
         <div
           data-connect
-          className={`absolute inset-x-0 bottom-[10vh] z-30 flex justify-center opacity-0 pointer-events-none ${
+          className={`absolute inset-x-0 bottom-[8vh] sm:bottom-[10vh] z-30 flex justify-center opacity-0 pointer-events-none ${
             connected ? "pointer-events-none" : ""
           }`}
         >
@@ -324,9 +388,9 @@ export function LandingExperience({
                   : "RADIO SILENCE MAINTAINED — STANDALONE DOSSIER MODE"}
               </p>
             ) : (
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full justify-center">
                 <PromptButton tone="crimson" onClick={() => answerConnect("si")}>
-                  [ SI ] — I'm in
+                  [ SI ] — I&apos;m in
                 </PromptButton>
                 <PromptButton onClick={() => answerConnect("no")}>
                   [ NO ] — Radio Silence
@@ -342,7 +406,10 @@ export function LandingExperience({
           className="pointer-events-none absolute inset-0 z-[25] flex items-center justify-center p-2 sm:p-5 md:p-8 opacity-0 will-change-transform"
           style={{ perspective: "1400px" }}
         >
-          <div className="h-[min(92vh,840px)] w-[min(96vw,1080px)] pointer-events-auto">
+          <div
+            className="h-[min(92dvh,92vh,840px)] w-[min(96vw,1080px)] pointer-events-auto"
+            style={{ height: 'min(92dvh, 840px)', maxHeight: 'calc(100% - 1rem)' }}
+          >
             <OfferLetter
               variant="macro"
               scrollRef={docScrollRef}
@@ -376,3 +443,6 @@ export function LandingExperience({
     </div>
   );
 }
+
+export default LandingExperience;
+
