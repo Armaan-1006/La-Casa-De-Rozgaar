@@ -58,12 +58,7 @@ export function LandingExperience({
       let lenis: InstanceType<typeof LenisMod.default> | null = null;
       let tickerCb: ((time: number) => void) | null = null;
       if (!prefersReduced) {
-        lenis = new LenisMod.default({
-          duration: 1.1,
-          smoothWheel: true,
-          syncTouch: true,
-          touchMultiplier: 1.25,
-        });
+        lenis = new LenisMod.default({ duration: 1.1, smoothWheel: true });
         (window as any).__lenis = lenis;
         lenis.on("scroll", ScrollTrigger.update);
         tickerCb = (time: number) => {
@@ -87,7 +82,7 @@ export function LandingExperience({
             trigger: wrapRef.current,
             start: "top top",
             end: "bottom bottom",
-            scrub: prefersReduced ? true : isMobile || isTouch ? 0.35 : 0.8,
+            scrub: prefersReduced ? true : 1.0,
             onUpdate: (self) => {
               scrollProgressRef.current = self.progress;
             },
@@ -203,12 +198,8 @@ export function LandingExperience({
         return;
       }
 
-      const isTouchDevice =
-        typeof window !== "undefined" &&
-        ("ontouchstart" in window || navigator.maxTouchPoints > 0);
-
-      // On mobile/touch devices, allow native GPU touch scrolling with momentum
-      if (isTouchDevice || isTouchActiveRef.current) {
+      // During active touch gesture on mobile, let native browser touch scrolling handle it directly
+      if (isTouchActiveRef.current) {
         currentScrollRef.current = el.scrollTop;
         targetScrollRef.current = el.scrollTop;
         return;
@@ -328,7 +319,7 @@ export function LandingExperience({
       {/* The single continuous scene */}
       <div
         ref={stageRef}
-        className="grain vignette fixed inset-0 overflow-hidden"
+        className="grain vignette fixed inset-0 overflow-hidden pointer-events-none"
         style={{ touchAction: "pan-y" }}
       >
         <BasementScene reducedMotion={reduced} />
@@ -403,7 +394,7 @@ export function LandingExperience({
         {/* Macro Offer Letter: Takes over the entire page and stays full-screen */}
         <div
           data-macro-container
-          className="pointer-events-none absolute inset-0 z-[25] flex items-center justify-center p-2 sm:p-5 md:p-8 opacity-0 will-change-transform"
+          className="invisible pointer-events-none absolute inset-0 z-[25] flex items-center justify-center p-2 sm:p-5 md:p-8 opacity-0 will-change-transform"
           style={{ perspective: "1400px" }}
         >
           <div
@@ -424,7 +415,7 @@ export function LandingExperience({
           <button
             type="button"
             onClick={audio.toggle}
-            className="absolute bottom-5 right-5 z-40 cursor-pointer font-mono text-[10px] tracking-widest text-muted-foreground uppercase transition-colors hover:text-foreground"
+            className="pointer-events-auto absolute bottom-5 right-5 z-40 cursor-pointer font-mono text-[10px] tracking-widest text-muted-foreground uppercase transition-colors hover:text-foreground"
           >
             {audio.playing ? "♪ sound on" : "♪ sound off"}
           </button>

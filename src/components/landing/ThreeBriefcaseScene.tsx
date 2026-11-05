@@ -1482,13 +1482,16 @@ export function ThreeBriefcaseScene({
     }
 
     let animId = 0;
+    let prevTime = performance.now();
 
     const cwX = -0.15;
     const cwY = tableTopY;
     const cwZ = tableZ + 0.15;
 
-    const renderLoop = () => {
+    const renderLoop = (timeNow: number = performance.now()) => {
       animId = requestAnimationFrame(renderLoop);
+      const _dt = (timeNow - prevTime) / 1000;
+      prevTime = timeNow;
 
       const p = Math.max(0, Math.min(1, scrollProgressRef.current));
 
